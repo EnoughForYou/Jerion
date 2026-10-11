@@ -12,7 +12,7 @@
 - [x] Struktur folder arsitektur sesuai PRD §6.3
 - [x] Backend setup: module path `github.com/EnoughForYou/Jerion`, harness test Go placeholder (sementara, dihapus di T4)
 - [x] Frontend setup: Tailwind v3.4.19, tokens CSS, dependencies terkunci (React 19.1.0, Three 0.186.1, R3F 9.8.1, Zustand, Lucide, dll.)
-- [ ] Tooling: ESLint strict, Prettier (LF), Vitest setup
+- [x] Tooling: ESLint strict, Prettier (LF), Vitest setup
 - [ ] Spike WebGL: scene Three.js minimal di WebView2 (sekali pakai, tidak di-commit)
 - [ ] CI workflow GitHub Actions (pin runner Windows untuk wails build, Ubuntu untuk test)
 - [ ] Acceptance & Gerbang Selesai-Fase 0
