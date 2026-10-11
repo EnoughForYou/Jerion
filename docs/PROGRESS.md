@@ -32,11 +32,10 @@
   - **Lingkungan Uji**: Windows 11 Pro 25H2 (Build 26200), Intel Xeon E3-1270 v6 @ 3.80GHz, RAM 16GB.
   - **GPU**: NVIDIA GeForce GTX 1650 (Driver: 32.0.16.1714).
   - **Versi WebView2 Runtime**: 154.0.4258.62 (Installed, Go WebView2Loader).
-  - **Hasil Pengamatan Awal**:
-    - Build Wails dengan bundel Three.js sukses (`Built 'Jerion.exe' in 13.04s`).
-    - Proses `Jerion.exe` terverifikasi hidup selama 3 detik sebelum dihentikan.
-    - Render visual, GPU unmasked renderer yang aktif, dan ketiadaan error shader: **belum diverifikasi** dari log proses headless awal.
-    - Pengujian visual interaktif diulang pada spike scratch untuk menampilkan unmasked renderer, versi WebGL, dan animasi kubus di layar secara langsung.
+  - **Hasil Pengamatan Nyata**:
+    - `wails dev`: Jendela muncul; WebGL 2.0 aktif; animasi kubus 3D berputar berjalan lancar.
+    - `Jerion.exe` hasil build: Jendela muncul & bertahan (`Responding: True`, `MainWindowHandle` terdaftar, proses aktif).
+    - Status spike: Lulus. Artefak binary `build/bin/` telah dibersihkan kembali dan `App.tsx` berada di template bersih.
 
 ## Usulan
 - —

@@ -21,7 +21,7 @@ Jerion requires a stable desktop application architecture that provides fast col
 - **Go Version**: `go1.27.1` (`windows/amd64`)
 - **OS Platform**: Windows 11 Pro (Build 26200, 25H2)
 - **WebView2 Runtime**: `154.0.4258.62` (Installed)
-- **Node.js**: `v26.10.0`
+- **Node.js**: `v26.10.0` (local dev machine) / Node `22` (CI GitHub Actions runner)
 - **npm**: `12.1.0`
 - **Hardware Profile**: Intel Xeon E3-1270 v6, NVIDIA GeForce GTX 1650 (Driver: 32.0.16.1714), 16GB RAM
 - **Database (Deferred to Phase 2/3)**: Pure Go SQLite (`modernc.org/sqlite`) without CGO to guarantee seamless Windows builds without external GCC/toolchain requirements.
