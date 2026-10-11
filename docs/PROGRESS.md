@@ -14,7 +14,7 @@
 - [x] Frontend setup: Tailwind v3.4.19, tokens CSS, dependencies terkunci (React 19.1.0, Three 0.186.1, R3F 9.8.1, Zustand, Lucide, dll.)
 - [x] Tooling: ESLint strict, Prettier (LF), Vitest setup
 - [x] Spike WebGL: scene Three.js minimal di WebView2 (sekali pakai, tidak di-commit)
-- [ ] CI workflow GitHub Actions (pin runner Windows untuk wails build, Ubuntu untuk test)
+- [x] CI workflow GitHub Actions (pin runner Windows untuk wails build, Ubuntu untuk test)
 - [ ] Acceptance & Gerbang Selesai-Fase 0
 
 ## Keputusan baru (ADR)
