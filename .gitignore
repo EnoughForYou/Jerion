@@ -1,0 +1,43 @@
+# Binaries and build outputs
+build/bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Node and frontend build artifacts
+node_modules/
+dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Jerion working directories and sensitive artifacts
+work/
+pulled_apks/
+scratch/
+reports/
+*.apk
+*.apks
+*.xapk
+
+# Logs
+*.log
+logs/
+
+# IDE and OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~
