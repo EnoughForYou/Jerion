@@ -30,16 +30,20 @@ Jerion requires a stable desktop application architecture that provides fast col
 - *Note*: External Go modules are documented here and will only be added to `go.mod` when implemented to prevent removal by `go mod tidy`.
 
 ### 3. Frontend Architecture
-- **Framework**: React `18.3.1` with Vite and TypeScript (`strict: true`).
+- **Framework**: React `19.1.0` (as scaffolded by Wails v2 react-ts template), Vite `7.0+`, TypeScript `5.6+` (`strict: true`).
 - **Styling**: Tailwind CSS `v3.4.19` with PostCSS and Autoprefixer.
   - **Verified Rationale for Tailwind v3**:
     1. Direct mapping of design tokens from `frontend/src/styles/tokens.css` into `tailwind.config.js` using CSS variables (`var(--bg-base)`, `var(--accent)`, etc.).
     2. Reliable, tested PostCSS pipeline integration within standard Vite Wails v2 template.
   - **Tailwind v4 Status**: Compatibility with planned Aceternity UI components under Tailwind v4 is currently **unverified** (*belum diverifikasi*). Potential migration to Tailwind v4 is deferred to a future dedicated ADR.
 - **3D Visualization**:
-  - `three` (`^0.170.0`) and `@react-three/fiber` (`8.18.0`).
-  - **Peer-Dependency Verification**: `@react-three/fiber@8.18.0` requires `react: ">=18 <19"` and `three: ">=0.133"`. Pairing React `18.3.1` with R3F `8.18.0` installs cleanly without `--legacy-peer-deps` or `--force`.
+  - `three` (`^0.186.1`) and `@react-three/fiber` (`^9.8.1`).
+  - **Peer-Dependency Verification**: `@react-three/fiber@9.8.1` requires `react: ">=19 <19.4"` and `three: ">=0.156"`. Pairing React `19.1.0` with R3F `9.8.1` and Three.js `0.186.1` installs cleanly with zero warnings without `--legacy-peer-deps` or `--force`.
   - Single scene on Home/Scan, lazy-loaded, paused when window loses focus, fallback to SVG.
+- **Tooling**:
+  - Vitest `5.0.3` with `@testing-library/react` and `jsdom`.
+  - ESLint `10.12.0` (Flat config) with `typescript-eslint`.
+  - Prettier `3.9.10` with `endOfLine: "lf"`.
 - **State Management**:
   - TanStack Query (`@tanstack/react-query`) for asynchronous Go bindings state.
   - Zustand (`zustand`) for synchronous UI/client state.

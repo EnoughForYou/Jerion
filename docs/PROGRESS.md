@@ -11,7 +11,7 @@
 - [x] Scaffold Wails v2 (React+TS) tanpa folder bersarang
 - [x] Struktur folder arsitektur sesuai PRD §6.3
 - [x] Backend setup: module path `github.com/EnoughForYou/Jerion`, harness test Go placeholder (sementara, dihapus di T4)
-- [ ] Frontend setup: Tailwind v3.4.19, tokens CSS, dependencies terkunci (React 18.3.1, Three 0.170.0, R3F 8.18.0, Zustand, Lucide, dll.)
+- [x] Frontend setup: Tailwind v3.4.19, tokens CSS, dependencies terkunci (React 19.1.0, Three 0.186.1, R3F 9.8.1, Zustand, Lucide, dll.)
 - [ ] Tooling: ESLint strict, Prettier (LF), Vitest setup
 - [ ] Spike WebGL: scene Three.js minimal di WebView2 (sekali pakai, tidak di-commit)
 - [ ] CI workflow GitHub Actions (pin runner Windows untuk wails build, Ubuntu untuk test)
