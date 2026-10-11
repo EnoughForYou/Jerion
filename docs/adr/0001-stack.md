@@ -31,6 +31,7 @@ Jerion requires a stable desktop application architecture that provides fast col
 
 ### 3. Frontend Architecture
 - **Framework**: React `19.1.0` (as scaffolded by Wails v2 react-ts template), Vite `7.0+`, TypeScript `5.6+` (`strict: true`).
+  - **Rationale for React 19 + R3F 9**: The official Wails v2 `react-ts` template scaffolded React 19 (`^19.1.0`) by default. To preserve the template foundation without forcing artificial downgrades, `@react-three/fiber@9.8.1` and `three@0.186.1` were selected because R3F v9 is designed specifically for React 19 (`>=19 <19.4`). All accompanying libraries (`@tanstack/react-query`, `@tanstack/react-table`, `@tanstack/react-virtual`, `zustand`, `lucide-react`, `react-router-dom`, `react-i18next`) resolve cleanly under React 19 without requiring `--legacy-peer-deps` or `--force`.
 - **Styling**: Tailwind CSS `v3.4.19` with PostCSS and Autoprefixer.
   - **Verified Rationale for Tailwind v3**:
     1. Direct mapping of design tokens from `frontend/src/styles/tokens.css` into `tailwind.config.js` using CSS variables (`var(--bg-base)`, `var(--accent)`, etc.).
