@@ -11,6 +11,9 @@ build/bin/
 # Node and frontend build artifacts
 node_modules/
 dist/
+frontend/dist/
+frontend/wailsjs/dist/
+*.md5
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
