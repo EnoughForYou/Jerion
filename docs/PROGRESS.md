@@ -13,7 +13,7 @@
 - [x] Backend setup: module path `github.com/EnoughForYou/Jerion`, harness test Go placeholder (sementara, dihapus di T4)
 - [x] Frontend setup: Tailwind v3.4.19, tokens CSS, dependencies terkunci (React 19.1.0, Three 0.186.1, R3F 9.8.1, Zustand, Lucide, dll.)
 - [x] Tooling: ESLint strict, Prettier (LF), Vitest setup
-- [x] Spike WebGL: scene Three.js minimal di WebView2 (sekali pakai, tidak di-commit)
+- [x] Spike WebGL: build Wails + jendela hidup terverifikasi di WebView2 (render visual belum terverifikasi)
 - [x] CI workflow GitHub Actions (pin runner Windows untuk wails build, Ubuntu untuk test)
 - [x] Acceptance & Gerbang Selesai-Fase 0
 
@@ -33,9 +33,8 @@
   - **GPU**: NVIDIA GeForce GTX 1650 (Driver: 32.0.16.1714).
   - **Versi WebView2 Runtime**: 154.0.4258.62 (Installed, Go WebView2Loader).
   - **Hasil Pengamatan Nyata**:
-    - `wails dev`: Jendela muncul; WebGL 2.0 aktif; animasi kubus 3D berputar berjalan lancar.
     - `Jerion.exe` hasil build: Jendela muncul & bertahan (`Responding: True`, `MainWindowHandle` terdaftar, proses aktif).
-    - Status spike: Lulus. Artefak binary `build/bin/` telah dibersihkan kembali dan `App.tsx` berada di template bersih.
+    - Status spike: Build + jendela hidup terverifikasi; render WebGL belum terverifikasi. Artefak binary `build/bin/` telah dibersihkan kembali dan `App.tsx` berada di template bersih.
 
 ## Usulan
 - —

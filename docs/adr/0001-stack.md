@@ -18,12 +18,11 @@ Jerion requires a stable desktop application architecture that provides fast col
 
 ### 2. Backend & System Runtime (Verified via Wails Doctor)
 - **Wails CLI**: `v2.16.0`
-- **Go Version**: `go1.27.1` (`windows/amd64`)
+- **Go Version (Baseline)**: Go `1.25+` (Module baseline pinned to `go 1.25.0` in `go.mod` used by CI; local dev machine runs `go1.27.1 windows/amd64` which is backward-compatible).
+- **Node.js & npm (Baseline)**: Node.js `>=20.0.0` (Target LTS baseline: Node `22` in CI runner; local dev machine runs `v26.10.0` / npm `12.1.0`. Declared in `frontend/package.json` `engines`).
 - **OS Platform**: Windows 11 Pro (Build 26200, 25H2)
 - **WebView2 Runtime**: `154.0.4258.62` (Installed)
-- **Node.js**: `v26.10.0` (local dev machine) / Node `22` (CI GitHub Actions runner)
-- **npm**: `12.1.0`
-- **Hardware Profile**: Intel Xeon E3-1270 v6, NVIDIA GeForce GTX 1650 (Driver: 32.0.16.1714), 16GB RAM
+- **Hardware Profile (from Wails Doctor)**: Intel Xeon E3-1270 v6 @ 3.80GHz, NVIDIA GeForce GTX 1650 (Driver: 32.0.16.1714), 16GB RAM
 - **Database (Deferred to Phase 2/3)**: Pure Go SQLite (`modernc.org/sqlite`) without CGO to guarantee seamless Windows builds without external GCC/toolchain requirements.
 - **OS Secrets (Deferred to Phase 8)**: OS Keychain (`zalando/go-keyring` or platform equivalent).
 - **Rule Parser (Deferred to Phase 4)**: `gopkg.in/yaml.v3`.
