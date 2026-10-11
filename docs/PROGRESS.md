@@ -7,7 +7,7 @@
 
 ## Fase 0 — checklist
 - [x] Git init di branch `main` dengan `.gitattributes` (LF), `.gitignore`, `LICENSE`, `README.md`, `CHANGELOG.md`
-- [ ] Dokumentasi inti di `docs/` (`docs/PRD.md`, `docs/PROGRESS.md`, ADR 0001–0003)
+- [x] Dokumentasi inti di `docs/` (`docs/PRD.md`, `docs/PROGRESS.md`, ADR 0001–0003)
 - [ ] Scaffold Wails v2 (React+TS) tanpa folder bersarang
 - [ ] Struktur folder arsitektur sesuai PRD §6.3
 - [ ] Backend setup: module path `github.com/EnoughForYou/Jerion`, harness test Go placeholder (sementara, dihapus di T4)
