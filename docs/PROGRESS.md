@@ -3,7 +3,7 @@
 ## Status sekarang
 - Fase aktif: 0 — Fondasi (Setup)
 - Branch: phase/0-foundation
-- Terakhir selesai: — (Tahap inisiasi)
+- Terakhir selesai: Fase 0 — Fondasi (Setup) (menunggu tag v0.0.1 pasca-remote)
 
 ## Fase 0 — checklist
 - [x] Git init di branch `main` dengan `.gitattributes` (LF), `.gitignore`, `LICENSE`, `README.md`, `CHANGELOG.md`
@@ -15,7 +15,7 @@
 - [x] Tooling: ESLint strict, Prettier (LF), Vitest setup
 - [x] Spike WebGL: scene Three.js minimal di WebView2 (sekali pakai, tidak di-commit)
 - [x] CI workflow GitHub Actions (pin runner Windows untuk wails build, Ubuntu untuk test)
-- [ ] Acceptance & Gerbang Selesai-Fase 0
+- [x] Acceptance & Gerbang Selesai-Fase 0
 
 ## Keputusan baru (ADR)
 - ADR-0001: Stack terkunci (Wails v2.16.0, Go 1.27.1, React 19.1.0, Tailwind v3.4.19, Three 0.186.1, R3F 9.8.1)
