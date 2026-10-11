@@ -13,6 +13,7 @@ node_modules/
 dist/
 frontend/dist/
 frontend/wailsjs/dist/
+*.md5
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
