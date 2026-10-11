@@ -17,15 +17,16 @@ Jerion connects to Android devices over USB/ADB to inspect packages, analyze per
 - Wails CLI v2 (`v2.16.0`)
 - Android Platform Tools (ADB)
 
-## Quick Start
+## Live Development & Building
+- **Live Dev Mode**: `wails dev`
+  Runs a Vite development server with rapid hot reload of frontend changes and backend bindings.
+- **Browser DevTools Mode**: dev server runs at `http://localhost:34115` allowing devtools interaction with Go methods.
+- **Production Build**: `wails build`
+  Produces a standalone native desktop executable in `build/bin/`.
+- **Project Configuration**: Settings are managed in `wails.json`.
+
+## Test Suites
 ```bash
-# Run in development mode (live reload)
-wails dev
-
-# Build production binary
-wails build
-
-# Run test suites
 go vet ./... && go test ./...
 cd frontend && npm run lint && npm run typecheck && npm run test
 ```
