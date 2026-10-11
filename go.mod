@@ -1,4 +1,4 @@
-module github.com/enoughforyou/jerion
+module github.com/EnoughForYou/Jerion
 
 go 1.25.0
 
