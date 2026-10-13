@@ -6,7 +6,6 @@ import {
   Search,
   CheckCircle2,
   Calendar,
-  Cpu,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -22,7 +21,10 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { getBridge } from '../../lib/bridge';
 import { useDeviceStore } from '../../app/deviceStore';
+import { StaticFallback } from '../../three/StaticFallback';
 import type { ScanResult } from '../../lib/bridge/schema';
+
+const DeviceScene = React.lazy(() => import('../../three/DeviceScene'));
 
 export const HomeView: React.FC = () => {
   const { t } = useTranslation();
@@ -218,14 +220,13 @@ export const HomeView: React.FC = () => {
       </div>
 
       {/* 3D Scene / Visual Area Container */}
-      <Card className="min-h-[220px] flex items-center justify-center bg-raised/20 border-dashed">
-        <div id="device-scene-container" className="text-center p-6 text-text-secondary text-xs">
-          <Cpu className="w-8 h-8 text-accent/60 mx-auto mb-2" />
-          <p className="font-medium text-text-primary">Interactive Threat Visualizer</p>
-          <p className="text-[11px] text-text-secondary mt-0.5">
-            Procedural 3D device status telemetry will mount here.
-          </p>
-        </div>
+      <Card className="min-h-[220px] p-0 overflow-hidden flex items-center justify-center bg-surface border border-separator/35 shadow-sm">
+        <React.Suspense fallback={<StaticFallback findingsCount={scanResult?.findings.length || 0} />}>
+          <DeviceScene
+            status={scanResult ? 'completed' : 'idle'}
+            findingsCount={scanResult?.findings.length || 0}
+          />
+        </React.Suspense>
       </Card>
     </div>
   );
