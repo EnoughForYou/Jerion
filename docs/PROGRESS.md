@@ -8,7 +8,7 @@
 ## Fase 1 (Tahap T1) — checklist
 - [x] Sub-tugas 1.1: Pembaruan aturan proyek & solusi build gitkeep
 - [x] Sub-tugas 1.2: Pin Zod & runtime schemas (`schema.ts`)
-- [ ] Sub-tugas 1.3: Interface bridge & peta event (`bridge.ts`, `events.ts`)
+- [x] Sub-tugas 1.3: Interface bridge & peta event (`bridge.ts`, `events.ts`)
 - [ ] Sub-tugas 1.4: Fixture JSON bersama (`internal/testdata/contract/*.json`)
 - [ ] Sub-tugas 1.5: Implementasi mock bridge (`mock.ts`)
 - [ ] Sub-tugas 1.6: Bridge selector, script `check:no-mock`, & dead-code elimination
