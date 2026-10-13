@@ -1,11 +1,21 @@
 # PROGRESS
 
 ## Status sekarang
-- Fase aktif: 3 — Frontend Screens & Contract Freeze v1.0.0 (Tahap T3 — Selesai)
-- Branch: phase/3-screens
-- Terakhir selesai: Tahap 2 — Design System & App Shell (tag v0.2.0)
+- Fase aktif: 4 — Backend Go (Tahap T4)
+- Branch: phase/4-backend
+- Terakhir selesai: Tahap 3 — Layar Frontend & Contract Freeze v1.0.0 (tag v0.3.0)
 
-## Fase 3 (Tahap T3) — checklist
+## Fase 4 (Tahap T4) — checklist
+- [x] Sub-tugas 4.1: Paket fondasi & penyimpanan (`internal/logx`, `internal/secrets`, `internal/store` via pure-Go SQLite `modernc.org/sqlite`)
+- [ ] Sub-tugas 4.2: Lapisan ADB Core & Preflight (`internal/adb`, `internal/preflight`)
+- [ ] Sub-tugas 4.3: Inventaris Aplikasi & Analisis APK (`internal/inventory`, `internal/apk`)
+- [ ] Sub-tugas 4.4: Scan Engine, Rules & Intel (`internal/engine`, `internal/rules`, `internal/intel`)
+- [ ] Sub-tugas 4.5: System Audit & Popup Hunter Monitor (`internal/audit`, `internal/monitor`)
+- [ ] Sub-tugas 4.6: Remediasi & Laporan (`internal/remediate`, `internal/report`)
+- [ ] Sub-tugas 4.7: Service Layer & Go DTOs (`app.go` Wails bindings)
+- [ ] Sub-tugas 4.8: Gerbang selesai-tahap T4
+
+## Fase 3 (Tahap T3) — riwayat selesai
 - [x] Sub-tugas 3.1: Interactive Home view & OnboardingModal
 - [x] Sub-tugas 3.2: Interactive Scan view with timeline, filters & EvidenceDrawer
 - [x] Sub-tugas 3.3: Virtualized Apps inventory with category filtering, search, and detail drawer
