@@ -265,9 +265,19 @@
     "description": "Correlates intrusive fullscreen popups and adware events in real time.",
     "start": "Start Monitoring",
     "stop": "Stop Monitoring",
-    "signalSources": "Signal Monitors",
+    "markPopup": "Popup Just Appeared!",
+    "markPopupHint": "Click immediately when an unsolicited popup displays on the device",
+    "markPopupSuccess": "Marker recorded. Correlating foreground window trace...",
+    "signalSources": "Telemetry Signal Monitors",
     "candidates": "Ranked Adware Candidates",
-    "noEvents": "No suspicious window or overlay triggers recorded yet."
+    "candidatesDesc": "Packages correlated with popup triggers and fullscreen overlays",
+    "candidateScore": "Risk Score: {{score}}/100",
+    "triggerLog": "Foreground Trigger Stream",
+    "triggerLogDesc": "Recent foreground shifts, toast broadcasts, and window overlays",
+    "noEvents": "No events recorded. Start monitoring to capture foreground activity.",
+    "noEventsMonitoring": "Monitoring active. Interact with device or click 'Popup Just Appeared!' when an ad triggers.",
+    "deepScanCandidate": "Deep Scan",
+    "stageRemediation": "Stage for Cleanup"
   },
   "audit": {
     "title": "System Security Audit",
