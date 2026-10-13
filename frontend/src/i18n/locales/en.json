@@ -327,15 +327,49 @@
     "description": "View historical threat scans, compare changes over time, and export evidence.",
     "exportPdf": "Export PDF",
     "exportJson": "Export JSON",
-    "compare": "Compare Scans"
+    "exportHtml": "Export HTML",
+    "compare": "Compare Scans",
+    "compareDesc": "Delta analysis between two historical scans",
+    "exportSuccess": "Report exported successfully to: {{path}}",
+    "noScans": "No historical scans found. Run a device scan to generate reports.",
+    "newFindings": "New Threats",
+    "resolvedFindings": "Resolved Threats",
+    "unchanged": "Unchanged",
+    "exportModal": {
+      "title": "Export Threat Report",
+      "description": "Generate an export file for audit verification and technician records.",
+      "format": "Report Format",
+      "htmlDesc": "Standalone styled HTML report with full evidence traces",
+      "jsonDesc": "Structured JSON machine-readable finding export",
+      "exportBtn": "Generate & Save Report",
+      "cancel": "Cancel"
+    }
   },
   "settings": {
     "title": "Settings",
-    "general": "General Preferences",
+    "general": "General Preferences & Configuration",
     "theme": "Interface Theme",
     "themeDark": "Dark Theme",
     "themeLight": "Light Theme",
+    "themeSystem": "System Theme",
+    "themeDesc": "Switch interface color scheme between dark, light, and OS default",
     "bridge": "Bridge Status",
-    "rules": "Detection Rules Version"
+    "rules": "Detection Rules Version",
+    "adbConfig": "ADB Engine Configuration",
+    "adbConfigDesc": "Configure Android Debug Bridge binary path and daemon timeout parameters",
+    "adbPath": "ADB Binary Path",
+    "adbPathPlaceholder": "C:\\platform-tools\\adb.exe",
+    "saveAdbPath": "Save & Validate",
+    "pathSaved": "ADB path updated and validated successfully.",
+    "deepScanTimeout": "Deep Scan Timeout (Seconds)",
+    "autoCheck": "Automatically run preflight verification on launch",
+    "allowlistTitle": "Allowlist & False Positive Exclusions",
+    "allowlistDesc": "Packages and hashes exempted from automated threat alerts",
+    "addAllowlist": "Add Exclusion",
+    "targetPlaceholder": "Package name (e.g. com.android.settings)",
+    "reasonPlaceholder": "Reason for exclusion...",
+    "add": "Add to Allowlist",
+    "remove": "Remove",
+    "noAllowlist": "No packages or rules currently exempted."
   }
 }
