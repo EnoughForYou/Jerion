@@ -1,7 +1,7 @@
 # PROGRESS
 
 ## Status sekarang
-- Fase aktif: 1 — Kontrak + Mock Bridge (Tahap T1)
+- Fase aktif: 1 — Kontrak + Mock Bridge (Tahap T1 — Selesai)
 - Branch: phase/1-contract
 - Terakhir selesai: Tahap 0 — Fondasi (Setup) (tag v0.0.1)
 
@@ -13,7 +13,7 @@
 - [x] Sub-tugas 1.5: Implementasi mock bridge (`mock.ts`)
 - [x] Sub-tugas 1.6: Bridge selector, script `check:no-mock`, & dead-code elimination
 - [x] Sub-tugas 1.7: Vitest suite untuk mock lifecycle & events
-- [ ] Sub-tugas 1.8: Dokumen tata kelola (`docs/contract.md`) & gerbang selesai-tahap T1
+- [x] Sub-tugas 1.8: Dokumen tata kelola (`docs/contract.md`) & gerbang selesai-tahap T1
 
 ## Fase 0 — riwayat selesai
 - [x] Git init di branch `main` dengan `.gitattributes` (LF), `.gitignore`, `LICENSE`, `README.md`, `CHANGELOG.md`
