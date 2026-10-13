@@ -1,0 +1,20 @@
+id: STK-001
+title: Hidden Background Audio and Location Access
+category: stalkerware
+severity: critical
+confidence: high
+weight: 95
+why: Application has no visible launcher icon yet requests RECORD_AUDIO and background location.
+false_positive_hint: Enterprise MDM tracking or parental control suites with physical consent.
+remediation:
+  - force-stop
+  - disable
+  - uninstall
+conditions:
+  is_system: false
+  has_launcher: false
+  required_permissions:
+    - android.permission.RECORD_AUDIO
+  any_permissions:
+    - android.permission.ACCESS_FINE_LOCATION
+    - android.permission.ACCESS_BACKGROUND_LOCATION

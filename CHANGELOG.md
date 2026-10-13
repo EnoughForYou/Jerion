@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-14
+
+### Added
+- **Stage T4 (Backend Go — Core ADB Engine, Forensic Analysis & State Machine)**:
+  - **Foundation & Storage**: Pure-Go SQLite in WAL mode (`modernc.org/sqlite`, zero CGO) with schema migrations v1, repos for settings, devices, scans, actions log, allowlist, and threat intel. Structured leveled logger (`internal/logx`) with size-bounded file rotation and raw ADB command audit masking. OS native keychain secrets management (`internal/secrets`) via `zalando/go-keyring` with in-memory fallback.
+  - **ADB Core & Preflight Engine**: ADB runner abstraction (`internal/adb`) with per-device concurrency queuing, Windows `SysProcAttr{HideWindow: true}`, input sanitization regex against shell injection, defensive parsers (`devices -l`, `getprop`, `dumpsys battery`, `df`, `dumpsys window`), and background hotplug device tracker. Full P1–P7 preflight prerequisite engine (`internal/preflight`) with safe HTTPS platform-tools downloader featuring SHA-256 validation and zip-slip directory traversal guards.
+  - **Inventory Discovery & APK Analysis**: Defensive package manager parser (`internal/inventory`) for multi-split apps, and APK extraction pipeline with SHA-256 fingerprinting. Pure-Go AXML binary decoder (`internal/apk`) parsing compressed Android manifests, DEX scanner identifying 11 ad SDK networks, and certificate SHA-256 fingerprint extractor.
+  - **Forensic Scan Engine & Declarative Rules**: Rule evaluator (`internal/engine`) loading YAML rule packs (`internal/rules`) with positive and negative table-driven test coverage (`ADW-001`, `ADW-002`, `STK-001`, `DRO-001`, `ADM-001`). Quick and Deep scan pipelines with real-time progress callbacks and threat intel provider aggregator (`internal/intel`).
+  - **System Security Audit & Popup Hunter Monitor**: Hardening posture collectors (`internal/audit`) assessing accessibility abusers, notification listeners, device admin apps, unknown sources, USB debugging, private DNS, and HTTP proxies. Real-time background telemetry daemon (`internal/monitor`) tracking window focus changes, overlay detection (`TYPE_APPLICATION_OVERLAY`), and candidate attribution with "Popup Just Appeared!" user marker correlation.
+  - **Safety Guardrail Remediation & Offline Reports**: Guarded remediation manager (`internal/remediate`) enforcing critical system package denylist protection, automated pre-uninstall APK backup, full persistent audit trail in SQLite, and reversible undo actions (`enable`, `install-existing`, `grant`, `allow`). Offline self-contained HTML and JSON report generator (`internal/report`) with zero-CDN embedded styling, scan diff comparison, and sensitive data redaction.
+  - **Wails Service Layer & Contract Fidelity**: Thin binding layer (`app.go`) exposing all 10 Bridge services, emitting runtime events (`preflight:update`, `device:changed`, `scan:progress`, `scan:finding`, `scan:done`, `monitor:event`, `monitor:candidate`), and full contract validation (`internal/contract`) ensuring strict unmarshal (`DisallowUnknownFields()`) and round-trip fidelity against all 21 Frozen Contract v1.0.0 shared JSON fixtures.
+  - **Quality & Verification**: 100% green tests across 16 backend Go packages, 114 passing Vitest tests in frontend, zero ESLint/TypeScript errors, passed `check:no-mock` dead-code elimination, and successful `wails build` production compilation of `build/bin/Jerion.exe`.
+
 ## [0.3.0] - 2026-10-13
 
 ### Added

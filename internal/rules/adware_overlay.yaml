@@ -1,0 +1,17 @@
+id: ADW-001
+title: Suspicious Fullscreen Overlay Permission
+category: adware
+severity: high
+confidence: high
+weight: 80
+why: Application requests SYSTEM_ALERT_WINDOW without launcher activity or valid utility role.
+false_positive_hint: System UI utilities, screen recorders, and assistive touch apps use overlays legitimately.
+remediation:
+  - disable
+  - revoke-permission
+  - uninstall
+conditions:
+  is_system: false
+  has_launcher: false
+  required_permissions:
+    - android.permission.SYSTEM_ALERT_WINDOW

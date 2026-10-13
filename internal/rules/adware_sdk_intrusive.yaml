@@ -1,0 +1,16 @@
+id: ADW-002
+title: Multiple Ad Networks Bundled with Wake Lock
+category: aggressive-ads
+severity: medium
+confidence: high
+weight: 60
+why: Third-party application bundles multiple aggressive ad networks and requests WAKE_LOCK.
+false_positive_hint: Free ad-supported mobile games often integrate multiple mediation networks.
+remediation:
+  - disable
+  - uninstall
+conditions:
+  is_system: false
+  min_ad_sdks: 2
+  required_permissions:
+    - android.permission.WAKE_LOCK

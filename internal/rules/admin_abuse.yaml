@@ -1,0 +1,16 @@
+id: ADM-001
+title: Sideloaded Device Administrator Request
+category: device-admin-abuse
+severity: critical
+confidence: high
+weight: 90
+why: Sideloaded non-system package requests device administration privileges to prevent uninstallation.
+false_positive_hint: Corporate work profile management apps or anti-theft security suites.
+remediation:
+  - disable
+  - uninstall
+conditions:
+  is_system: false
+  installer: sideload
+  required_permissions:
+    - android.permission.BIND_DEVICE_ADMIN
