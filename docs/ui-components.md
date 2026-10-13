@@ -17,4 +17,4 @@ The following decorative components are strictly prohibited:
 ## Component Registry Table
 | Component Name | Source / Origin | Target Location | Functional Purpose | Token Adaptation Status |
 |---|---|---|---|---|
-| *(Pending Phase 1)* | — | — | — | — |
+| Sidebar | Aceternity UI (adapted) | `frontend/src/components/aceternity/Sidebar.tsx` | Collapsible left navigation (220px to 64px) for 8 application modules | Adapted to design tokens, pure CSS transition (200ms ease-out), zero framer-motion dependency |
