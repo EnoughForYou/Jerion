@@ -29,16 +29,16 @@ Jerion requires a stable desktop application architecture that provides fast col
 - *Note*: External Go modules are documented here and will only be added to `go.mod` when implemented to prevent removal by `go mod tidy`.
 
 ### 3. Frontend Architecture
-- **Framework**: React `19.1.0` (as scaffolded by Wails v2 react-ts template), Vite `7.0+`, TypeScript `5.6+` (`strict: true`).
-  - **Rationale for React 19 + R3F 9**: The official Wails v2 `react-ts` template scaffolded React 19 (`^19.1.0`) by default. To preserve the template foundation without forcing artificial downgrades, `@react-three/fiber@9.8.1` and `three@0.186.1` were selected because R3F v9 is designed specifically for React 19 (`>=19 <19.4`). All accompanying libraries (`@tanstack/react-query`, `@tanstack/react-table`, `@tanstack/react-virtual`, `zustand`, `lucide-react`, `react-router-dom`, `react-i18next`) resolve cleanly under React 19 without requiring `--legacy-peer-deps` or `--force`.
+- **Framework**: React `19.3.0`, React DOM `19.3.0`, `@types/react` `19.3.0` (as resolved in `frontend/package-lock.json`), Vite `7.3.7`, TypeScript `5.9.3` (`strict: true`).
+  - **Rationale for React 19 + R3F 9**: The official Wails v2 `react-ts` template scaffolded React 19 by default, resolving to React `19.3.0`. To preserve the template foundation without forcing artificial downgrades, `@react-three/fiber@9.8.1` and `three@0.186.1` were selected because R3F v9 is designed specifically for React 19 (`>=19 <19.4`). All accompanying libraries (`@tanstack/react-query`, `@tanstack/react-table`, `@tanstack/react-virtual`, `zustand`, `lucide-react`, `react-router-dom`, `react-i18next`) resolve cleanly under React 19 without requiring `--legacy-peer-deps` or `--force`.
 - **Styling**: Tailwind CSS `v3.4.19` with PostCSS and Autoprefixer.
   - **Verified Rationale for Tailwind v3**:
     1. Direct mapping of design tokens from `frontend/src/styles/tokens.css` into `tailwind.config.js` using CSS variables (`var(--bg-base)`, `var(--accent)`, etc.).
     2. Reliable, tested PostCSS pipeline integration within standard Vite Wails v2 template.
   - **Tailwind v4 Status**: Compatibility with planned Aceternity UI components under Tailwind v4 is currently **unverified** (*belum diverifikasi*). Potential migration to Tailwind v4 is deferred to a future dedicated ADR.
 - **3D Visualization**:
-  - `three` (`^0.186.1`) and `@react-three/fiber` (`^9.8.1`).
-  - **Peer-Dependency Verification**: `@react-three/fiber@9.8.1` requires `react: ">=19 <19.4"` and `three: ">=0.156"`. Pairing React `19.1.0` with R3F `9.8.1` and Three.js `0.186.1` installs cleanly with zero warnings without `--legacy-peer-deps` or `--force`.
+  - `three` (`0.186.1`) and `@react-three/fiber` (`9.8.1`).
+  - **Peer-Dependency Verification**: Verified directly via `npm info @react-three/fiber@9.8.1 peerDependencies`: requires `react: ">=19 <19.4"`, `react-dom: ">=19 <19.4"`, and `three: ">=0.156"`. Pairing React `19.3.0` with R3F `9.8.1` and Three.js `0.186.1` installs cleanly with zero warnings without `--legacy-peer-deps` or `--force`.
   - Single scene on Home/Scan, lazy-loaded, paused when window loses focus, fallback to SVG.
 - **Tooling**:
   - Vitest `5.0.3` with `@testing-library/react` and `jsdom`.
