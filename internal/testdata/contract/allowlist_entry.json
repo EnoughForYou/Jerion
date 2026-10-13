@@ -1,0 +1,7 @@
+{
+  "id": "allow-mock-01",
+  "type": "package",
+  "target": "com.android.settings",
+  "addedAt": "2026-10-13T10:00:00Z",
+  "reason": "Whitelisted default Android Settings"
+}

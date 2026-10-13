@@ -1,0 +1,14 @@
+{
+  "id": "scan-mock-001",
+  "startedAt": "2026-10-13T12:00:00Z",
+  "completedAt": "2026-10-13T12:00:15Z",
+  "mode": "quick",
+  "verdict": "review",
+  "findingsCount": {
+    "info": 0,
+    "low": 0,
+    "medium": 0,
+    "high": 1,
+    "critical": 0
+  }
+}

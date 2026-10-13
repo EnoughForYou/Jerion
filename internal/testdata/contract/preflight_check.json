@@ -1,0 +1,7 @@
+{
+  "id": "adb_binary",
+  "title": "ADB Binary",
+  "status": "ok",
+  "detail": "Android Debug Bridge version 1.0.41",
+  "remedy": "Ensure platform-tools are installed"
+}
