@@ -13,7 +13,8 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "check:no-mock": "node scripts/check-no-mock.js"
   },
   "dependencies": {
     "@react-three/fiber": "^9.8.1",
