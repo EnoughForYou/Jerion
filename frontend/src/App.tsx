@@ -1,28 +1,18 @@
-import { ChangeEvent, useState } from 'react';
-import logo from './assets/images/logo-universal.png';
-import './App.css';
-import {Greet} from "../wailsjs/go/main/App";
+import { useState } from 'react';
+import { RouterProvider } from 'react-router-dom';
+import { PreflightView } from './features/preflight/PreflightView';
+import { router } from './app/routes';
+import './style.css';
+import './i18n';
 
-function App() {
-    const [resultText, setResultText] = useState("Please enter your name below 👇");
-    const [name, setName] = useState('');
-    const updateName = (e: ChangeEvent<HTMLInputElement>) => setName(e.target.value);
-    const updateResultText = (result: string) => setResultText(result);
+export function App() {
+  const [preflightPassed, setPreflightPassed] = useState(false);
 
-    function greet() {
-        Greet(name).then(updateResultText);
-    }
+  if (!preflightPassed) {
+    return <PreflightView onComplete={() => setPreflightPassed(true)} />;
+  }
 
-    return (
-        <div id="App">
-            <img src={logo} id="logo" alt="logo"/>
-            <div id="result" className="result">{resultText}</div>
-            <div id="input" className="input-box">
-                <input id="name" className="input" onChange={updateName} autoComplete="off" name="input" type="text"/>
-                <button className="btn" onClick={greet}>Greet</button>
-            </div>
-        </div>
-    )
+  return <RouterProvider router={router} />;
 }
 
-export default App
+export default App;

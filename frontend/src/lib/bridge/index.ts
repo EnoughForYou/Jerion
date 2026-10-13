@@ -15,3 +15,7 @@ if (import.meta.env.DEV && import.meta.env.VITE_BRIDGE !== 'wails') {
 }
 
 export const bridge = bridgeInstance;
+
+export function getBridge(): Bridge {
+  return bridgeInstance;
+}
