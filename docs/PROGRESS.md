@@ -6,8 +6,8 @@
 - Terakhir selesai: Tahap 0 — Fondasi (Setup) (tag v0.0.1)
 
 ## Fase 1 (Tahap T1) — checklist
-- [ ] Sub-tugas 1.1: Pembaruan aturan proyek & solusi build gitkeep
-- [ ] Sub-tugas 1.2: Pin Zod & runtime schemas (`schema.ts`)
+- [x] Sub-tugas 1.1: Pembaruan aturan proyek & solusi build gitkeep
+- [x] Sub-tugas 1.2: Pin Zod & runtime schemas (`schema.ts`)
 - [ ] Sub-tugas 1.3: Interface bridge & peta event (`bridge.ts`, `events.ts`)
 - [ ] Sub-tugas 1.4: Fixture JSON bersama (`internal/testdata/contract/*.json`)
 - [ ] Sub-tugas 1.5: Implementasi mock bridge (`mock.ts`)
