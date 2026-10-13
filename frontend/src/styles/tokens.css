@@ -1,5 +1,6 @@
-/* Design tokens per PRD §5.3 - Single source of truth for color and spacing */
+/* Design tokens per PRD §5.3 - Single source of truth for color, typography, and spacing */
 :root {
+  /* Color palette - Dark (Default) */
   --bg-base: #1C1C1E;
   --bg-surface: #2C2C2E;
   --bg-raised: #3A3A3C;
@@ -13,9 +14,24 @@
   --sev-high: #FF6A3D;
   --sev-critical: #FF453A;
   --ok: #30D158;
+
+  /* Typography scale per PRD §5.3: 11 / 12 / 13 (body) / 15 / 17 / 22 / 28 */
+  --font-xs: 11px;
+  --font-sm: 12px;
+  --font-base: 13px;
+  --font-md: 15px;
+  --font-lg: 17px;
+  --font-xl: 22px;
+  --font-2xl: 28px;
+
+  /* Spacing 4px grid & radii per PRD §5.3: 6 / 10 / 14 */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
 }
 
 [data-theme="light"] {
+  /* Color palette - Light */
   --bg-base: #F5F5F7;
   --bg-surface: #FFFFFF;
   --bg-raised: #FFFFFF;

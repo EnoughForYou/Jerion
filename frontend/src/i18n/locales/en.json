@@ -1,0 +1,199 @@
+{
+  "app": {
+    "title": "Jerion",
+    "tagline": "Android Threat Analyzer"
+  },
+  "nav": {
+    "home": "Home",
+    "apps": "Applications",
+    "scan": "Scanner",
+    "monitor": "Popup Hunter",
+    "audit": "System Audit",
+    "cleanup": "Remediation",
+    "reports": "Reports",
+    "settings": "Settings"
+  },
+  "device": {
+    "noDevice": "No Device Connected",
+    "noDeviceHint": "Connect an Android device via USB and enable USB debugging.",
+    "status": {
+      "online": "Connected",
+      "unauthorized": "Unauthorized",
+      "offline": "Offline",
+      "busy": "Busy"
+    },
+    "battery": "Battery",
+    "android": "Android",
+    "api": "API",
+    "serial": "Serial",
+    "refresh": "Refresh Devices",
+    "select": "Select Device"
+  },
+  "statusBar": {
+    "idle": "System Idle",
+    "running": "Running: {{job}}",
+    "ruleVersion": "Rules v{{version}}",
+    "bridgeMode": "Bridge: {{mode}}"
+  },
+  "severity": {
+    "info": "Informational",
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High",
+    "critical": "Critical"
+  },
+  "common": {
+    "loading": "Loading...",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "close": "Close",
+    "dismiss": "Dismiss",
+    "search": "Search",
+    "filter": "Filter",
+    "details": "Details",
+    "download": "Download",
+    "choosePath": "Choose existing...",
+    "quit": "Quit",
+    "save": "Save",
+    "scan": "Scan",
+    "start": "Start",
+    "stop": "Stop",
+    "export": "Export",
+    "undo": "Undo"
+  },
+  "preflight": {
+    "title": "System Preflight",
+    "description": "Verifying dependencies and environment readiness before launch.",
+    "allPassed": "All checks passed. Starting Jerion...",
+    "checks": {
+      "adb_binary": {
+        "name": "ADB Binary",
+        "detail": "Android Debug Bridge executable located",
+        "missing": "ADB binary not found on local system.",
+        "remedy": "Download official Google platform-tools or choose an existing adb.exe path."
+      },
+      "adb_server": {
+        "name": "ADB Server",
+        "detail": "Local ADB server daemon running",
+        "missing": "ADB daemon is not responding or stopped.",
+        "remedy": "Start the ADB daemon via adb start-server or retry the check."
+      },
+      "data_dir": {
+        "name": "Data Storage & DB",
+        "detail": "SQLite storage and configuration directory writable",
+        "missing": "Cannot access or initialize local application database.",
+        "remedy": "Verify user directory permissions for %APPDATA%\\Jerion."
+      },
+      "rule_pack": {
+        "name": "Detection Rules",
+        "detail": "Threat detection rule definitions loaded",
+        "missing": "Rule package missing or corrupted.",
+        "remedy": "Download or restore the default bundled detection rules."
+      },
+      "disk_space": {
+        "name": "Working Disk Space",
+        "detail": "Sufficient free disk space for APK analysis",
+        "missing": "Low free disk space on temporary staging drive.",
+        "remedy": "Free at least 500 MB of disk space to perform deep APK analysis."
+      },
+      "keychain": {
+        "name": "OS Keychain",
+        "detail": "Secure credential storage available",
+        "missing": "Operating system credential store unavailable.",
+        "remedy": "Ensure Windows Credential Manager service is active."
+      }
+    },
+    "status": {
+      "checking": "Checking...",
+      "ok": "Passed",
+      "warning": "Warning",
+      "missing": "Action Required",
+      "downloading": "Downloading...",
+      "failed": "Failed"
+    }
+  },
+  "home": {
+    "title": "Device Overview",
+    "deviceInfo": "Device Hardware & OS",
+    "securitySummary": "Security Findings Summary",
+    "scanCta": "Scan Device Now",
+    "scanCtaSubtitle": "Analyze installed applications and system configurations for threats.",
+    "quickStats": {
+      "findingsTotal": "Total Findings",
+      "highRisk": "High & Critical Threats",
+      "lastScan": "Last Scanned"
+    }
+  },
+  "apps": {
+    "title": "Installed Applications",
+    "description": "Inventory of user and system packages retrieved via ADB.",
+    "searchPlaceholder": "Search by package name or label...",
+    "showSystem": "Show System Packages",
+    "columns": {
+      "app": "Application",
+      "package": "Package Name",
+      "version": "Version",
+      "installer": "Installer",
+      "flags": "Attributes"
+    },
+    "detail": {
+      "title": "Package Details",
+      "apkPath": "APK Path",
+      "versionCode": "Version Code",
+      "minSdk": "Minimum SDK",
+      "targetSdk": "Target SDK",
+      "firstInstall": "First Installed",
+      "lastUpdate": "Last Updated",
+      "permissions": "Permissions",
+      "signatures": "Signatures"
+    }
+  },
+  "scan": {
+    "title": "Threat Scanner",
+    "quickScan": "Quick Scan",
+    "quickScanDesc": "Scans running processes, non-system apps, and active overlay permissions.",
+    "deepScan": "Deep Scan",
+    "deepScanDesc": "Pulls APK manifests, checks hidden receivers, and audits all OEM packages.",
+    "running": "Scanning Device...",
+    "results": "Scan Results",
+    "noFindings": "No threats or suspicious behaviors detected on this device."
+  },
+  "monitor": {
+    "title": "Popup Hunter",
+    "description": "Correlates intrusive fullscreen popups and adware events in real time.",
+    "start": "Start Monitoring",
+    "stop": "Stop Monitoring",
+    "signalSources": "Signal Monitors",
+    "candidates": "Ranked Adware Candidates",
+    "noEvents": "No suspicious window or overlay triggers recorded yet."
+  },
+  "audit": {
+    "title": "System Security Audit",
+    "description": "Evaluates device hardening, developer options, and untrusted accessibility services.",
+    "run": "Run Full Audit"
+  },
+  "cleanup": {
+    "title": "Remediation & Cleanup",
+    "description": "Review staged removal actions, safety denylists, and audit logs.",
+    "pendingActions": "Pending Actions",
+    "actionLog": "Action History",
+    "noActions": "No remediation actions currently queued."
+  },
+  "reports": {
+    "title": "Scan Reports",
+    "description": "View historical threat scans, compare changes over time, and export evidence.",
+    "exportPdf": "Export PDF",
+    "exportJson": "Export JSON",
+    "compare": "Compare Scans"
+  },
+  "settings": {
+    "title": "Settings",
+    "general": "General Preferences",
+    "theme": "Interface Theme",
+    "themeDark": "Dark Theme",
+    "themeLight": "Light Theme",
+    "bridge": "Bridge Status",
+    "rules": "Detection Rules Version"
+  }
+}

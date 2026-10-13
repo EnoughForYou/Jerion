@@ -24,10 +24,23 @@ export default {
         },
         ok: "var(--ok)",
       },
+      fontFamily: {
+        sans: ['"Inter Variable"', "Inter", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
+        mono: ['"JetBrains Mono"', "ui-monospace", "SFMono-Regular", "monospace"],
+      },
+      fontSize: {
+        xs: ["11px", "14px"],
+        sm: ["12px", "16px"],
+        base: ["13px", "18px"], // PRD §5.3 desktop body font
+        md: ["15px", "20px"],
+        lg: ["17px", "22px"],
+        xl: ["22px", "28px"],
+        "2xl": ["28px", "34px"],
+      },
       borderRadius: {
-        sm: "6px",
-        md: "10px",
-        lg: "14px",
+        sm: "var(--radius-sm, 6px)",
+        md: "var(--radius-md, 10px)",
+        lg: "var(--radius-lg, 14px)",
       },
     },
   },
