@@ -1,9 +1,9 @@
 # PROGRESS
 
 ## Status sekarang
-- Fase aktif: 4 — Backend Go (Tahap T4)
-- Branch: phase/4-backend
-- Terakhir selesai: Tahap 3 — Layar Frontend & Contract Freeze v1.0.0 (tag v0.3.0)
+- Fase aktif: 5 — Polish, Hardening & End-to-End Verification (Tahap T5)
+- Branch: phase/4-backend (siap merge ke main)
+- Terakhir selesai: Tahap 4 — Backend Go Core & Engine (tag v0.4.0)
 
 ## Fase 4 (Tahap T4) — checklist
 - [x] Sub-tugas 4.1: Paket fondasi & penyimpanan (`internal/logx`, `internal/secrets`, `internal/store` via pure-Go SQLite `modernc.org/sqlite`)
@@ -13,7 +13,26 @@
 - [x] Sub-tugas 4.5: System Audit & Popup Hunter Monitor (`internal/audit`, `internal/monitor`)
 - [x] Sub-tugas 4.6: Remediasi & Laporan (`internal/remediate`, `internal/report`)
 - [x] Sub-tugas 4.7: Service Layer & Go DTOs (`app.go` Wails bindings)
-- [ ] Sub-tugas 4.8: Gerbang selesai-tahap T4
+- [x] Sub-tugas 4.8: Gerbang selesai-tahap T4
+
+## Fase 4 (Tahap T4) — riwayat selesai
+- [x] Sub-tugas 4.1: Paket fondasi & penyimpanan (`internal/logx`, `internal/secrets`, `internal/store` via pure-Go SQLite `modernc.org/sqlite`)
+- [x] Sub-tugas 4.2: Lapisan ADB Core & Preflight (`internal/adb`, `internal/preflight`)
+- [x] Sub-tugas 4.3: Inventaris Aplikasi & Analisis APK (`internal/inventory`, `internal/apk`)
+- [x] Sub-tugas 4.4: Scan Engine, Rules & Intel (`internal/engine`, `internal/rules`, `internal/intel`)
+- [x] Sub-tugas 4.5: System Audit & Popup Hunter Monitor (`internal/audit`, `internal/monitor`)
+- [x] Sub-tugas 4.6: Remediasi & Laporan (`internal/remediate`, `internal/report`)
+- [x] Sub-tugas 4.7: Service Layer & Go DTOs (`app.go` Wails bindings)
+- [x] Sub-tugas 4.8: Gerbang selesai-tahap T4 (tag v0.4.0)
+
+## Pengukuran & Kualitas (Tahap T4)
+- **Backend Go Test Suite**: 100% test lulus di seluruh 16 paket backend Go (`internal/logx`, `internal/secrets`, `internal/store`, `internal/adb`, `internal/preflight`, `internal/inventory`, `internal/apk`, `internal/rules`, `internal/engine`, `internal/intel`, `internal/audit`, `internal/monitor`, `internal/remediate`, `internal/report`, `internal/contract`, dan root `main`).
+- **Contract Fidelity (Strict Two-Way)**: 21 dari 21 fixture kontrak JSON divalidasi dengan `json.NewDecoder.DisallowUnknownFields()` dan round-trip marshaling di `internal/contract/contract_test.go` tanpa ada field yang hilang atau tidak dikenali.
+- **Frontend Vitest Suite**: 114 pengujian lolos di 19 file tes (`src/features/monitor/monitor.test.tsx`, `src/features/audit/audit.test.tsx`, `src/features/apps/apps.test.tsx`, `src/features/settings/settings.test.tsx`, `src/features/scan/scan.test.tsx`, dll.).
+- **ESLint & TypeScript**: 0 error, 0 warning pada `npm run lint` & `npm run typecheck`.
+- **Mock Elimination (`npm run check:no-mock`)**: 0 marker mock atau skema runtime terdeteksi pada bundle produksi Vite.
+- **Production Compilation (`wails build`)**: Binary Windows x64 `build/bin/Jerion.exe` berhasil dikompilasi secara bersih dalam 21.8 detik.
+- **Safety Guardrails & Anti-AI-Slop**: 100% dipatuhi (Windows `HideWindow: true`, regex sanitasi nama paket `^[a-zA-Z0-9_.]+$`, denylist sistem kritis dilindungi, SQLite WAL mode tanpa CGO, offline report zero-CDN, tanpa skor persen sembarangan).
 
 ## Fase 3 (Tahap T3) — riwayat selesai
 - [x] Sub-tugas 3.1: Interactive Home view & OnboardingModal
