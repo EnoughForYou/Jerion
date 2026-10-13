@@ -10,7 +10,7 @@
 - [x] Sub-tugas 4.2: Lapisan ADB Core & Preflight (`internal/adb`, `internal/preflight`)
 - [x] Sub-tugas 4.3: Inventaris Aplikasi & Analisis APK (`internal/inventory`, `internal/apk`)
 - [x] Sub-tugas 4.4: Scan Engine, Rules & Intel (`internal/engine`, `internal/rules`, `internal/intel`)
-- [ ] Sub-tugas 4.5: System Audit & Popup Hunter Monitor (`internal/audit`, `internal/monitor`)
+- [x] Sub-tugas 4.5: System Audit & Popup Hunter Monitor (`internal/audit`, `internal/monitor`)
 - [ ] Sub-tugas 4.6: Remediasi & Laporan (`internal/remediate`, `internal/report`)
 - [ ] Sub-tugas 4.7: Service Layer & Go DTOs (`app.go` Wails bindings)
 - [ ] Sub-tugas 4.8: Gerbang selesai-tahap T4
