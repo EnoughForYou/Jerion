@@ -12,7 +12,7 @@
 - [x] Sub-tugas 4.4: Scan Engine, Rules & Intel (`internal/engine`, `internal/rules`, `internal/intel`)
 - [x] Sub-tugas 4.5: System Audit & Popup Hunter Monitor (`internal/audit`, `internal/monitor`)
 - [x] Sub-tugas 4.6: Remediasi & Laporan (`internal/remediate`, `internal/report`)
-- [ ] Sub-tugas 4.7: Service Layer & Go DTOs (`app.go` Wails bindings)
+- [x] Sub-tugas 4.7: Service Layer & Go DTOs (`app.go` Wails bindings)
 - [ ] Sub-tugas 4.8: Gerbang selesai-tahap T4
 
 ## Fase 3 (Tahap T3) — riwayat selesai
