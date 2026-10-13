@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Search,
   Zap,
@@ -7,25 +7,40 @@ import {
   CheckCircle2,
   AlertTriangle,
   Shield,
+  Filter,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '../../components/ui/Dialog';
 import { getBridge } from '../../lib/bridge';
 import { useDeviceStore } from '../../app/deviceStore';
-import type { Finding, ScanMode, ScanProgress, ScanResult } from '../../lib/bridge/schema';
+import { ScanTimeline } from './ScanTimeline';
+import { EvidenceDrawer } from './EvidenceDrawer';
+import type { Finding, ScanMode, ScanProgress, ScanResult, Severity } from '../../lib/bridge/schema';
 
 export const ScanView: React.FC = () => {
   const { t } = useTranslation();
   const { activeDevice, setActiveJob } = useDeviceStore();
 
   const [mode, setMode] = useState<ScanMode>('quick');
+  const [includeSystem, setIncludeSystem] = useState(false);
   const [activeScanId, setActiveScanId] = useState<string | null>(null);
   const [progress, setProgress] = useState<ScanProgress | null>(null);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [findings, setFindings] = useState<Finding[]>([]);
   const [isScanning, setIsScanning] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [selectedFinding, setSelectedFinding] = useState<Finding | null>(null);
+  const [selectedSeverity, setSelectedSeverity] = useState<Severity | 'all'>('all');
 
   const bridge = getBridge();
 
@@ -78,7 +93,10 @@ export const ScanView: React.FC = () => {
       setScanResult(null);
       setProgress(null);
 
-      const scanId = await bridge.scan.start({ mode, includeSystem: mode === 'deep' });
+      const scanId = await bridge.scan.start({
+        mode,
+        includeSystem: mode === 'deep' ? true : includeSystem,
+      });
       setActiveScanId(scanId);
       setActiveJob(`Scanner (${mode})`, 0);
     } catch (err) {
@@ -87,7 +105,8 @@ export const ScanView: React.FC = () => {
     }
   };
 
-  const handleCancelScan = async () => {
+  const handleConfirmCancel = async () => {
+    setShowCancelDialog(false);
     if (!activeScanId) return;
     try {
       await bridge.scan.cancel(activeScanId);
@@ -98,6 +117,11 @@ export const ScanView: React.FC = () => {
       console.error('Failed to cancel scan:', err);
     }
   };
+
+  const filteredFindings = useMemo(() => {
+    if (selectedSeverity === 'all') return findings;
+    return findings.filter((f) => f.severity === selectedSeverity);
+  }, [findings, selectedSeverity]);
 
   return (
     <div className="space-y-5">
@@ -144,85 +168,126 @@ export const ScanView: React.FC = () => {
         </div>
       </div>
 
-      {/* Action Bar */}
-      <div className="flex items-center justify-between p-4 bg-surface border border-separator/35 rounded-lg">
-        <div className="flex items-center gap-3">
-          <Shield className="w-5 h-5 text-accent" />
-          <div>
-            <span className="font-medium text-xs text-text-primary block">
-              {isScanning ? t('scan.running') : `Ready to run ${mode.toUpperCase()} scan`}
-            </span>
-            <span className="text-[11px] text-text-secondary">
-              Target: {activeDevice?.model || 'Infinix Note 11S (mock)'}
+      {/* Options & Action Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-surface border border-separator/35 rounded-lg shadow-sm">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <Shield className="w-4 h-4 text-accent" />
+            <span className="font-semibold text-xs text-text-primary">
+              {isScanning
+                ? t('scan.running')
+                : t('scan.ready', { mode: mode.toUpperCase() })}
             </span>
           </div>
+          <p className="text-[11px] text-text-secondary">
+            {t('scan.targetDevice', {
+              device: activeDevice?.model || 'No device connected',
+            })}
+          </p>
         </div>
 
-        {isScanning ? (
-          <Button variant="destructive" size="sm" onClick={handleCancelScan}>
-            <StopCircle className="w-3.5 h-3.5" />
-            Cancel Scan
-          </Button>
-        ) : (
-          <Button variant="primary" size="md" onClick={handleStartScan}>
-            <Search className="w-3.5 h-3.5" />
-            Start Scan
-          </Button>
-        )}
+        <div className="flex items-center gap-4">
+          {mode === 'quick' && !isScanning && (
+            <label className="flex items-center gap-2 text-xs text-text-secondary cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={includeSystem}
+                onChange={(e) => setIncludeSystem(e.target.checked)}
+                className="rounded border-separator text-accent focus:ring-accent"
+              />
+              <span>{t('scan.includeSystem')}</span>
+            </label>
+          )}
+
+          {isScanning ? (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setShowCancelDialog(true)}
+            >
+              <StopCircle className="w-3.5 h-3.5" />
+              {t('scan.cancelScan')}
+            </Button>
+          ) : (
+            <Button
+              variant="primary"
+              size="md"
+              onClick={handleStartScan}
+              disabled={activeDevice?.connectionState !== 'ready'}
+            >
+              <Search className="w-3.5 h-3.5" />
+              {t('scan.startScan')}
+            </Button>
+          )}
+        </div>
       </div>
 
-      {/* Progress Bar (during scanning) */}
-      {isScanning && progress ? (
-        <Card className="space-y-3">
-          <div className="flex justify-between text-xs text-text-secondary">
-            <span>Phase: {progress.step}</span>
-            <span>{Math.round(progress.progress)}%</span>
-          </div>
-          <div className="h-2 w-full bg-raised rounded-full overflow-hidden">
-            <div
-              className="h-full bg-accent transition-all duration-200"
-              style={{ width: `${progress.progress}%` }}
-            />
-          </div>
-          {progress.currentPackage ? (
-            <p className="text-[11px] font-mono text-text-secondary truncate">
-              Inspecting: {progress.currentPackage}
-            </p>
-          ) : null}
-        </Card>
-      ) : null}
+      {/* Progress & Live Timeline */}
+      {(isScanning || (progress && progress.progress > 0 && progress.progress < 100)) && (
+        <ScanTimeline progress={progress} isScanning={isScanning} />
+      )}
 
       {/* Findings Results */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <CardTitle>{t('scan.results')}</CardTitle>
               <CardDescription>
-                {findings.length} findings identified across inspected packages
+                {t('scan.findingsCount', { count: filteredFindings.length })}
+                {scanResult?.completedAt && ` · Verdict: ${scanResult.summary.verdict.toUpperCase()}`}
               </CardDescription>
             </div>
-            {scanResult ? (
-              <div className="flex items-center gap-1.5">
-                <Badge severity="critical" count={scanResult.summary.counts.critical} />
-                <Badge severity="high" count={scanResult.summary.counts.high} />
-                <Badge severity="medium" count={scanResult.summary.counts.medium} />
-              </div>
-            ) : null}
+
+            {/* Filter pills */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <Filter className="w-3.5 h-3.5 text-text-secondary mr-1" />
+              <button
+                type="button"
+                onClick={() => setSelectedSeverity('all')}
+                className={`px-2 py-0.5 rounded text-[11px] font-medium border transition-colors ${
+                  selectedSeverity === 'all'
+                    ? 'bg-accent text-accent-foreground border-accent'
+                    : 'bg-raised text-text-secondary border-separator/30 hover:text-text-primary'
+                }`}
+              >
+                {t('scan.allSeverities')} ({findings.length})
+              </button>
+
+              {(['critical', 'high', 'medium', 'low', 'info'] as Severity[]).map((sev) => {
+                const count = findings.filter((f) => f.severity === sev).length;
+                if (count === 0 && selectedSeverity !== sev) return null;
+
+                return (
+                  <button
+                    key={sev}
+                    type="button"
+                    onClick={() => setSelectedSeverity(sev)}
+                    className={`px-2 py-0.5 rounded text-[11px] font-medium border transition-colors ${
+                      selectedSeverity === sev
+                        ? 'bg-accent text-accent-foreground border-accent'
+                        : 'bg-raised text-text-secondary border-separator/30 hover:text-text-primary'
+                    }`}
+                  >
+                    {sev.toUpperCase()} ({count})
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
-          {findings.length === 0 ? (
+          {filteredFindings.length === 0 ? (
             <div className="py-8 text-center text-xs text-text-secondary">
               <CheckCircle2 className="w-8 h-8 text-ok mx-auto mb-2 opacity-80" />
               {t('scan.noFindings')}
             </div>
           ) : (
             <div className="space-y-3">
-              {findings.map((finding) => (
+              {filteredFindings.map((finding) => (
                 <div
                   key={finding.id}
-                  className="p-3 rounded-md bg-raised/30 border border-separator/25 space-y-2 text-xs"
+                  className="p-3.5 rounded-md bg-raised/30 border border-separator/25 space-y-2 text-xs transition-colors hover:border-separator/40"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="space-y-0.5">
@@ -232,33 +297,85 @@ export const ScanView: React.FC = () => {
                           {finding.ruleId}: {finding.title}
                         </span>
                       </div>
-                      {finding.package ? (
+                      {finding.package && (
                         <span className="font-mono text-[11px] text-text-secondary block">
-                          Package: {finding.package}
+                          {t('scan.packageLabel', { package: finding.package })}
                         </span>
-                      ) : null}
+                      )}
                     </div>
-                    <span className="text-[10px] text-text-secondary font-mono">
-                      Confidence: {finding.confidence.toUpperCase()}
-                    </span>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-[10px] text-text-secondary font-mono">
+                        {t('scan.confidenceLabel', {
+                          confidence: finding.confidence.toUpperCase(),
+                        })}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedFinding(finding)}
+                      >
+                        {t('scan.viewEvidence')}
+                      </Button>
+                    </div>
                   </div>
 
                   <p className="text-text-secondary text-[11px] leading-relaxed">
                     {finding.whyFlagged}
                   </p>
 
-                  {finding.recommendedAction ? (
-                    <div className="pt-2 border-t border-separator/15 text-[11px] text-accent flex items-center gap-1">
-                      <AlertTriangle className="w-3 h-3 text-sev-medium shrink-0" />
-                      <span>Remedy: {finding.recommendedAction.title} ({finding.recommendedAction.impact})</span>
+                  {finding.recommendedAction && (
+                    <div className="pt-2 border-t border-separator/15 text-[11px] text-accent flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 truncate">
+                        <AlertTriangle className="w-3.5 h-3.5 text-sev-medium shrink-0" />
+                        <span className="truncate">
+                          Remedy: {finding.recommendedAction.title}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-text-secondary shrink-0 font-mono">
+                        {finding.recommendedAction.impact}
+                      </span>
                     </div>
-                  ) : null}
+                  )}
                 </div>
               ))}
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Confirmation Dialog on Cancel */}
+      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('scan.confirmCancelTitle')}</DialogTitle>
+            <DialogDescription>{t('scan.confirmCancelDesc')}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowCancelDialog(false)}
+            >
+              {t('scan.continueScanning')}
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleConfirmCancel}
+            >
+              {t('scan.confirmCancelAction')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Evidence Inspector Drawer */}
+      <EvidenceDrawer
+        finding={selectedFinding}
+        open={Boolean(selectedFinding)}
+        onOpenChange={(open) => !open && setSelectedFinding(null)}
+      />
     </div>
   );
 };

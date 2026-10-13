@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-13
+
+### Added
+- **Stage T3 (Frontend Screens & Contract Freeze v1.0.0)**:
+  - **Home Screen & Onboarding**: Interactive `HomeView` with system/device specs summary, security threat verdict cards, quick scan launch triggers, and `OnboardingModal` with step-by-step ADB setup instructions for Infinix Note 11S / XOS 10.6 and standard Android devices.
+  - **Scan Screen & Evidence Drawer**: Interactive `ScanView` with real-time scan progress (`ScanTimeline`), active step animations, filter chips (all/high/medium/low/info), findings list with severity badges, and sliding `EvidenceDrawer` displaying technical rule IDs, why flagged, and raw dumpsys/logcat output.
+  - **Apps Inventory with Virtualization**: High-performance `AppsView` utilizing `@tanstack/react-virtual` (`useVirtualizer`) for fluid rendering of large package lists, live search, category filtering (All, User, System, Hidden, Disabled, Suspicious), column sorting, and `AppDetailDrawer` with package metadata, permissions, and direct action triggers.
+  - **Popup Hunter & Telemetry Monitor**: Interactive `MonitorView` supporting real-time daemon state toggling, live event telemetry stream (window focus, package changes, overlays, logcat triggers), visual "Popup Just Appeared!" user marker placement, and candidate ranking with direct audit/remediate shortcuts.
+  - **System Audit & Safety Guardrail Remediation**: Interactive `AuditView` with category-segmented security checks and recommended remediation plans. Interactive `RemediateView` and `RemediateConfirmDialog` strictly implementing PRD §3.5 safety guardrails: protected package denylist, mandatory backup plan confirmation before destructive actions, and complete reversible undo action history.
+  - **Reports & Settings Management**: Interactive `ReportsView` with HTML/JSON/Markdown export triggers, report inspection drawer, and retention management. Interactive `SettingsView` with custom ADB path configuration, allowlist management, dark/light theme switching, and contract schema badge.
+  - **Contract Freeze v1.0.0**: Formally locked TypeScript Zod schemas, Go DTO wire protocol definitions, and contract fixtures (`1.0.0` Frozen) in `frontend/src/lib/bridge/schema.ts` and `docs/contract.md`, establishing strict API stability before Stage T4 Backend Go development.
+  - **Quality & Verification**: 114 automated unit and integration tests across 19 test files with Vitest, strict ESLint with zero warnings, strict TypeScript checking, verified production bundle dead-code elimination (`check:no-mock`), and verified Windows binary compilation with `wails build`.
+
 ## [0.2.0] - 2026-10-13
 
 ### Added

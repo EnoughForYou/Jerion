@@ -26,10 +26,10 @@ yarn-error.log*
 !.env.example
 
 # Jerion working directories and sensitive artifacts
-work/
-pulled_apks/
-scratch/
-reports/
+/work/
+/pulled_apks/
+/scratch/
+/reports/
 *.apk
 *.apks
 *.xapk
