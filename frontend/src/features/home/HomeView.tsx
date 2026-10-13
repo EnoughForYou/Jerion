@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Smartphone,
@@ -6,6 +6,7 @@ import {
   Search,
   CheckCircle2,
   Calendar,
+  HelpCircle,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -19,9 +20,11 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { ErrorState } from '../../components/ui/ErrorState';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { getBridge } from '../../lib/bridge';
 import { useDeviceStore } from '../../app/deviceStore';
 import { StaticFallback } from '../../three/StaticFallback';
+import { OnboardingModal } from './OnboardingModal';
 import type { ScanResult } from '../../lib/bridge/schema';
 
 const DeviceScene = React.lazy(() => import('../../three/DeviceScene'));
@@ -34,56 +37,74 @@ export const HomeView: React.FC = () => {
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const bridge = getBridge();
+
+  const loadData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const device = await bridge.device.getConnected();
+      setActiveDevice(device);
+
+      const scanList = await bridge.report.list();
+      if (scanList.length > 0) {
+        const latest = await bridge.report.get(scanList[0].id);
+        setScanResult(latest);
+      }
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error ? err.message : 'Failed to load device overview'
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [bridge, setActiveDevice]);
 
   useEffect(() => {
     let isMounted = true;
 
-    async function loadData() {
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        const device = await bridge.device.getConnected();
-        if (isMounted) {
-          setActiveDevice(device);
-        }
-
-        const scanList = await bridge.report.list();
-        if (scanList.length > 0 && isMounted) {
-          const latest = await bridge.report.get(scanList[0].id);
-          setScanResult(latest);
-        }
-      } catch (err: unknown) {
-        if (isMounted) {
-          setError(err instanceof Error ? err.message : 'Failed to load device overview');
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
+    async function init() {
+      await loadData();
+      // Guard against state update after unmount
+      if (!isMounted) return;
     }
 
-    loadData();
+    init();
+
+    // Subscribe to device changes for live updates
+    const unsub = bridge.on('device:changed', (device) => {
+      if (isMounted) {
+        setActiveDevice(device);
+      }
+    });
 
     return () => {
       isMounted = false;
+      unsub();
     };
-  }, [bridge, setActiveDevice]);
+  }, [bridge, loadData, setActiveDevice]);
 
   if (error) {
     return (
       <ErrorState
-        title="Failed to Load Device Overview"
-        remedy="Check ADB connection and verify device authorization."
-        onRetry={() => window.location.reload()}
+        title={t('common.error', 'Failed to Load Device Overview')}
+        remedy={t(
+          'common.errorRemedy',
+          'Check ADB connection and verify device authorization.'
+        )}
+        onRetry={loadData}
       />
     );
   }
 
   const device = activeDevice;
+
+  // Determine device connection state for conditional rendering
+  const isDeviceReady = device?.connectionState === 'ready';
+  const isDeviceUnauthorized = device?.connectionState === 'unauthorized';
 
   return (
     <div className="space-y-5">
@@ -103,15 +124,47 @@ export const HomeView: React.FC = () => {
           </div>
         </div>
 
-        <Button
-          variant="primary"
-          size="md"
-          onClick={() => navigate('/scan')}
-        >
-          <Search className="w-4 h-4" />
-          {t('home.scanCta')}
-        </Button>
+        <div className="flex items-center gap-2">
+          {!device && (
+            <Button
+              variant="secondary"
+              size="md"
+              onClick={() => setShowOnboarding(true)}
+            >
+              <HelpCircle className="w-4 h-4" />
+              {t('onboarding.title')}
+            </Button>
+          )}
+          <Button
+            variant="primary"
+            size="md"
+            onClick={() => navigate('/scan')}
+            disabled={!isDeviceReady}
+          >
+            <Search className="w-4 h-4" />
+            {t('home.scanCta')}
+          </Button>
+        </div>
       </div>
+
+      {/* Unauthorized device notice */}
+      {isDeviceUnauthorized && (
+        <div className="flex items-center gap-3 p-3.5 rounded-md bg-sev-high/10 border border-sev-high/25 text-xs text-text-primary">
+          <Shield className="w-4 h-4 text-sev-high shrink-0" />
+          <div>
+            <span className="font-semibold">{t('device.status.unauthorized')}: </span>
+            {t('onboarding.step2Desc')}
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ml-auto shrink-0"
+            onClick={() => setShowOnboarding(true)}
+          >
+            {t('onboarding.title')}
+          </Button>
+        </div>
+      )}
 
       {/* Grid: Device Specs & Security Summary */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -123,50 +176,90 @@ export const HomeView: React.FC = () => {
               <CardTitle>{t('home.deviceInfo')}</CardTitle>
             </div>
             <CardDescription>
-              Hardware attributes and firmware specifications
+              {t('home.deviceInfoDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoading || !device ? (
+            {isLoading ? (
               <div className="space-y-2.5 py-1">
                 <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-4 w-5/6" />
                 <Skeleton className="h-4 w-4/6" />
                 <Skeleton className="h-4 w-full" />
               </div>
-            ) : (
+            ) : device ? (
               <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-xs">
                 <div>
-                  <dt className="text-text-secondary font-medium">Model</dt>
+                  <dt className="text-text-secondary font-medium">
+                    {t('home.deviceLabels.model')}
+                  </dt>
                   <dd className="text-text-primary font-semibold">{device.model}</dd>
                 </div>
                 <div>
-                  <dt className="text-text-secondary font-medium">Manufacturer</dt>
+                  <dt className="text-text-secondary font-medium">
+                    {t('home.deviceLabels.manufacturer')}
+                  </dt>
                   <dd className="text-text-primary">{device.manufacturer}</dd>
                 </div>
                 <div>
-                  <dt className="text-text-secondary font-medium">Android Version</dt>
+                  <dt className="text-text-secondary font-medium">
+                    {t('home.deviceLabels.androidVersion')}
+                  </dt>
                   <dd className="text-text-primary">
-                    Android {device.androidVersion} (API {device.sdkInt})
+                    {t('home.deviceLabels.androidVersionValue', {
+                      version: device.androidVersion,
+                      sdk: device.sdkInt,
+                    })}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-text-secondary font-medium">Serial</dt>
-                  <dd className="text-text-primary font-mono text-[11px]">{device.serial}</dd>
-                </div>
-                <div>
-                  <dt className="text-text-secondary font-medium">Battery</dt>
-                  <dd className="text-text-primary">
-                    {device.batteryLevel}% {device.isCharging ? '(Charging)' : ''}
+                  <dt className="text-text-secondary font-medium">
+                    {t('home.deviceLabels.serial')}
+                  </dt>
+                  <dd className="text-text-primary font-mono text-[11px]">
+                    {device.serial}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-text-secondary font-medium">Device Type</dt>
+                  <dt className="text-text-secondary font-medium">
+                    {t('home.deviceLabels.battery')}
+                  </dt>
                   <dd className="text-text-primary">
-                    {device.isEmulator ? 'Emulator (AVD)' : 'Physical Device'}
+                    {device.isCharging
+                      ? t('home.deviceLabels.batteryCharging', {
+                          level: device.batteryLevel,
+                        })
+                      : t('home.deviceLabels.batteryValue', {
+                          level: device.batteryLevel,
+                        })}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-text-secondary font-medium">
+                    {t('home.deviceLabels.deviceType')}
+                  </dt>
+                  <dd className="text-text-primary">
+                    {device.isEmulator
+                      ? t('home.deviceLabels.emulator')
+                      : t('home.deviceLabels.physicalDevice')}
                   </dd>
                 </div>
               </dl>
+            ) : (
+              <EmptyState
+                icon={<Smartphone className="w-5 h-5" />}
+                title={t('device.noDevice')}
+                description={t('device.noDeviceHint')}
+                action={
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setShowOnboarding(true)}
+                  >
+                    {t('onboarding.title')}
+                  </Button>
+                }
+              />
             )}
           </CardContent>
         </Card>
@@ -179,7 +272,7 @@ export const HomeView: React.FC = () => {
               <CardTitle>{t('home.securitySummary')}</CardTitle>
             </div>
             <CardDescription>
-              Threat detections categorized by severity
+              {t('home.securitySummaryDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -202,17 +295,25 @@ export const HomeView: React.FC = () => {
                 <div className="pt-2 border-t border-separator/20 grid grid-cols-2 gap-2 text-xs text-text-secondary">
                   <div className="flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5" />
-                    <span>Mode: {scanResult.mode.toUpperCase()}</span>
+                    <span>
+                      {t('home.scanMode', {
+                        mode: scanResult.mode.toUpperCase(),
+                      })}
+                    </span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <CheckCircle2 className="w-3.5 h-3.5 text-ok" />
-                    <span>Findings: {scanResult.findings.length} detected</span>
+                    <span>
+                      {t('home.findingsDetected', {
+                        count: scanResult.findings.length,
+                      })}
+                    </span>
                   </div>
                 </div>
               </div>
             ) : (
               <div className="py-4 text-center text-xs text-text-secondary">
-                No previous scan recorded. Run a scan to evaluate device threats.
+                {t('home.noScan')}
               </div>
             )}
           </CardContent>
@@ -221,13 +322,25 @@ export const HomeView: React.FC = () => {
 
       {/* 3D Scene / Visual Area Container */}
       <Card className="min-h-[220px] p-0 overflow-hidden flex items-center justify-center bg-surface border border-separator/35 shadow-sm">
-        <React.Suspense fallback={<StaticFallback findingsCount={scanResult?.findings.length || 0} />}>
+        <React.Suspense
+          fallback={
+            <StaticFallback
+              findingsCount={scanResult?.findings.length || 0}
+            />
+          }
+        >
           <DeviceScene
             status={scanResult ? 'completed' : 'idle'}
             findingsCount={scanResult?.findings.length || 0}
           />
         </React.Suspense>
       </Card>
+
+      {/* Onboarding Modal */}
+      <OnboardingModal
+        open={showOnboarding}
+        onOpenChange={setShowOnboarding}
+      />
     </div>
   );
 };

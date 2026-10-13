@@ -116,14 +116,48 @@
   "home": {
     "title": "Device Overview",
     "deviceInfo": "Device Hardware & OS",
+    "deviceInfoDesc": "Hardware attributes and firmware specifications",
     "securitySummary": "Security Findings Summary",
+    "securitySummaryDesc": "Threat detections categorized by severity",
     "scanCta": "Scan Device Now",
     "scanCtaSubtitle": "Analyze installed applications and system configurations for threats.",
+    "noDevice": "No device connected. Plug in an Android device with USB debugging enabled.",
+    "noScan": "No previous scan recorded. Run a scan to evaluate device threats.",
+    "scanMode": "Mode: {{mode}}",
+    "findingsDetected": "Findings: {{count}} detected",
+    "deviceLabels": {
+      "model": "Model",
+      "manufacturer": "Manufacturer",
+      "androidVersion": "Android Version",
+      "androidVersionValue": "Android {{version}} (API {{sdk}})",
+      "serial": "Serial",
+      "battery": "Battery",
+      "batteryCharging": "{{level}}% (Charging)",
+      "batteryValue": "{{level}}%",
+      "deviceType": "Device Type",
+      "physicalDevice": "Physical Device",
+      "emulator": "Emulator (AVD)"
+    },
     "quickStats": {
       "findingsTotal": "Total Findings",
       "highRisk": "High & Critical Threats",
       "lastScan": "Last Scanned"
     }
+  },
+  "onboarding": {
+    "title": "Set Up Your Device",
+    "description": "Follow these steps to connect your Android device for threat analysis.",
+    "step1Title": "Enable USB Debugging",
+    "step1Desc": "On your Android device, go to Settings → About Phone → tap Build Number 7 times to unlock Developer Options. Then go to Settings → Developer Options → enable USB Debugging.",
+    "step1Detail": "This allows Jerion to communicate with your device over USB via ADB.",
+    "step2Title": "Authorize RSA Key",
+    "step2Desc": "After connecting the USB cable, your device will show a dialog asking to allow USB debugging from this computer. Tap 'Always allow from this computer' and confirm.",
+    "step2Detail": "This grants Jerion persistent access so the prompt does not appear every session.",
+    "stepNumber": "Step {{current}} of {{total}}",
+    "next": "Next",
+    "done": "Done",
+    "back": "Back",
+    "skipHint": "Already set up? Close this dialog and connect your device."
   },
   "apps": {
     "title": "Installed Applications",
