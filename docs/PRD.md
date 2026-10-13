@@ -584,6 +584,18 @@ Scope baku: `adb, inventory, audit, apk, engine, rules, intel, monitor, remediat
 ```
 **Jangan pernah di-commit**: APK/sampel malware, API key/token, folder kerja hasil tarik APK, fixture belum tersanitasi, `node_modules`, `build/bin`, file laporan pengguna. Siapkan `.gitignore` di Fase 0. Repo **privat** sampai aturan & fixture direview.
 
+### 8.1 Model Tahap Kerja Eksekusi (T0–T6)
+Untuk menjaga keteraturan implementasi, penomoran tahap kerja teknis diorganisasikan sebagai berikut:
+- **T0: Setup (Fase 0)** — v0.0.1 (Selesai): Scaffold Wails v2, tooling, lint, git, CI, ADR awal.
+- **T1: Kontrak + Mock Bridge** — v0.1.0 draft: Kontrak domain Zod/TS, fixture JSON bersama, MockBridge, tanpa UI dan tanpa Go.
+- **T2: Design System & App Shell** — v0.2.0: Tokens, komponen dasar, sidebar/shell, layar Preflight (mock), scene Three.js v0.
+- **T3: Layar Frontend** — v0.3.0: Layar UI satu per sesi dengan mock data; pembekuan kontrak (contract freeze) menjadi v1.0.0 di akhir T3 sebelum T4.
+- **T4: Backend Go** — v0.4.0: Implementasi modul backend Go per modul, test, probe ADB fisik.
+- **T5: Integrasi Mock -> Wails & QA** — v0.5.0: Penggantian mock bridge ke binding Wails nyata, verifikasi Infinix Note 11S.
+- **T6: Hardening & Rilis** — v1.0.0 (Fase 9): Installer, guardrail produksi, rilis final.
+
+Setiap akhir tahap wajib menjalankan gerbang selesai-fase (§8.0).
+
 ---
 
 ### Fase 0 — Fondasi

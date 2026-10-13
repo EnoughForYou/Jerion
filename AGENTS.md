@@ -28,6 +28,9 @@ Jangan mulai menulis kode sebelum langkah 1–5 selesai.
 5. **Catat**: perbarui `docs/PROGRESS.md` (centang, blocker, pengukuran). Keputusan teknis baru → `docs/adr/NNNN-judul.md`.
 Jangan mengerjakan fase berikutnya sebelum gerbang selesai-fase (PRD §8.0) dijalankan penuh untuk fase aktif.
 
+- **Scope lock per sesi**: Setiap sesi hanya boleh menyentuh path file yang berada di dalam Scope rencana yang disetujui. Jika perlu menyentuh file di luar scope, berhenti dan minta izin owner terlebih dahulu.
+- **Tata kelola kontrak**: Kontrak data (Zod/TS + DTO Go) menghasilkan draft (`0.1.0`) di T1. Selama T2–T3, perubahan aditif diperbolehkan lewat proposal singkat yang disetujui (bump minor + update `docs/contract.md`). Kontrak BEKU (`1.0.0`) di akhir T3 sebelum T4. Setelah beku, perubahan sepihak dilarang; revisi wajib memperbarui schema TS, struct Go, dan fixture JSON dalam sesi yang sama.
+
 ## 4. Stack terkunci
 | | |
 |---|---|
