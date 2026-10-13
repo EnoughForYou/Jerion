@@ -12,7 +12,7 @@
 - [x] Sub-tugas 1.4: Fixture JSON bersama (`internal/testdata/contract/*.json`)
 - [x] Sub-tugas 1.5: Implementasi mock bridge (`mock.ts`)
 - [x] Sub-tugas 1.6: Bridge selector, script `check:no-mock`, & dead-code elimination
-- [ ] Sub-tugas 1.7: Vitest suite untuk mock lifecycle & events
+- [x] Sub-tugas 1.7: Vitest suite untuk mock lifecycle & events
 - [ ] Sub-tugas 1.8: Dokumen tata kelola (`docs/contract.md`) & gerbang selesai-tahap T1
 
 ## Fase 0 — riwayat selesai
