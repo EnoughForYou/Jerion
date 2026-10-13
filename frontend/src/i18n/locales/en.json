@@ -282,14 +282,45 @@
   "audit": {
     "title": "System Security Audit",
     "description": "Evaluates device hardening, developer options, and untrusted accessibility services.",
-    "run": "Run Full Audit"
+    "run": "Run Full Audit",
+    "running": "Running Audit...",
+    "searchPlaceholder": "Search audit items...",
+    "allCategories": "All Categories",
+    "status": {
+      "ok": "Compliant",
+      "warning": "Warning",
+      "issue": "Issue",
+      "unavailable": "Not Available"
+    },
+    "evidence": "Configuration Evidence",
+    "remedy": "Remedy",
+    "fixAction": "Remediate Setting",
+    "noItems": "No audit items match your filter criteria."
   },
   "cleanup": {
     "title": "Remediation & Cleanup",
-    "description": "Review staged removal actions, safety denylists, and audit logs.",
-    "pendingActions": "Pending Actions",
+    "description": "Execute staged threat removal actions with safety guardrails and undo history.",
+    "pendingActions": "Staged Remediation Actions",
+    "pendingDesc": "Review actions suggested by threat detections and system audits",
     "actionLog": "Action History",
-    "noActions": "No remediation actions currently queued."
+    "actionLogDesc": "Audit trail of executed remediation steps with state restoration",
+    "executeSelected": "Execute Staged Actions ({{count}})",
+    "executing": "Executing Actions...",
+    "guardrailNotice": "Critical system packages and device administrators are protected by guardrails against accidental disabling.",
+    "noActions": "No remediation actions currently queued. Run a scan to detect actionable threats.",
+    "noHistory": "No remediation operations recorded yet.",
+    "undo": "Undo",
+    "undoSuccess": "Action undone successfully.",
+    "undone": "Undone",
+    "backupSaved": "Backup: {{path}}",
+    "confirm": {
+      "title": "Confirm Remediation Plan",
+      "description": "You are about to execute {{count}} remediation actions on this device. Review the impact below.",
+      "backupOption": "Create APK and state backup prior to execution",
+      "irreversibleWarning": "Some actions (such as uninstallation) cannot be reversed automatically without restoring the APK backup.",
+      "confirmAction": "Proceed with Execution",
+      "cancel": "Cancel"
+    }
   },
   "reports": {
     "title": "Scan Reports",
