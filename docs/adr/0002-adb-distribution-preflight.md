@@ -26,6 +26,7 @@ Every application launch runs `internal/preflight` before displaying the primary
 4. **P4 (Embedded Rules Package)**: Validates integrity of embedded YAML rule files.
 5. **P5 (Working Directory & Disk Space)**: Non-blocking warning if free disk space < 500 MB.
 6. **P6 (OS Keychain)**: Non-blocking test of credentials storage.
+7. **P7 (WebView2 Runtime)**: Validates presence of Evergreen WebView2 runtime on Windows (verified at installer level and checked by preflight).
 
 ### 3. Explicit User Consent for Downloads
 - If ADB is missing (P1 failure), the user is presented with a Requirement Sheet detailing:

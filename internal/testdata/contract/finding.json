@@ -1,0 +1,27 @@
+{
+  "id": "find-mock-01",
+  "ruleId": "ADW-003",
+  "title": "Sideloaded app with overlay and auto-start permissions",
+  "severity": "high",
+  "confidence": "high",
+  "package": "com.example.mock.adware",
+  "whyFlagged": "Application was sideloaded and holds both overlay and background auto-start privileges without a visible launcher icon.",
+  "falsePositiveHint": "Legitimate utility widgets may hold overlay permissions if configured by user.",
+  "evidence": [
+    {
+      "type": "permission",
+      "title": "Overlay Permission Granted",
+      "details": "Application holds SYSTEM_ALERT_WINDOW with appop mode ALLOW",
+      "rawOutput": "appops get com.example.mock.adware SYSTEM_ALERT_WINDOW -> allow"
+    }
+  ],
+  "recommendedAction": {
+    "id": "act-mock-01",
+    "type": "disable",
+    "package": "com.example.mock.adware",
+    "title": "Disable application com.example.mock.adware",
+    "impact": "Application will be frozen and cannot launch or display overlays",
+    "undoable": true,
+    "isBlocked": false
+  }
+}

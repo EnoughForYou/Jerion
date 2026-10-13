@@ -1,0 +1,12 @@
+{
+  "id": "dev-mock-01",
+  "serial": "MOCK-0001",
+  "model": "Infinix Note 11S (mock)",
+  "manufacturer": "Infinix",
+  "androidVersion": "12",
+  "sdkInt": 31,
+  "batteryLevel": 88,
+  "isCharging": false,
+  "connectionState": "ready",
+  "isEmulator": false
+}

@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Stage T1 (Contract & Mock Bridge)**:
+  - Strict Zod runtime schemas and inferred TypeScript types in `frontend/src/lib/bridge/schema.ts` covering all PRD §5.2 screens.
+  - Wire error protocol (`JERION_ERR:{"code":...}`) and typed `BridgeError` in `frontend/src/lib/bridge/errors.ts`.
+  - Grouped `Bridge` contract interfaces and typed `BridgeEventMap` in `frontend/src/lib/bridge/bridge.ts` and `events.ts`.
+  - 21 shared JSON fixtures in `internal/testdata/contract/` strictly validated against schemas in Vitest.
+  - Stateful `MockBridge` implementation with simulated timers, snapshot getters (`scan.status()`, `monitor.snapshot()`), and sanitized mock data (`MOCK-0001`, `com.example.mock.*`).
+  - Production `WailsBridge` stub and environment-based bridge selector (`index.ts`).
+  - Bundle verification script `scripts/check-no-mock.js` and automated CI check confirming zero mock/schema artifacts in production builds.
+  - Contract governance document `docs/contract.md` defining DRAFT version `0.1.0` and freeze procedures.
+  - Architectural Decision Record `docs/adr/0004-contract-schema.md`.
+- Project governance updates: Session scope lock, T0–T6 execution stage model in PRD §8.1 and AGENTS §3.
+
 ## [0.0.1] - 2026-10-11
 
 ### Added

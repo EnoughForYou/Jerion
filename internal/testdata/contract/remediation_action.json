@@ -1,0 +1,9 @@
+{
+  "id": "act-mock-01",
+  "type": "disable",
+  "package": "com.example.mock.adware",
+  "title": "Disable application com.example.mock.adware",
+  "impact": "Application will be frozen and cannot launch or display overlays",
+  "undoable": true,
+  "isBlocked": false
+}

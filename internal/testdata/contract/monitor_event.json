@@ -1,0 +1,11 @@
+{
+  "id": "evt-mock-001",
+  "timestamp": "2026-10-13T12:05:10Z",
+  "type": "overlay_shown",
+  "package": "com.example.mock.popup",
+  "details": {
+    "windowType": "TYPE_APPLICATION_OVERLAY",
+    "surfaceWidth": 1080,
+    "surfaceHeight": 2400
+  }
+}

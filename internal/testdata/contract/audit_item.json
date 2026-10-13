@@ -1,0 +1,11 @@
+{
+  "id": "audit-mock-01",
+  "category": "connectivity",
+  "title": "ADB over Wi-Fi Enabled",
+  "status": "warning",
+  "summary": "Port 5555 is listening for unauthenticated remote debugging connections",
+  "evidence": [
+    "service.adb.tcp.port=5555"
+  ],
+  "remedy": "Disable Wireless Debugging in Developer Options when not in use"
+}

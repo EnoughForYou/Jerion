@@ -1,0 +1,15 @@
+{
+  "id": "log-mock-001",
+  "timestamp": "2026-10-13T12:10:00Z",
+  "action": {
+    "id": "act-mock-01",
+    "type": "disable",
+    "package": "com.example.mock.adware",
+    "title": "Disable application com.example.mock.adware",
+    "impact": "Application will be frozen and cannot launch or display overlays",
+    "undoable": true,
+    "isBlocked": false
+  },
+  "status": "success",
+  "backupPath": "backups/com.example.mock.adware_2040100.apk"
+}

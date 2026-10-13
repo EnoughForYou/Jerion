@@ -1,0 +1,6 @@
+{
+  "type": "permission",
+  "title": "Overlay Permission Granted",
+  "details": "Application holds SYSTEM_ALERT_WINDOW with appop mode ALLOW",
+  "rawOutput": "appops get com.example.mock.adware SYSTEM_ALERT_WINDOW -> allow"
+}

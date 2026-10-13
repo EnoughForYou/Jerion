@@ -1,0 +1,7 @@
+{
+  "theme": "dark",
+  "adbPath": "C:\\platform-tools\\adb.exe",
+  "customAdbPort": 5037,
+  "deepScanTimeoutSec": 120,
+  "autoCheckPreflight": true
+}

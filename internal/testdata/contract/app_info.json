@@ -1,0 +1,33 @@
+{
+  "package": "com.example.mock.adware",
+  "label": "Flashlight Pro (mock)",
+  "versionName": "2.4.1",
+  "versionCode": "2040100",
+  "isSystem": false,
+  "isSideloaded": true,
+  "installerPackage": "com.android.packageinstaller",
+  "targetSdk": 28,
+  "minSdk": 21,
+  "installedAt": "2026-10-10T08:30:00Z",
+  "updatedAt": "2026-10-12T14:15:00Z",
+  "permissions": [
+    "android.permission.INTERNET",
+    "android.permission.ACCESS_NETWORK_STATE",
+    "android.permission.SYSTEM_ALERT_WINDOW"
+  ],
+  "dangerousPermissions": [
+    "android.permission.SYSTEM_ALERT_WINDOW"
+  ],
+  "hasOverlayPermission": true,
+  "hasAccessibilityPermission": false,
+  "isDeviceAdmin": false,
+  "isBatteryOptimized": false,
+  "signatures": [
+    "c8a0c2e391b16f1947b719468d6d6783"
+  ],
+  "suspiciousFlags": [
+    "sideloaded",
+    "overlay_granted",
+    "hidden_activity"
+  ]
+}
