@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-13
+
+### Added
+- **Stage T2 (Design System & App Shell)**:
+  - **Local Typography & Theming**: Locally bundled Inter variable font (`@fontsource-variable/inter`) without remote CDNs. Complete CSS custom properties token system (`frontend/src/styles/tokens.css`) mapped to `tailwind.config.js` with light/dark/system theme store (`useThemeStore`).
+  - **i18n Translation Layer**: Configured `react-i18next` with comprehensive English locale catalog (`frontend/src/i18n/locales/en.json`) strictly eliminating hardcoded user strings across the application shell and views.
+  - **Core Design System**: Implemented Radix-backed and semantic UI components in `frontend/src/components/ui/` (`Button`, `Card`, `Badge` with mandatory Icon+Label+Color, `Skeleton`, `EmptyState`, `ErrorState`, `Table`, `Dialog`, `Tooltip`, `Tabs`).
+  - **Aceternity Sidebar**: Implemented collapsible 220px/64px left navigation in `frontend/src/components/aceternity/Sidebar.tsx` utilizing pure Tailwind CSS transitions (200ms ease-out) without `framer-motion`, audited in `docs/ui-components.md`.
+  - **Application Shell**: Implemented `AppLayout`, `DeviceHeader` (serial, OEM model, battery level, connection badge, switch/disconnect actions), and `StatusBar` (daemon status, log stream count, threat summary, theme switch). Configured HashRouter with 8 module routes.
+  - **Preflight Launch View**: Implemented `PreflightView` and `PreflightCheckItem` supporting P1–P7 prerequisites with actionable download/browse buttons, real-time progress, and seamless launch transition.
+  - **Mock-Driven Feature Views**: Populated all 8 PRD §5.2 views (`HomeView`, `ScanView`, `AppsView`, `AuditView`, `PopupHunterView`, `MonitorView`, `RemediateView`, `SettingsView`) using real contract fixtures and complete loading/empty/error states.
+  - **Three.js Scene v0**: Procedural device 3D scene (`DeviceScene`) with automatic static SVG fallback (`StaticFallback`) for environments without WebGL or with `prefers-reduced-motion: reduce`. Scene pauses on window blur and tab hiding, restricts DPR to `[1, 2]`, and is lazily code-split into a separate bundle chunk.
+  - **Testing & Verification**: 92 automated tests across 12 test files with Vitest, strict ESLint with zero warnings, strict TypeScript checking, and verified production bundle dead-code elimination.
+
+## [0.1.0] - 2026-10-12
+
 ### Added
 - **Stage T1 (Contract & Mock Bridge)**:
   - Strict Zod runtime schemas and inferred TypeScript types in `frontend/src/lib/bridge/schema.ts` covering all PRD §5.2 screens.
