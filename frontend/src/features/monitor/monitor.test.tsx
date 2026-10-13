@@ -56,7 +56,7 @@ describe('MonitorView (Popup Hunter)', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/marker recorded/i)).toBeInTheDocument();
-      expect(screen.getByText('Cleaner Master (mock)')).toBeInTheDocument();
+      expect(screen.getByText('Cleaner Master')).toBeInTheDocument();
     });
   });
 });

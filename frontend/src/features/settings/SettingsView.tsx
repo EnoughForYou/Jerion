@@ -189,7 +189,7 @@ export const SettingsView: React.FC = () => {
               </div>
               <div className="flex justify-between py-1">
                 <dt className="text-text-secondary">Contract Schema</dt>
-                <dd className="font-mono text-text-primary">v0.1.0 (Draft)</dd>
+                <dd className="font-mono text-text-primary">v1.0.0 (Frozen)</dd>
               </div>
             </dl>
           </CardContent>

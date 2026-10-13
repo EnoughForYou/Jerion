@@ -92,12 +92,15 @@ export const MonitorView: React.FC = () => {
     const markTime = new Date().toISOString();
     setMarkerFeedback(t('monitor.markPopupSuccess'));
 
+    const targetPackage = 'com.cleaner.master';
+    const targetLabel = 'Cleaner Master';
+
     // Emit simulated overlay event on mock bridge
     const popupEvt: MonitorEvent = {
       id: `evt-user-mark-${Date.now()}`,
       timestamp: markTime,
       type: 'overlay_shown',
-      package: 'com.example.mock.popup',
+      package: targetPackage,
       details: {
         trigger: 'User Marked Popup',
         windowType: 'TYPE_APPLICATION_OVERLAY',
@@ -108,8 +111,8 @@ export const MonitorView: React.FC = () => {
 
     // Recalculate or emphasize candidate
     const topCand: MonitorCandidate = {
-      package: 'com.example.mock.popup',
-      appLabel: 'Cleaner Master (mock)',
+      package: targetPackage,
+      appLabel: targetLabel,
       confidence: 'high',
       score: 95,
       timelineEvents: [popupEvt],

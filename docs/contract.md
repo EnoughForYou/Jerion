@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Contract Version** | `0.1.0` (DRAFT) |
-| **Status** | Active Draft (Additive changes permitted during Stages T2–T3) |
-| **Freeze Target** | `1.0.0` (Strict Freeze at end of Stage T3 before Stage T4 Backend Go) |
+| **Contract Version** | `1.0.0` (FROZEN) |
+| **Status** | **FROZEN** (Strictly Frozen at conclusion of Stage T3; ready for Stage T4 Backend Go) |
+| **Freeze Target** | Achieved (`1.0.0` on 2026-10-13) |
 | **Last Updated** | 2026-10-13 |
 
 ---

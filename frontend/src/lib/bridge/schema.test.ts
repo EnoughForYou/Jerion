@@ -8,8 +8,8 @@ import {
 } from './schema';
 
 describe('Contract Schemas & Version', () => {
-  it('has CONTRACT_VERSION set to 0.1.0', () => {
-    expect(CONTRACT_VERSION).toBe('0.1.0');
+  it('has CONTRACT_VERSION set to 1.0.0 (Frozen)', () => {
+    expect(CONTRACT_VERSION).toBe('1.0.0');
   });
 
   it('strictly validates PreflightCheck and rejects unknown fields', () => {

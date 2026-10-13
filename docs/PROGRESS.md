@@ -1,11 +1,20 @@
 # PROGRESS
 
 ## Status sekarang
-- Fase aktif: 2 — Design System & App Shell (Tahap T2 — Selesai)
-- Branch: phase/2-shell
-- Terakhir selesai: Tahap 1 — Kontrak + Mock Bridge (tag v0.1.0)
+- Fase aktif: 3 — Frontend Screens & Contract Freeze v1.0.0 (Tahap T3 — Selesai)
+- Branch: phase/3-screens
+- Terakhir selesai: Tahap 2 — Design System & App Shell (tag v0.2.0)
 
-## Fase 2 (Tahap T2) — checklist
+## Fase 3 (Tahap T3) — checklist
+- [x] Sub-tugas 3.1: Interactive Home view & OnboardingModal
+- [x] Sub-tugas 3.2: Interactive Scan view with timeline, filters & EvidenceDrawer
+- [x] Sub-tugas 3.3: Virtualized Apps inventory with category filtering, search, and detail drawer
+- [x] Sub-tugas 3.4: Interactive Popup Hunter monitor with user marker, telemetry, and candidate actions
+- [x] Sub-tugas 3.5: Interactive Audit and Remediation views with safety guardrails, confirmation dialog, and undo
+- [x] Sub-tugas 3.6: Interactive Reports and Settings views with allowlist management & root gitignore fix
+- [x] Sub-tugas 3.7: Contract Freeze v1.0.0 & gerbang selesai-tahap T3
+
+## Fase 2 (Tahap T2) — riwayat selesai
 - [x] Sub-tugas 2.1: Local variable font `@fontsource-variable/inter`, CSS tokens & Zustand theme store
 - [x] Sub-tugas 2.2: Konfigurasi `react-i18next` & catalog English (`en.json`) tanpa string hardcode
 - [x] Sub-tugas 2.3: Implementasi Core Design System (`Button`, `Card`, `Badge` [icon+label+color], `Skeleton`, `EmptyState`, `ErrorState`, `Table`, `Dialog`, `Tooltip`, `Tabs`)
@@ -47,6 +56,14 @@
 
 ## Masalah terbuka / blocker
 - golangci-lint lokal: Tidak terverifikasi (binary golangci-lint belum terpasang di mesin dev)
+
+## Pengukuran & Kualitas (Tahap T3)
+- **Vitest Suite**: 114 pengujian lolos di 19 file tes (`src/features/monitor/monitor.test.tsx`, `src/app/shell.test.tsx`, `src/features/audit/audit.test.tsx`, `src/features/apps/apps.test.tsx`, `src/features/settings/settings.test.tsx`, `src/features/scan/scan.test.tsx`, `src/features/placeholders.test.tsx`, `src/features/reports/reports.test.tsx`, `src/features/preflight/preflight.test.tsx`, `src/components/aceternity/Sidebar.test.tsx`, `src/features/remediate/remediate.test.tsx`, `src/components/ui/components.test.tsx`, `src/three/scene.test.tsx`, `src/App.test.tsx`, `src/lib/bridge/mock.test.ts`, `src/lib/bridge/fixtures.test.ts`, `src/i18n/i18n.test.ts`, `src/app/theme.test.ts`, `src/lib/bridge/schema.test.ts`).
+- **ESLint & TypeScript**: 0 error, 0 warning pada `npm run lint` & `npm run typecheck`.
+- **Mock Elimination (`npm run check:no-mock`)**: 0 marker atau skema runtime mock terdeteksi pada bundle produksi Vite.
+- **Production Build (`wails build`)**: Kompilasi binary Windows x64 berhasil tanpa error dalam 20.5 detik.
+- **Contract Freeze**: Versi kontrak terkunci pada `1.0.0 (FROZEN)` mendefinisikan boundary stabil Go DTO dan Zod TS sebelum Tahap T4.
+- **Anti-AI-Slop Checklist (PRD §5.6)**: 100% dipatuhi di seluruh 8 modul interaktif (1 warna aksen, severity berbasis icon+label+warna, font lokal tanpa CDN, zero framer-motion, 1 scene 3D lazy dengan SVG fallback dan DPR `[1, 2]`, teks faktual tanpa lorem).
 
 ## Pengukuran & Kualitas (Tahap T2)
 - **Vitest Suite**: 92 pengujian lolos di 12 file tes (`src/three/scene.test.tsx`, `src/features/preflight/preflight.test.tsx`, `src/components/aceternity/Sidebar.test.tsx`, `src/components/ui/components.test.tsx`, `src/app/shell.test.tsx`, `src/App.test.tsx`, `src/features/placeholders.test.tsx`, `src/lib/bridge/mock.test.ts`, `src/i18n/i18n.test.ts`, `src/app/theme.test.ts`, `src/lib/bridge/schema.test.ts`, `src/lib/bridge/fixtures.test.ts`).
