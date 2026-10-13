@@ -162,14 +162,40 @@
   "apps": {
     "title": "Installed Applications",
     "description": "Inventory of user and system packages retrieved via ADB.",
+    "packagesCount": "{{count}} packages listed",
     "searchPlaceholder": "Search by package name or label...",
     "showSystem": "Show System Packages",
+    "noAppsTitle": "No Applications Found",
+    "noAppsDesc": "No packages match \"{{query}}\". Check spelling or adjust category filters.",
+    "noAppsEmpty": "No packages detected in device inventory.",
+    "resetFilter": "Reset Filter",
+    "categories": {
+      "all": "All",
+      "user": "User Apps",
+      "system": "System",
+      "risky": "Risky Signals"
+    },
+    "sortBy": "Sort by",
+    "sort": {
+      "name": "Name",
+      "installedAt": "Installed",
+      "updatedAt": "Updated",
+      "targetSdk": "Target SDK"
+    },
     "columns": {
       "app": "Application",
       "package": "Package Name",
       "version": "Version",
       "installer": "Installer",
       "flags": "Attributes"
+    },
+    "flags": {
+      "user": "User",
+      "system": "System",
+      "sideloaded": "Sideload",
+      "overlay": "Overlay",
+      "admin": "Admin",
+      "accessibility": "A11y"
     },
     "detail": {
       "title": "Package Details",
@@ -179,8 +205,18 @@
       "targetSdk": "Target SDK",
       "firstInstall": "First Installed",
       "lastUpdate": "Last Updated",
-      "permissions": "Permissions",
-      "signatures": "Signatures"
+      "installer": "Installer Package",
+      "installerUnknown": "Sideload / Direct Install",
+      "permissions": "Declared Permissions ({{count}})",
+      "dangerousPermissions": "Dangerous Permissions ({{count}})",
+      "signatures": "Signatures ({{count}})",
+      "actions": "Package Operations",
+      "pullApk": "Pull APK to Disk",
+      "pulling": "Extracting APK...",
+      "pulledSuccess": "Extracted to: {{path}}",
+      "deepScan": "Deep Scan This App",
+      "remediate": "Stage for Remediation",
+      "noPermissions": "No declared permissions."
     }
   },
   "scan": {
