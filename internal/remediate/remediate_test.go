@@ -164,6 +164,57 @@ func TestRemediationExecuteAndUndo(t *testing.T) {
 	if undonePerm.Status != "undone" {
 		t.Fatalf("expected undone status for permission, got %s", undonePerm.Status)
 	}
+
+	// 5. User app uninstall fails when APK backup fails (Guardrail enforcement)
+	failUserAct := mgr.CreateAction(remediate.ActionUninstall, "com.malware.nobackup", "", "", false)
+	// pm path fails / returns error
+	fake.SetResponse("pm path com.malware.nobackup", "", "package not found", os.ErrNotExist)
+	_, err = mgr.Execute(ctx, serial, failUserAct)
+	if err == nil || !strings.Contains(err.Error(), "BackupFailed") {
+		t.Fatalf("expected BackupFailed error when APK backup fails, got: %v", err)
+	}
+
+	// 6. User app uninstall succeeds when APK backup succeeds, and restores on Undo
+	succUserAct := mgr.CreateAction(remediate.ActionUninstall, "com.malware.backedup", "", "", false)
+	fake.SetResponse("pm path com.malware.backedup", "package:/data/app/~~dummy/base.apk\n", "", nil)
+	fake.SetHandler(
+		func(devSerial string, args []string) bool {
+			return len(args) >= 3 && args[0] == "pull"
+		},
+		func(devSerial string, args []string) ([]byte, []byte, error) {
+			dest := args[2]
+			_ = os.WriteFile(dest, []byte("dummy-backup-apk"), 0o644)
+			return []byte("1 file pulled"), nil, nil
+		},
+	)
+	fake.SetResponse("pm uninstall com.malware.backedup", "Success", "", nil)
+	fake.SetHandler(
+		func(devSerial string, args []string) bool {
+			return len(args) >= 3 && args[0] == "install" && args[1] == "-r"
+		},
+		func(devSerial string, args []string) ([]byte, []byte, error) {
+			return []byte("Success"), nil, nil
+		},
+	)
+
+	userLog, err := mgr.Execute(ctx, serial, succUserAct)
+	if err != nil {
+		t.Fatalf("execute user uninstall with backup failed: %v", err)
+	}
+	if userLog.Status != "success" {
+		t.Fatalf("expected status success, got %s", userLog.Status)
+	}
+	if userLog.BackupPath == nil || *userLog.BackupPath == "" {
+		t.Fatalf("expected non-empty backupPath in user uninstall log")
+	}
+
+	undoneUser, err := mgr.Undo(ctx, serial, userLog.ID)
+	if err != nil {
+		t.Fatalf("undo user uninstall failed: %v", err)
+	}
+	if undoneUser.Status != "undone" {
+		t.Fatalf("expected undone status for restored user app, got %s", undoneUser.Status)
+	}
 }
 
 func TestRemediationPlanCreation(t *testing.T) {

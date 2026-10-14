@@ -181,12 +181,43 @@ func TestAppServicesIntegration(t *testing.T) {
 	}
 
 	// 8. Remediate Service
+	pkgSample := "com.adware.sample"
+	app.mu.Lock()
+	app.cachedResults["scan-test"] = &contract.ScanResult{
+		ID: "scan-test",
+		Findings: []contract.Finding{
+			{
+				ID:      "find-1",
+				RuleID:  "rule-adware-1",
+				Title:   "Suspicious Adware Found",
+				Package: &pkgSample,
+				RecommendedAction: &contract.RemediationAction{
+					Type:    "disable",
+					Package: pkgSample,
+				},
+			},
+		},
+	}
+	app.mu.Unlock()
+
 	plan, err := app.RemediateCreatePlan([]string{"find-1"})
 	if err != nil {
 		t.Fatalf("RemediateCreatePlan failed: %v", err)
 	}
 	if len(plan.Actions) != 1 {
 		t.Fatalf("expected 1 action in plan, got %d", len(plan.Actions))
+	}
+	if plan.Actions[0].Package != pkgSample {
+		t.Fatalf("expected package %s, got %s", pkgSample, plan.Actions[0].Package)
+	}
+
+	// Unknown finding ID must not invent dummy packages
+	unknownPlan, err := app.RemediateCreatePlan([]string{"non-existent-finding-id"})
+	if err != nil {
+		t.Fatalf("RemediateCreatePlan failed: %v", err)
+	}
+	if len(unknownPlan.Actions) != 0 {
+		t.Fatalf("expected 0 actions for unknown finding, got %d", len(unknownPlan.Actions))
 	}
 
 	fake.SetResponse("pm disable-user --user 0 com.adware.sample", "Package com.adware.sample new state: disabled-user", "", nil)

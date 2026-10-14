@@ -92,6 +92,7 @@ func (s *Scanner) Scan(
 			RulesVersion: "1.0.0",
 			AppVersion:   "0.4.0",
 			Findings:     []Finding{},
+			TotalApps:    0,
 		}, nil
 	}
 
@@ -183,6 +184,7 @@ func (s *Scanner) Scan(
 		AppVersion:   "0.4.0",
 		Findings:     allFindings,
 		Partial:      false,
+		TotalApps:    totalApps,
 	}
 
 	// 3. Persist scan result in database if store available

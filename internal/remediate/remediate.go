@@ -169,12 +169,12 @@ func (m *Manager) Execute(ctx context.Context, serial string, action Action) (*A
 		_ = os.MkdirAll(m.backupDir, 0755)
 		puller := inventory.NewPuller(m.runner, m.logger)
 		basePath, _, _, err := puller.Pull(ctx, serial, action.Package, m.backupDir)
-		if err == nil && basePath != "" {
-			backupPath = &basePath
-			m.logger.Info("remediate: APK backed up before uninstall", "package", action.Package, "path", basePath)
-		} else {
-			m.logger.Warn("remediate: could not pull APK for backup", "package", action.Package, "err", err)
+		if err != nil || basePath == "" {
+			m.logger.Error("remediate: APK backup failed before uninstall", "package", action.Package, "err", err)
+			return nil, fmt.Errorf(`JERION_ERR:{"code":"BackupFailed","message":"Failed to backup APK for %s before uninstall: %v","remedy":"Device refused APK extraction or storage error. Cannot uninstall safely without backup."}`, action.Package, err)
 		}
+		backupPath = &basePath
+		m.logger.Info("remediate: APK backed up before uninstall", "package", action.Package, "path", basePath)
 	}
 
 	// 2. Execute command via ADB
@@ -234,9 +234,14 @@ func (m *Manager) Execute(ctx context.Context, serial string, action Action) (*A
 	entryID := fmt.Sprintf("log-%d", time.Now().UnixNano())
 	now := time.Now().UTC()
 
+	var bpVal string
+	if backupPath != nil {
+		bpVal = *backupPath
+	}
+
 	details := map[string]any{
 		"action":           action,
-		"backupPath":       backupPath,
+		"backupPath":       bpVal,
 		"targetPermission": action.TargetPermission,
 		"targetAppop":      action.TargetAppop,
 		"isSystemApp":      action.IsSystemApp,

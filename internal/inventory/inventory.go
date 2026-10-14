@@ -18,6 +18,8 @@ type AppInfo struct {
 	VersionCode          int64     `json:"versionCode"`
 	UID                  int       `json:"uid"`
 	Installer            *string   `json:"installer,omitempty"`
+	TargetSDK            int       `json:"targetSdk"`
+	MinSDK               int       `json:"minSdk"`
 	FirstInstall         time.Time `json:"firstInstall"`
 	LastUpdate           time.Time `json:"lastUpdate"`
 	IsSystem             bool      `json:"isSystem"`

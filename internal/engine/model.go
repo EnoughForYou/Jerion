@@ -49,4 +49,5 @@ type ScanResult struct {
 	AppVersion   string    `json:"appVersion"`
 	Findings     []Finding `json:"findings"`
 	Partial      bool      `json:"partial"`
+	TotalApps    int       `json:"totalApps"`
 }

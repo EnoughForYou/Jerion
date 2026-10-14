@@ -190,6 +190,39 @@ func (s *Store) GetScanResult(id string) (*ScanRecord, error) {
 	return &scan, rows.Err()
 }
 
+// GetFinding retrieves a finding record by its ID.
+func (s *Store) GetFinding(id string) (*FindingRecord, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	query := `
+		SELECT id, scan_id, rule_id, package_name, category, severity, confidence, weight,
+		       title, why_flagged, fp_hint, evidence_json, actions_json
+		FROM scan_findings WHERE id = ?
+	`
+	var f FindingRecord
+	var evJSON, actJSON string
+	err := s.db.QueryRow(query, id).Scan(
+		&f.ID, &f.ScanID, &f.RuleID, &f.Package, &f.Category, &f.Severity, &f.Confidence, &f.Weight,
+		&f.Title, &f.WhyFlagged, &f.FalsePositiveHint, &evJSON, &actJSON,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("finding %s not found: %w", id, sql.ErrNoRows)
+		}
+		return nil, fmt.Errorf("get finding %s: %w", id, err)
+	}
+
+	if len(evJSON) > 0 {
+		_ = json.Unmarshal([]byte(evJSON), &f.Evidence)
+	}
+	if len(actJSON) > 0 {
+		_ = json.Unmarshal([]byte(actJSON), &f.Actions)
+	}
+
+	return &f, nil
+}
+
 // ListScanSummaries returns summary records for all completed scans of a device (or all devices if empty).
 func (s *Store) ListScanSummaries(deviceSerial string) ([]ScanSummaryRecord, error) {
 	s.mu.RLock()
