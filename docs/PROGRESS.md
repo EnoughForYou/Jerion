@@ -1,9 +1,24 @@
 # PROGRESS
 
 ## Status sekarang
-- Fase aktif: 5 — Polish, Hardening & End-to-End Verification (Tahap T5) [Selesai]
-- Branch: phase/5-hardening
-- Terakhir selesai: Tahap 5 — Polish, Hardening & End-to-End Verification (tag v0.5.0)
+- Fase aktif: 6 — Hardening, Installer & Rilis v1.0.0 (Tahap T6) [Selesai]
+- Branch: phase/6-release
+- Terakhir selesai: Tahap 6 — Hardening, Installer & Rilis v1.0.0 (tag v1.0.0)
+
+## Fase 6 (Tahap T6) — riwayat selesai
+- [x] Sub-tugas 6.1: Konfigurasi Windows NSIS Installer & Packaging Final
+- [x] Sub-tugas 6.2: Audit Keamanan & Guardrail Produksi (PRD §6.8)
+- [x] Sub-tugas 6.3: Dokumentasi Final & Panduan Perangkat Pengguna
+- [x] Sub-tugas 6.4: Gerbang Selesai-Tahap T6 (Rilis v1.0.0)
+
+## Pengukuran & Kualitas (Tahap T6 / v1.0.0 Production Release)
+- **Backend Go Test Suite**: 100% test lulus di seluruh 16 paket backend Go (`internal/logx`, `internal/secrets`, `internal/store`, `internal/adb`, `internal/preflight`, `internal/inventory`, `internal/apk`, `internal/rules`, `internal/engine`, `internal/intel`, `internal/audit`, `internal/monitor`, `internal/remediate`, `internal/report`, `internal/contract`, dan root `main`).
+- **Input Sanitization & Injection Defense**: 100% lulus pada seluruh uji injeksi shell (pipes, backticks, subshells, redirections, newlines) pada nama paket dan nama izin Android.
+- **Frontend Vitest Suite**: 116 pengujian lolos di 20 file tes.
+- **ESLint & TypeScript**: 0 error, 0 warning pada `npm run lint` & `npm run typecheck`.
+- **Mock Elimination (`npm run check:no-mock`)**: 0 marker mock atau skema runtime terdeteksi pada bundle produksi Vite.
+- **Production Compilation (`wails build`)**: Standalone binary Windows x64 `build/bin/Jerion.exe` terkompilasi bersih dalam 18.4 detik dengan metadata Windows v1.0.0.
+- **Security & Privacy Posture (PRD §6.8)**: Keyring OS native tanpa kebocoran credential ke UI, zero remote CDN dependencies, zero telemetry, proteksi denylist sistem kritis (Android Core + Transsion XOS 10.6), dan backup APK sebelum remediate.
 
 ## Fase 5 (Tahap T5) — riwayat selesai
 - [x] Sub-tugas 5.1: Bridge Runtime Auto-Detection & Bump Versi Kontrak `1.0.0`

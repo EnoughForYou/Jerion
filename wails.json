@@ -13,7 +13,7 @@
   "info": {
     "companyName": "Jerion",
     "productName": "Jerion",
-    "productVersion": "0.5.0",
+    "productVersion": "1.0.0",
     "copyright": "Copyright © 2026 EnoughForYou. All rights reserved.",
     "comments": "Android threat analyzer, adware hunter, and forensic tool via ADB."
   }
