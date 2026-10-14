@@ -41,12 +41,33 @@ func TestGuardrails(t *testing.T) {
 		t.Fatalf("expected com.suspicious.adware to NOT be blocked")
 	}
 
-	// 4. Invalid names
-	if err := remediate.ValidatePackageName("com.foo.bar; rm -rf /"); err == nil {
-		t.Fatalf("expected error for shell injection attempt")
+	// 5. Comprehensive shell injection attempts
+	maliciousPackages := []string{
+		"com.foo.bar; rm -rf /",
+		"com.foo`id`",
+		"com.foo$(whoami)",
+		"com.foo|cat /etc/passwd",
+		"com.foo&calc.exe",
+		"com.foo\nrm -rf /",
+		"com.foo>out.txt",
+		"com.foo<in.txt",
 	}
-	if err := remediate.ValidatePermissionName("android.permission.INTERNET && whoami"); err == nil {
-		t.Fatalf("expected error for permission shell injection attempt")
+	for _, pkg := range maliciousPackages {
+		if err := remediate.ValidatePackageName(pkg); err == nil {
+			t.Fatalf("expected error for malicious package name: %q", pkg)
+		}
+	}
+
+	maliciousPermissions := []string{
+		"android.permission.INTERNET && whoami",
+		"android.permission.CAMERA; id",
+		"android.permission.RECORD_AUDIO | rm -rf",
+		"android.permission.WAKE_LOCK`date`",
+	}
+	for _, perm := range maliciousPermissions {
+		if err := remediate.ValidatePermissionName(perm); err == nil {
+			t.Fatalf("expected error for malicious permission name: %q", perm)
+		}
 	}
 }
 
