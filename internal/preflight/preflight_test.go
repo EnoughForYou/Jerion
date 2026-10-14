@@ -126,3 +126,18 @@ func TestPlatformToolsDownloadURL(t *testing.T) {
 		t.Fatal("expected non-empty platform tools download URL")
 	}
 }
+
+func TestTrustedPlatformToolsHashes(t *testing.T) {
+	defSHA := DefaultPlatformToolsSHA256()
+	if defSHA == "" {
+		t.Fatal("expected non-empty default platform tools SHA256")
+	}
+
+	if !IsTrustedPlatformToolsHash("windows", defSHA) {
+		t.Errorf("expected default SHA to be trusted on windows: %s", defSHA)
+	}
+
+	if IsTrustedPlatformToolsHash("windows", "0000000000000000000000000000000000000000000000000000000000000000") {
+		t.Error("expected bogus SHA to NOT be trusted")
+	}
+}

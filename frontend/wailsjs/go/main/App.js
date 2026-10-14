@@ -58,6 +58,10 @@ export function InventoryList(arg1) {
   return window['go']['main']['App']['InventoryList'](arg1);
 }
 
+export function MonitorMarkPopup() {
+  return window['go']['main']['App']['MonitorMarkPopup']();
+}
+
 export function MonitorSnapshot() {
   return window['go']['main']['App']['MonitorSnapshot']();
 }

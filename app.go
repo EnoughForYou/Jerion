@@ -78,6 +78,7 @@ type App struct {
 	latestAudit   []contract.AuditItem
 	activeScans   map[string]context.CancelFunc
 	cachedResults map[string]*contract.ScanResult
+	cachedActions map[string]remediate.Action
 }
 
 // NewApp initializes production backend services.
@@ -147,6 +148,7 @@ func NewAppWithDeps(runner adb.Runner, st *store.Store, logger *logx.Logger, wor
 		workDir:       workDir,
 		activeScans:   make(map[string]context.CancelFunc),
 		cachedResults: make(map[string]*contract.ScanResult),
+		cachedActions: make(map[string]remediate.Action),
 	}
 
 	return app
@@ -232,7 +234,8 @@ func (a *App) PreflightDownloadAdb() error {
 	}
 
 	downloader := preflight.NewDownloader()
-	destPath, err := downloader.DownloadAndExtract(ctx, "", nil)
+	expectedSHA := preflight.DefaultPlatformToolsSHA256()
+	destPath, err := downloader.DownloadAndExtract(ctx, expectedSHA, nil)
 	if err != nil {
 		return wireError("InternalError", err.Error(), "Ensure network connection and retry")
 	}
@@ -315,10 +318,10 @@ func (a *App) convertDevice(d adb.DeviceInfo) *contract.Device {
 		ctx = context.Background()
 	}
 
-	manufacturer := "Android"
-	androidVer := "12"
-	sdkInt := 31
-	batteryLevel := 85
+	manufacturer := "Unknown"
+	androidVer := "Unknown"
+	sdkInt := 0
+	batteryLevel := 0
 	isCharging := false
 
 	if d.State == adb.StateReady {
@@ -356,7 +359,7 @@ func (a *App) convertDevice(d adb.DeviceInfo) *contract.Device {
 		model = d.Product
 	}
 	if model == "" {
-		model = "Generic Device"
+		model = "Unknown Device"
 	}
 
 	return &contract.Device{
@@ -476,11 +479,11 @@ func (a *App) InventoryExtractApk(packageName string, targetPath string) (string
 }
 
 func (a *App) convertAppInfo(app inventory.AppInfo) contract.AppInfo {
-	installedAt := time.Now().UTC().Format(time.RFC3339)
+	installedAt := ""
 	if !app.FirstInstall.IsZero() {
 		installedAt = app.FirstInstall.UTC().Format(time.RFC3339)
 	}
-	updatedAt := time.Now().UTC().Format(time.RFC3339)
+	updatedAt := ""
 	if !app.LastUpdate.IsZero() {
 		updatedAt = app.LastUpdate.UTC().Format(time.RFC3339)
 	}
@@ -495,6 +498,7 @@ func (a *App) convertAppInfo(app inventory.AppInfo) contract.AppInfo {
 	var dangPerms []string
 	hasOverlay := false
 	hasAccess := false
+	isDevAdmin := false
 	for _, p := range perms {
 		if strings.Contains(p, "SYSTEM_ALERT_WINDOW") {
 			dangPerms = append(dangPerms, p)
@@ -503,6 +507,10 @@ func (a *App) convertAppInfo(app inventory.AppInfo) contract.AppInfo {
 		if strings.Contains(p, "BIND_ACCESSIBILITY_SERVICE") {
 			dangPerms = append(dangPerms, p)
 			hasAccess = true
+		}
+		if strings.Contains(p, "BIND_DEVICE_ADMIN") {
+			dangPerms = append(dangPerms, p)
+			isDevAdmin = true
 		}
 	}
 	if len(dangPerms) == 0 {
@@ -530,15 +538,15 @@ func (a *App) convertAppInfo(app inventory.AppInfo) contract.AppInfo {
 		IsSystem:                   app.IsSystem,
 		IsSideloaded:               !app.IsSystem && (app.Installer == nil || *app.Installer != "com.android.vending"),
 		InstallerPackage:           app.Installer,
-		TargetSDK:                  29,
-		MinSDK:                     21,
+		TargetSDK:                  app.TargetSDK,
+		MinSDK:                     app.MinSDK,
 		InstalledAt:                installedAt,
 		UpdatedAt:                  updatedAt,
 		Permissions:                perms,
 		DangerousPermissions:       dangPerms,
 		HasOverlayPermission:       hasOverlay,
 		HasAccessibilityPermission: hasAccess,
-		IsDeviceAdmin:              false,
+		IsDeviceAdmin:              isDevAdmin,
 		IsBatteryOptimized:         false,
 		Signatures:                 sigs,
 		SuspiciousFlags:            flags,
@@ -573,6 +581,7 @@ func (a *App) ScanStart(options contract.ScanOptions) (string, error) {
 		}()
 
 		engineOpts := engine.ScanOptions{
+			ScanID:        scanID,
 			Mode:          options.Mode,
 			IncludeSystem: options.IncludeSystem,
 		}
@@ -732,20 +741,97 @@ func (a *App) convertEngineScanResult(res *engine.ScanResult) contract.ScanResul
 
 	compAt := res.FinishedAt.UTC().Format(time.RFC3339)
 
+	totalApps := res.TotalApps
+	if totalApps == 0 {
+		pkgs := make(map[string]struct{})
+		for _, f := range res.Findings {
+			if f.Package != "" {
+				pkgs[f.Package] = struct{}{}
+			}
+		}
+		totalApps = len(pkgs)
+	}
+
+	status := "completed"
+	if res.Partial {
+		status = "partial"
+	}
+
 	return contract.ScanResult{
 		ID:          res.ID,
 		DeviceID:    fmt.Sprintf("dev-%s", res.DeviceSerial),
 		Mode:        res.Mode,
 		StartedAt:   res.StartedAt.UTC().Format(time.RFC3339),
 		CompletedAt: &compAt,
-		Status:      "completed",
+		Status:      status,
 		Findings:    findings,
 		Summary: contract.SecuritySummary{
 			Counts:     counts,
-			TotalApps:  100,
+			TotalApps:  totalApps,
 			LastScanAt: &compAt,
 			Verdict:    verdict,
 		},
+	}
+}
+
+func (a *App) convertStoreFinding(f store.FindingRecord) contract.Finding {
+	sev := strings.ToLower(f.Severity)
+	var evs []contract.Evidence
+	for _, e := range f.Evidence {
+		evType := "manifest"
+		srcLower := strings.ToLower(e.Source)
+		if strings.Contains(srcLower, "permission") {
+			evType = "permission"
+		} else if strings.Contains(srcLower, "intel") || strings.Contains(srcLower, "hash") {
+			evType = "hash"
+		} else if strings.Contains(srcLower, "class") {
+			evType = "class_prefix"
+		} else if strings.Contains(srcLower, "log") {
+			evType = "log"
+		} else if strings.Contains(srcLower, "setting") {
+			evType = "setting"
+		}
+
+		evs = append(evs, contract.Evidence{
+			Type:    evType,
+			Title:   e.Source,
+			Details: e.Snippet,
+		})
+	}
+	if len(evs) == 0 {
+		evs = []contract.Evidence{}
+	}
+
+	pkgStr := f.Package
+	var pkgPtr *string
+	if pkgStr != "" {
+		pkgPtr = &pkgStr
+	}
+
+	var recAct *contract.RemediationAction
+	if len(f.Actions) > 0 && pkgStr != "" {
+		actType := f.Actions[0]
+		recAct = &contract.RemediationAction{
+			ID:       fmt.Sprintf("act-rec-%s", f.ID),
+			Type:     actType,
+			Package:  pkgStr,
+			Title:    fmt.Sprintf("Remediate %s on %s", actType, pkgStr),
+			Impact:   "Action recommended to mitigate flagged threat.",
+			Undoable: true,
+		}
+	}
+
+	return contract.Finding{
+		ID:                f.ID,
+		RuleID:            f.RuleID,
+		Title:             f.Title,
+		Severity:          sev,
+		Confidence:        f.Confidence,
+		Package:           pkgPtr,
+		WhyFlagged:        f.WhyFlagged,
+		FalsePositiveHint: f.FalsePositiveHint,
+		Evidence:          evs,
+		RecommendedAction: recAct,
 	}
 }
 
@@ -762,33 +848,10 @@ func (a *App) convertStoreScanRecord(record *store.ScanRecord) contract.ScanResu
 	for _, f := range record.Findings {
 		sev := strings.ToLower(f.Severity)
 		counts[sev]++
-
-		var evs []contract.Evidence
-		for _, e := range f.Evidence {
-			evs = append(evs, contract.Evidence{
-				Type:    "manifest",
-				Title:   e.Source,
-				Details: e.Snippet,
-			})
-		}
-
-		pkgStr := f.Package
-		var pkgPtr *string
-		if pkgStr != "" {
-			pkgPtr = &pkgStr
-		}
-
-		findings = append(findings, contract.Finding{
-			ID:                f.ID,
-			RuleID:            f.RuleID,
-			Title:             f.Title,
-			Severity:          sev,
-			Confidence:        f.Confidence,
-			Package:           pkgPtr,
-			WhyFlagged:        f.WhyFlagged,
-			FalsePositiveHint: f.FalsePositiveHint,
-			Evidence:          evs,
-		})
+		findings = append(findings, a.convertStoreFinding(f))
+	}
+	if len(findings) == 0 {
+		findings = []contract.Finding{}
 	}
 
 	verdict := "clean"
@@ -804,17 +867,31 @@ func (a *App) convertStoreScanRecord(record *store.ScanRecord) contract.ScanResu
 		compAt = &s
 	}
 
+	totalApps := 0
+	pkgs := make(map[string]struct{})
+	for _, f := range record.Findings {
+		if f.Package != "" {
+			pkgs[f.Package] = struct{}{}
+		}
+	}
+	totalApps = len(pkgs)
+
+	status := "completed"
+	if record.Partial {
+		status = "partial"
+	}
+
 	return contract.ScanResult{
 		ID:          record.ID,
 		DeviceID:    fmt.Sprintf("dev-%s", record.DeviceSerial),
 		Mode:        record.Mode,
 		StartedAt:   record.StartedAt.UTC().Format(time.RFC3339),
 		CompletedAt: compAt,
-		Status:      "completed",
+		Status:      status,
 		Findings:    findings,
 		Summary: contract.SecuritySummary{
 			Counts:     counts,
-			TotalApps:  100,
+			TotalApps:  totalApps,
 			LastScanAt: compAt,
 			Verdict:    verdict,
 		},
@@ -839,6 +916,11 @@ func (a *App) MonitorStart() error {
 
 func (a *App) MonitorStop() error {
 	a.monitor.Stop()
+	return nil
+}
+
+func (a *App) MonitorMarkPopup() error {
+	a.monitor.MarkUserPopup(time.Now().UTC())
 	return nil
 }
 
@@ -951,13 +1033,91 @@ func (a *App) AuditGetLatest() ([]contract.AuditItem, error) {
 // --- 7. Remediate Service ---
 
 func (a *App) RemediateCreatePlan(findingIds []string) (contract.RemediationPlan, error) {
+	serial, _ := a.getTargetSerial()
+	ctx := a.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
 	var actions []contract.RemediationAction
 	requiresBackup := false
 
-	for range findingIds {
-		// Construct action
-		pkg := "com.adware.sample"
-		act := a.remediate.CreateAction(remediate.ActionDisable, pkg, "", "", false)
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	for _, fid := range findingIds {
+		var pkg string
+		actionType := remediate.ActionDisable
+		var perm string
+		var appop string
+
+		// 1. Look in cached scan results
+		var foundFinding *contract.Finding
+		for _, res := range a.cachedResults {
+			for _, f := range res.Findings {
+				if f.ID == fid {
+					fCopy := f
+					foundFinding = &fCopy
+					break
+				}
+			}
+			if foundFinding != nil {
+				break
+			}
+		}
+
+		if foundFinding != nil {
+			if foundFinding.Package != nil {
+				pkg = *foundFinding.Package
+			}
+			if foundFinding.RecommendedAction != nil {
+				actionType = foundFinding.RecommendedAction.Type
+			}
+			for _, ev := range foundFinding.Evidence {
+				if ev.Type == "permission" && strings.Contains(ev.Details, "android.permission.") {
+					perm = strings.TrimSpace(ev.Details)
+				}
+			}
+		} else if a.store != nil {
+			// 2. Look in database store
+			record, err := a.store.GetFinding(fid)
+			if err == nil && record != nil {
+				pkg = record.Package
+				if len(record.Actions) > 0 {
+					actionType = record.Actions[0]
+				}
+				for _, ev := range record.Evidence {
+					if strings.Contains(ev.Snippet, "android.permission.") {
+						perm = strings.TrimSpace(ev.Snippet)
+					}
+				}
+			}
+		}
+
+		if pkg == "" {
+			a.logger.Warn("remediate: finding not found or missing package", "findingId", fid)
+			continue
+		}
+
+		// Detect if system package
+		isSystem := false
+		if serial != "" {
+			stdout, _, err := a.runner.Run(ctx, serial, "shell", "pm", "path", pkg)
+			if err == nil {
+				p := string(stdout)
+				if strings.Contains(p, "/system/") || strings.Contains(p, "/product/") || strings.Contains(p, "/vendor/") || strings.Contains(p, "/apex/") {
+					isSystem = true
+				}
+			}
+		}
+
+		act := a.remediate.CreateAction(actionType, pkg, perm, appop, isSystem)
+		a.cachedActions[act.ID] = act
+
+		if act.Type == remediate.ActionUninstall && !isSystem {
+			requiresBackup = true
+		}
+
 		actions = append(actions, contract.RemediationAction{
 			ID:            act.ID,
 			Type:          act.Type,
@@ -989,7 +1149,26 @@ func (a *App) RemediateExecute(plan contract.RemediationPlan) ([]contract.Action
 
 	var results []contract.ActionLogEntry
 	for _, actDto := range plan.Actions {
-		action := a.remediate.CreateAction(actDto.Type, actDto.Package, "", "", false)
+		a.mu.RLock()
+		cachedAct, exists := a.cachedActions[actDto.ID]
+		a.mu.RUnlock()
+
+		var action remediate.Action
+		if exists {
+			action = cachedAct
+		} else {
+			// Detect system package dynamically if not in memory
+			isSystem := false
+			stdout, _, runErr := a.runner.Run(ctx, serial, "shell", "pm", "path", actDto.Package)
+			if runErr == nil {
+				p := string(stdout)
+				if strings.Contains(p, "/system/") || strings.Contains(p, "/product/") || strings.Contains(p, "/vendor/") || strings.Contains(p, "/apex/") {
+					isSystem = true
+				}
+			}
+			action = a.remediate.CreateAction(actDto.Type, actDto.Package, "", "", isSystem)
+		}
+
 		logEntry, execErr := a.remediate.Execute(ctx, serial, action)
 		if logEntry != nil {
 			results = append(results, contract.ActionLogEntry{
@@ -1087,19 +1266,30 @@ func (a *App) ReportList() ([]contract.ScanSummaryItem, error) {
 			s := r.FinishedAt.UTC().Format(time.RFC3339)
 			compAt = &s
 		}
-		res = append(res, contract.ScanSummaryItem{
-			ID:          r.ID,
-			StartedAt:   r.StartedAt.UTC().Format(time.RFC3339),
-			CompletedAt: compAt,
-			Mode:        r.Mode,
-			Verdict:     "review",
-			FindingsCount: map[string]int{
+		counts := r.Counts
+		if counts == nil {
+			counts = map[string]int{
 				"critical": 0,
 				"high":     r.HighSeverityCount,
 				"medium":   0,
 				"low":      0,
 				"info":     0,
-			},
+			}
+		}
+		verdict := r.Verdict
+		if verdict == "" {
+			verdict = "clean"
+			if r.HighSeverityCount > 0 {
+				verdict = "high_risk"
+			}
+		}
+		res = append(res, contract.ScanSummaryItem{
+			ID:            r.ID,
+			StartedAt:     r.StartedAt.UTC().Format(time.RFC3339),
+			CompletedAt:   compAt,
+			Mode:          r.Mode,
+			Verdict:       verdict,
+			FindingsCount: counts,
 		})
 	}
 
@@ -1139,12 +1329,36 @@ func (a *App) ReportCompare(scanIdA string, scanIdB string) (contract.ScanCompar
 		FindingsCount: comp.ScanB.FindingsCount,
 	}
 
+	var newFindings []contract.Finding
+	for _, f := range comp.NewFindings {
+		newFindings = append(newFindings, a.convertStoreFinding(f))
+	}
+	if len(newFindings) == 0 {
+		newFindings = []contract.Finding{}
+	}
+
+	var resolvedFindings []contract.Finding
+	for _, f := range comp.ResolvedFindings {
+		resolvedFindings = append(resolvedFindings, a.convertStoreFinding(f))
+	}
+	if len(resolvedFindings) == 0 {
+		resolvedFindings = []contract.Finding{}
+	}
+
+	var unchangedFindings []contract.Finding
+	for _, f := range comp.UnchangedFindings {
+		unchangedFindings = append(unchangedFindings, a.convertStoreFinding(f))
+	}
+	if len(unchangedFindings) == 0 {
+		unchangedFindings = []contract.Finding{}
+	}
+
 	return contract.ScanComparison{
 		ScanA:             itemA,
 		ScanB:             itemB,
-		NewFindings:       []contract.Finding{},
-		ResolvedFindings:  []contract.Finding{},
-		UnchangedFindings: []contract.Finding{},
+		NewFindings:       newFindings,
+		ResolvedFindings:  resolvedFindings,
+		UnchangedFindings: unchangedFindings,
 	}, nil
 }
 
@@ -1172,10 +1386,24 @@ func (a *App) ReportExport(options contract.ReportExportOptions) (string, error)
 	} else {
 		devInfo := report.DeviceInfo{
 			Serial:       rec.DeviceSerial,
-			Model:        "Connected Device",
-			Manufacturer: "Android",
-			AndroidVer:   "12",
-			SDKInt:       31,
+			Model:        "Unknown Device",
+			Manufacturer: "Unknown",
+			AndroidVer:   "Unknown",
+			SDKInt:       0,
+		}
+		if a.store != nil {
+			if dRec, err := a.store.GetDevice(rec.DeviceSerial); err == nil && dRec != nil {
+				if dRec.Model != "" {
+					devInfo.Model = dRec.Model
+				}
+				if dRec.Manufacturer != "" {
+					devInfo.Manufacturer = dRec.Manufacturer
+				}
+				if dRec.AndroidVersion != "" {
+					devInfo.AndroidVer = dRec.AndroidVersion
+				}
+				devInfo.SDKInt = dRec.SDK
+			}
 		}
 		htmlData, err := report.ExportHTML(*rec, devInfo, false)
 		if err != nil {

@@ -84,6 +84,12 @@ Packages:
 	if info.VersionName != "2.4.1" {
 		t.Errorf("expected VersionName 2.4.1, got %s", info.VersionName)
 	}
+	if info.TargetSDK != 31 {
+		t.Errorf("expected TargetSDK 31, got %d", info.TargetSDK)
+	}
+	if info.MinSDK != 24 {
+		t.Errorf("expected MinSDK 24, got %d", info.MinSDK)
+	}
 	if info.Installer == nil || *info.Installer != "com.android.vending" {
 		t.Errorf("expected installer com.android.vending, got %v", info.Installer)
 	}

@@ -68,7 +68,10 @@ func (s *Scanner) Scan(
 	onProgress func(ScanProgress),
 ) (*ScanResult, error) {
 	startTime := time.Now().UTC()
-	scanID := fmt.Sprintf("scan-%d", startTime.UnixNano())
+	scanID := opts.ScanID
+	if scanID == "" {
+		scanID = fmt.Sprintf("scan-%d", startTime.UnixNano())
+	}
 
 	if onProgress != nil {
 		onProgress(ScanProgress{Step: "Discovering installed applications", Progress: 10})
@@ -92,10 +95,12 @@ func (s *Scanner) Scan(
 			RulesVersion: "1.0.0",
 			AppVersion:   "0.4.0",
 			Findings:     []Finding{},
+			TotalApps:    0,
 		}, nil
 	}
 
 	var allFindings []Finding
+	isPartial := false
 
 	// 2. Evaluate packages
 	for idx, basicApp := range apps {
@@ -159,7 +164,13 @@ func (s *Scanner) Scan(
 							})
 						}
 					}
+				} else {
+					s.logger.Warn("deep scan: inspect apk failed", "package", pkgName, "err", inspErr)
+					isPartial = true
 				}
+			} else {
+				s.logger.Warn("deep scan: pull apk failed", "package", pkgName, "err", pullErr)
+				isPartial = true
 			}
 		}
 
@@ -182,7 +193,8 @@ func (s *Scanner) Scan(
 		RulesVersion: "1.0.0",
 		AppVersion:   "0.4.0",
 		Findings:     allFindings,
-		Partial:      false,
+		Partial:      isPartial,
+		TotalApps:    totalApps,
 	}
 
 	// 3. Persist scan result in database if store available
@@ -221,7 +233,7 @@ func (s *Scanner) Scan(
 			FinishedAt:   finishTime,
 			RulesVersion: "1.0.0",
 			AppVersion:   "0.4.0",
-			Partial:      false,
+			Partial:      isPartial,
 			Findings:     storeFindings,
 		})
 	}

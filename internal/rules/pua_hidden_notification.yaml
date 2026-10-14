@@ -7,7 +7,7 @@ weight: 60
 why: Application was sideloaded outside official app stores and lacks a launcher icon, but requests notification privileges to broadcast intrusive spam ads.
 false_positive_hint: Headless IoT helper services and background sync engines may legitimately lack launcher icons.
 remediation:
-  - revoke-permission
+  - revoke_permission
   - disable
   - uninstall
 conditions:

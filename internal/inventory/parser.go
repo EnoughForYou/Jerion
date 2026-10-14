@@ -21,6 +21,8 @@ var (
 	reInstaller    = regexp.MustCompile(`installerPackageName=([a-zA-Z0-9_.]+)`)
 	reTime         = regexp.MustCompile(`(?:firstInstallTime|lastUpdateTime)=(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2})`)
 	reCodePath     = regexp.MustCompile(`codePath=([^\s]+)`)
+	reTargetSDK    = regexp.MustCompile(`targetSdk=(\d+)`)
+	reMinSDK       = regexp.MustCompile(`minSdk=(\d+)`)
 	reSignerSHA256 = regexp.MustCompile(`(?:Signer #\d+ certificate SHA-256 digest:|[sS]ha-?256:?)\s*([A-Fa-f0-9:]{32,})`)
 )
 
@@ -106,6 +108,24 @@ func ParseDumpsysPackage(output string) *AppInfo {
 		if info.VersionName == "" {
 			if m := reVersionName.FindStringSubmatch(trimmed); len(m) == 2 {
 				info.VersionName = m[1]
+			}
+		}
+
+		// Target SDK
+		if info.TargetSDK == 0 {
+			if m := reTargetSDK.FindStringSubmatch(trimmed); len(m) == 2 {
+				if s, err := strconv.Atoi(m[1]); err == nil {
+					info.TargetSDK = s
+				}
+			}
+		}
+
+		// Min SDK
+		if info.MinSDK == 0 {
+			if m := reMinSDK.FindStringSubmatch(trimmed); len(m) == 2 {
+				if s, err := strconv.Atoi(m[1]); err == nil {
+					info.MinSDK = s
+				}
 			}
 		}
 

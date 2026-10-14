@@ -8,7 +8,7 @@ why: Application requests SYSTEM_ALERT_WINDOW without launcher activity or valid
 false_positive_hint: System UI utilities, screen recorders, and assistive touch apps use overlays legitimately.
 remediation:
   - disable
-  - revoke-permission
+  - revoke_permission
   - uninstall
 conditions:
   is_system: false

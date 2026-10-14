@@ -65,6 +65,25 @@ var validConfidences = map[string]bool{
 	"high":   true,
 }
 
+var validRemediations = map[string]bool{
+	"disable":           true,
+	"uninstall":         true,
+	"revoke_permission": true,
+	"clear_appop":       true,
+}
+
+// HasAnyCondition returns true if at least one matching criterion is defined.
+func (c *RuleConditions) HasAnyCondition() bool {
+	return c.IsSystem != nil ||
+		c.HasLauncher != nil ||
+		c.Installer != "" ||
+		len(c.RequiredPermissions) > 0 ||
+		len(c.AnyPermissions) > 0 ||
+		len(c.ForbiddenPermissions) > 0 ||
+		len(c.AdSDKs) > 0 ||
+		c.MinAdSDKs > 0
+}
+
 // ValidateRule verifies compliance with rules authoring specifications.
 func ValidateRule(r *RuleDefinition) error {
 	if r.ID == "" {
@@ -93,6 +112,14 @@ func ValidateRule(r *RuleDefinition) error {
 	}
 	if len(r.Remediation) == 0 {
 		return fmt.Errorf("rule %s must define at least one remediation action", r.ID)
+	}
+	for _, act := range r.Remediation {
+		if !validRemediations[act] {
+			return fmt.Errorf("rule %s has invalid remediation action: %s", r.ID, act)
+		}
+	}
+	if !r.Conditions.HasAnyCondition() {
+		return fmt.Errorf("rule %s must define at least one matching condition", r.ID)
 	}
 	return nil
 }

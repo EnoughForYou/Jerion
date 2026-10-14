@@ -92,6 +92,7 @@ export class WailsBridge implements Bridge {
     start: () => callWails<void>('MonitorStart'),
     stop: () => callWails<void>('MonitorStop'),
     snapshot: () => callWails<MonitorSnapshot>('MonitorSnapshot'),
+    markPopup: () => callWails<void>('MonitorMarkPopup'),
   };
 
   readonly audit: AuditService = {

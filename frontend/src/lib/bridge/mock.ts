@@ -684,6 +684,8 @@ export class MockBridge implements Bridge {
   readonly monitor: MonitorService = {
     start: async (): Promise<void> => {
       this.monitorIsActive = true;
+      this.monitorEvents = [];
+      this.monitorCandidates = [];
       const initialEvent: MonitorEvent = {
         id: `evt-mock-${Date.now()}`,
         timestamp: new Date().toISOString(),
@@ -696,7 +698,7 @@ export class MockBridge implements Bridge {
 
       const candidate: MonitorCandidate = {
         package: 'com.example.mock.popup',
-        appLabel: 'Cleaner Master (mock)',
+        appLabel: 'Cleaner Master',
         confidence: 'high',
         score: 90,
         timelineEvents: [initialEvent],
@@ -707,12 +709,38 @@ export class MockBridge implements Bridge {
     },
     stop: async (): Promise<void> => {
       this.monitorIsActive = false;
+      this.monitorEvents = [];
+      this.monitorCandidates = [];
+    },
+    markPopup: async (): Promise<void> => {
+      const now = new Date().toISOString();
+      const popupEvt: MonitorEvent = {
+        id: `evt-user-mark-${Date.now()}`,
+        timestamp: now,
+        type: 'overlay_shown',
+        package: 'com.example.mock.popup',
+        details: {
+          trigger: 'User Marked Popup',
+          windowType: 'TYPE_APPLICATION_OVERLAY',
+        },
+      };
+      this.monitorEvents.unshift(popupEvt);
+      this.emit('monitor:event', popupEvt);
+
+      const existing = this.monitorCandidates.find((c) => c.package === 'com.example.mock.popup');
+      if (existing) {
+        existing.score = 95;
+        existing.confidence = 'high';
+        existing.whyFlagged = 'Emphasized by user mark trigger during active window overlay (< 3s).';
+        existing.timelineEvents.unshift(popupEvt);
+        this.emit('monitor:candidate', { ...existing });
+      }
     },
     snapshot: async (): Promise<MonitorSnapshot> => {
       const status: MonitorStatus = {
         isActive: this.monitorIsActive,
         startedAt: this.monitorIsActive ? new Date().toISOString() : undefined,
-        sourcesActive: ['dumpsys window', 'logcat'],
+        sourcesActive: ['dumpsys window'],
       };
       return {
         status,

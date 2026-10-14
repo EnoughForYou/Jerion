@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/EnoughForYou/Jerion/internal/adb"
 	"github.com/EnoughForYou/Jerion/internal/contract"
@@ -181,12 +183,43 @@ func TestAppServicesIntegration(t *testing.T) {
 	}
 
 	// 8. Remediate Service
+	pkgSample := "com.adware.sample"
+	app.mu.Lock()
+	app.cachedResults["scan-test"] = &contract.ScanResult{
+		ID: "scan-test",
+		Findings: []contract.Finding{
+			{
+				ID:      "find-1",
+				RuleID:  "rule-adware-1",
+				Title:   "Suspicious Adware Found",
+				Package: &pkgSample,
+				RecommendedAction: &contract.RemediationAction{
+					Type:    "disable",
+					Package: pkgSample,
+				},
+			},
+		},
+	}
+	app.mu.Unlock()
+
 	plan, err := app.RemediateCreatePlan([]string{"find-1"})
 	if err != nil {
 		t.Fatalf("RemediateCreatePlan failed: %v", err)
 	}
 	if len(plan.Actions) != 1 {
 		t.Fatalf("expected 1 action in plan, got %d", len(plan.Actions))
+	}
+	if plan.Actions[0].Package != pkgSample {
+		t.Fatalf("expected package %s, got %s", pkgSample, plan.Actions[0].Package)
+	}
+
+	// Unknown finding ID must not invent dummy packages
+	unknownPlan, err := app.RemediateCreatePlan([]string{"non-existent-finding-id"})
+	if err != nil {
+		t.Fatalf("RemediateCreatePlan failed: %v", err)
+	}
+	if len(unknownPlan.Actions) != 0 {
+		t.Fatalf("expected 0 actions for unknown finding, got %d", len(unknownPlan.Actions))
 	}
 
 	fake.SetResponse("pm disable-user --user 0 com.adware.sample", "Package com.adware.sample new state: disabled-user", "", nil)
@@ -207,6 +240,137 @@ func TestAppServicesIntegration(t *testing.T) {
 	undoneLog, err := app.RemediateUndo(execLogs[0].ID)
 	if err != nil || undoneLog.Status != "undone" {
 		t.Fatalf("RemediateUndo failed: %v", err)
+	}
+
+	// 9. Report Service & Canonical Comparison
+	now := time.Now().UTC()
+	scan1 := store.ScanRecord{
+		ID:           "scan-comp-1",
+		DeviceSerial: "MOCK-0001",
+		Mode:         "quick",
+		StartedAt:    now.Add(-2 * time.Hour),
+		FinishedAt:   now.Add(-1 * time.Hour),
+		RulesVersion: "1.0.0",
+		AppVersion:   "0.4.0",
+		Findings: []store.FindingRecord{
+			{
+				ID:         "find-old-resolved",
+				ScanID:     "scan-comp-1",
+				RuleID:     "RULE-A",
+				Package:    "com.resolved.adware",
+				Category:   "adware",
+				Severity:   "high",
+				Confidence: "high",
+				Weight:     80,
+				Title:      "Resolved Adware",
+				WhyFlagged: "Old threat",
+				Evidence:   []store.EvidenceRecord{{Source: "permission", Snippet: "android.permission.SYSTEM_ALERT_WINDOW"}},
+				Actions:    []string{"disable"},
+			},
+			{
+				ID:         "find-shared-unchanged",
+				ScanID:     "scan-comp-1",
+				RuleID:     "RULE-B",
+				Package:    "com.shared.threat",
+				Category:   "malware",
+				Severity:   "critical",
+				Confidence: "high",
+				Weight:     95,
+				Title:      "Persistent Threat",
+				WhyFlagged: "Persisting threat",
+				Evidence:   []store.EvidenceRecord{{Source: "hash", Snippet: "abc123"}},
+				Actions:    []string{"uninstall"},
+			},
+		},
+	}
+	scan2 := store.ScanRecord{
+		ID:           "scan-comp-2",
+		DeviceSerial: "MOCK-0001",
+		Mode:         "quick",
+		StartedAt:    now.Add(-30 * time.Minute),
+		FinishedAt:   now,
+		RulesVersion: "1.0.0",
+		AppVersion:   "0.4.0",
+		Findings: []store.FindingRecord{
+			{
+				ID:         "find-shared-scan2",
+				ScanID:     "scan-comp-2",
+				RuleID:     "RULE-B",
+				Package:    "com.shared.threat",
+				Category:   "malware",
+				Severity:   "critical",
+				Confidence: "high",
+				Weight:     95,
+				Title:      "Persistent Threat",
+				WhyFlagged: "Persisting threat",
+				Evidence:   []store.EvidenceRecord{{Source: "hash", Snippet: "abc123"}},
+				Actions:    []string{"uninstall"},
+			},
+			{
+				ID:         "find-new-threat",
+				ScanID:     "scan-comp-2",
+				RuleID:     "RULE-C",
+				Package:    "com.new.spyware",
+				Category:   "spyware",
+				Severity:   "medium",
+				Confidence: "medium",
+				Weight:     50,
+				Title:      "New Spyware",
+				WhyFlagged: "Newly introduced threat",
+				Evidence:   []store.EvidenceRecord{{Source: "manifest", Snippet: "hidden_service"}},
+				Actions:    []string{"disable"},
+			},
+		},
+	}
+	if err := app.store.SaveScanResult(scan1); err != nil {
+		t.Fatalf("SaveScanResult scan1 failed: %v", err)
+	}
+	if err := app.store.SaveScanResult(scan2); err != nil {
+		t.Fatalf("SaveScanResult scan2 failed: %v", err)
+	}
+
+	// Test ReportList
+	reports, err := app.ReportList()
+	if err != nil {
+		t.Fatalf("ReportList failed: %v", err)
+	}
+	if len(reports) < 2 {
+		t.Fatalf("expected at least 2 reports, got %d", len(reports))
+	}
+	if reports[0].Verdict != "high_risk" {
+		t.Errorf("expected high_risk verdict for scan with critical finding, got %s", reports[0].Verdict)
+	}
+
+	// Test ReportCompare
+	comp, err := app.ReportCompare(scan1.ID, scan2.ID)
+	if err != nil {
+		t.Fatalf("ReportCompare failed: %v", err)
+	}
+	if len(comp.NewFindings) != 1 {
+		t.Errorf("expected 1 new finding, got %d", len(comp.NewFindings))
+	}
+	if len(comp.ResolvedFindings) != 1 {
+		t.Errorf("expected 1 resolved finding, got %d", len(comp.ResolvedFindings))
+	}
+	if len(comp.UnchangedFindings) != 1 {
+		t.Errorf("expected 1 unchanged finding, got %d", len(comp.UnchangedFindings))
+	}
+
+	// Test ReportExport (HTML and JSON)
+	exportedJSON, err := app.ReportExport(contract.ReportExportOptions{ScanID: scan2.ID, Format: "json"})
+	if err != nil {
+		t.Fatalf("ReportExport JSON failed: %v", err)
+	}
+	if _, err := os.Stat(exportedJSON); err != nil {
+		t.Errorf("expected exported JSON file to exist: %s", exportedJSON)
+	}
+
+	exportedHTML, err := app.ReportExport(contract.ReportExportOptions{ScanID: scan2.ID, Format: "html"})
+	if err != nil {
+		t.Fatalf("ReportExport HTML failed: %v", err)
+	}
+	if _, err := os.Stat(exportedHTML); err != nil {
+		t.Errorf("expected exported HTML file to exist: %s", exportedHTML)
 	}
 }
 
@@ -313,4 +477,54 @@ func TestClamAVAppIntegration(t *testing.T) {
 		t.Fatalf("expected non-empty error message")
 	}
 }
+
+func TestAppMonitorWorkflow(t *testing.T) {
+	app, fake := setupTestApp(t)
+	defer app.store.Close()
+
+	fake.SetResponse("dumpsys window", `
+  mCurrentFocus=Window{12345 u0 com.popup.spammer/com.popup.spammer.AdActivity}
+  Window #1 Window{67890 u0 com.popup.spammer/com.popup.spammer.OverlayView}:
+    ty=TYPE_APPLICATION_OVERLAY
+`, "", nil)
+
+	fake.SetResponse("devices -l", "MOCK-0001 device product:mock model:MockPhone device:mock_dev\n", "", nil)
+	_, _ = app.tracker.PollOnce(context.Background())
+	app.activeSerial = "MOCK-0001"
+
+	// Start monitor
+	if err := app.MonitorStart(); err != nil {
+		t.Fatalf("MonitorStart failed: %v", err)
+	}
+
+	snap, err := app.MonitorSnapshot()
+	if err != nil {
+		t.Fatalf("MonitorSnapshot failed: %v", err)
+	}
+	if !snap.Status.IsActive {
+		t.Fatalf("expected monitor status active")
+	}
+	if len(snap.Status.SourcesActive) != 1 || snap.Status.SourcesActive[0] != "dumpsys window" {
+		t.Fatalf("expected SourcesActive ['dumpsys window'], got %v", snap.Status.SourcesActive)
+	}
+
+	// Trigger MarkUserPopup
+	if err := app.MonitorMarkPopup(); err != nil {
+		t.Fatalf("MonitorMarkPopup failed: %v", err)
+	}
+
+	// Stop monitor
+	if err := app.MonitorStop(); err != nil {
+		t.Fatalf("MonitorStop failed: %v", err)
+	}
+
+	snapStopped, err := app.MonitorSnapshot()
+	if err != nil {
+		t.Fatalf("MonitorSnapshot failed: %v", err)
+	}
+	if snapStopped.Status.IsActive {
+		t.Fatalf("expected monitor status inactive after stop")
+	}
+}
+
 

@@ -29,6 +29,44 @@ func PlatformToolsDownloadURL() string {
 	}
 }
 
+// TrustedPlatformToolsHashes maintains a catalog of known official Google platform-tools SHA-256 digests.
+var TrustedPlatformToolsHashes = map[string][]string{
+	"windows": {
+		"86be168bfaae7ea1d86f9f5926ec3ba04164b4c73656910e54d89fa7a00f8aa4", // r35.0.2 Windows
+		"0c7fa823a31c50e419b4fcb5fdfcbbbe94e77749a215386db4b50c534433017a", // r35.0.1 Windows
+		"e4125d038eaeb6f391b1511fa6770f5e714652c7921a2f64fcb9e38d4c1537dc", // r34.0.5 Windows
+	},
+	"darwin": {
+		"6106e236314f36a56e297825d19aa91f14a60155a0247fe051871a2a1a2b25c3",
+	},
+	"linux": {
+		"7f2ec9cf5c6628c5a2c4e857ff17135ee7d21c0ad19a7168307db1854bc2845c",
+	},
+}
+
+// DefaultPlatformToolsSHA256 returns the primary known trusted SHA-256 hash for current OS.
+func DefaultPlatformToolsSHA256() string {
+	hashes := TrustedPlatformToolsHashes[runtime.GOOS]
+	if len(hashes) > 0 {
+		return hashes[0]
+	}
+	return ""
+}
+
+// IsTrustedPlatformToolsHash checks if hash matches the trusted Google catalog for the given OS.
+func IsTrustedPlatformToolsHash(goos, hash string) bool {
+	trusted, ok := TrustedPlatformToolsHashes[goos]
+	if !ok {
+		return false
+	}
+	for _, t := range trusted {
+		if strings.EqualFold(t, hash) {
+			return true
+		}
+	}
+	return false
+}
+
 // ProgressFunc reports download advancement.
 type ProgressFunc func(downloadedBytes, totalBytes int64)
 
@@ -46,7 +84,7 @@ func NewDownloader() *Downloader {
 	}
 }
 
-// DownloadAndExtract downloads the official zip, verifies checksum if expectedSHA is non-empty,
+// DownloadAndExtract downloads the official zip, verifies checksum strictly (mandatory per ADR-0002),
 // and safely extracts platform-tools into destDir.
 func (d *Downloader) DownloadAndExtract(ctx context.Context, expectedSHA string, onProgress ProgressFunc) (string, error) {
 	url := PlatformToolsDownloadURL()
@@ -123,10 +161,16 @@ func (d *Downloader) DownloadAndExtract(ctx context.Context, expectedSHA string,
 	}
 	_ = out.Close()
 
-	// 2. Checksum verification
+	// 2. Checksum verification (mandatory per ADR-0002)
 	computedSHA := hex.EncodeToString(hasher.Sum(nil))
-	if expectedSHA != "" && !strings.EqualFold(computedSHA, expectedSHA) {
-		return "", fmt.Errorf("checksum verification failed: expected %s, got %s", expectedSHA, computedSHA)
+	if expectedSHA != "" {
+		if !strings.EqualFold(computedSHA, expectedSHA) && !IsTrustedPlatformToolsHash(runtime.GOOS, computedSHA) {
+			return "", fmt.Errorf("checksum verification failed: expected %s, got %s", expectedSHA, computedSHA)
+		}
+	} else {
+		if !IsTrustedPlatformToolsHash(runtime.GOOS, computedSHA) {
+			return "", fmt.Errorf("checksum verification required: unverified download hash %s does not match any trusted Google platform-tools checksum", computedSHA)
+		}
 	}
 
 	// 3. Safe Extraction

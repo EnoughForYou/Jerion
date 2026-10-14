@@ -48,13 +48,15 @@ type ScanRecord struct {
 
 // ScanSummaryRecord provides lightweight metadata for scan history lists.
 type ScanSummaryRecord struct {
-	ID                string    `json:"id"`
-	DeviceSerial      string    `json:"deviceSerial"`
-	Mode              string    `json:"mode"`
-	StartedAt         time.Time `json:"startedAt"`
-	FinishedAt        time.Time `json:"finishedAt"`
-	FindingCount      int       `json:"findingCount"`
-	HighSeverityCount int       `json:"highSeverityCount"`
+	ID                string         `json:"id"`
+	DeviceSerial      string         `json:"deviceSerial"`
+	Mode              string         `json:"mode"`
+	StartedAt         time.Time      `json:"startedAt"`
+	FinishedAt        time.Time      `json:"finishedAt"`
+	FindingCount      int            `json:"findingCount"`
+	HighSeverityCount int            `json:"highSeverityCount"`
+	Counts            map[string]int `json:"counts"`
+	Verdict           string         `json:"verdict"`
 }
 
 // SaveScanResult stores a complete scan and its associated findings within a transaction.
@@ -190,6 +192,39 @@ func (s *Store) GetScanResult(id string) (*ScanRecord, error) {
 	return &scan, rows.Err()
 }
 
+// GetFinding retrieves a finding record by its ID.
+func (s *Store) GetFinding(id string) (*FindingRecord, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	query := `
+		SELECT id, scan_id, rule_id, package_name, category, severity, confidence, weight,
+		       title, why_flagged, fp_hint, evidence_json, actions_json
+		FROM scan_findings WHERE id = ?
+	`
+	var f FindingRecord
+	var evJSON, actJSON string
+	err := s.db.QueryRow(query, id).Scan(
+		&f.ID, &f.ScanID, &f.RuleID, &f.Package, &f.Category, &f.Severity, &f.Confidence, &f.Weight,
+		&f.Title, &f.WhyFlagged, &f.FalsePositiveHint, &evJSON, &actJSON,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("finding %s not found: %w", id, sql.ErrNoRows)
+		}
+		return nil, fmt.Errorf("get finding %s: %w", id, err)
+	}
+
+	if len(evJSON) > 0 {
+		_ = json.Unmarshal([]byte(evJSON), &f.Evidence)
+	}
+	if len(actJSON) > 0 {
+		_ = json.Unmarshal([]byte(actJSON), &f.Actions)
+	}
+
+	return &f, nil
+}
+
 // ListScanSummaries returns summary records for all completed scans of a device (or all devices if empty).
 func (s *Store) ListScanSummaries(deviceSerial string) ([]ScanSummaryRecord, error) {
 	s.mu.RLock()
@@ -198,7 +233,11 @@ func (s *Store) ListScanSummaries(deviceSerial string) ([]ScanSummaryRecord, err
 	query := `
 		SELECT s.id, s.device_serial, s.mode, s.started_at, s.finished_at,
 		       COUNT(f.id) AS finding_count,
-		       COALESCE(SUM(CASE WHEN f.severity IN ('high', 'critical') THEN 1 ELSE 0 END), 0) AS high_count
+		       COALESCE(SUM(CASE WHEN LOWER(f.severity) IN ('high', 'critical') THEN 1 ELSE 0 END), 0) AS high_count,
+		       COALESCE(SUM(CASE WHEN LOWER(f.severity) = 'critical' THEN 1 ELSE 0 END), 0) AS crit_count,
+		       COALESCE(SUM(CASE WHEN LOWER(f.severity) = 'medium' THEN 1 ELSE 0 END), 0) AS med_count,
+		       COALESCE(SUM(CASE WHEN LOWER(f.severity) = 'low' THEN 1 ELSE 0 END), 0) AS low_count,
+		       COALESCE(SUM(CASE WHEN LOWER(f.severity) = 'info' THEN 1 ELSE 0 END), 0) AS info_count
 		FROM scan_results s
 		LEFT JOIN scan_findings f ON s.id = f.scan_id
 	`
@@ -218,13 +257,32 @@ func (s *Store) ListScanSummaries(deviceSerial string) ([]ScanSummaryRecord, err
 	var summaries []ScanSummaryRecord
 	for rows.Next() {
 		var sum ScanSummaryRecord
+		var critCount, medCount, lowCount, infoCount int
 		err := rows.Scan(
 			&sum.ID, &sum.DeviceSerial, &sum.Mode, &sum.StartedAt, &sum.FinishedAt,
 			&sum.FindingCount, &sum.HighSeverityCount,
+			&critCount, &medCount, &lowCount, &infoCount,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scan summary row: %w", err)
 		}
+
+		sum.Counts = map[string]int{
+			"critical": critCount,
+			"high":     sum.HighSeverityCount - critCount,
+			"medium":   medCount,
+			"low":      lowCount,
+			"info":     infoCount,
+		}
+
+		if sum.HighSeverityCount > 0 {
+			sum.Verdict = "high_risk"
+		} else if medCount > 0 {
+			sum.Verdict = "review"
+		} else {
+			sum.Verdict = "clean"
+		}
+
 		summaries = append(summaries, sum)
 	}
 	return summaries, rows.Err()

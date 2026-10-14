@@ -8,7 +8,7 @@ why: Application holds both fullscreen overlay and boot autostart privileges, al
 false_positive_hint: Certain assistive touch and call recording utilities legitimately run at boot and display overlays.
 remediation:
   - disable
-  - revoke-permission
+  - revoke_permission
   - uninstall
 conditions:
   is_system: false

@@ -1,9 +1,42 @@
 # PROGRESS
 
 ## Status sekarang
-- Fase aktif: 6 — Hardening, Installer & Rilis v1.0.0 (Tahap T6) [Selesai]
-- Branch: phase/6-release
+- Fase aktif: Fidelity Hardening — Selesai Penuh (P0, P1, P2, P3)
+- Branch: phase/fidelity-hardening
 - Terakhir selesai: Tahap 6 — Hardening, Installer & Rilis v1.0.0 (tag v1.0.0)
+
+## Fase Fidelity Hardening (P2: Popup Hunter Concurrency & Wiring, P3: Strict Rules Validation) — checklist
+- [x] Sub-tugas P2.1: Eliminasi potensi deadlock re-entrant `RLock` pada `internal/monitor/monitor.go:Snapshot` dengan helper `statusLocked()`
+- [x] Sub-tugas P2.2: Penyelarasan enum `EventType` monitor ke Kontrak 1.0.0 (`foreground_switch`, `overlay_shown`, `notification_posted`)
+- [x] Sub-tugas P2.3: Pembatasan timeline per kandidat (max 50) dan deduplikasi polling `TYPE_APPLICATION_OVERLAY` pada collector
+- [x] Sub-tugas P2.4: Penegakan korelasi jendela waktu 3 detik (< 3000ms) pada `MarkUserPopup` dan eliminasi atribusi event basi
+- [x] Sub-tugas P2.5: Pengkabelan `MonitorMarkPopup` dari tombol "Popup Just Appeared!" di UI React via bridge Wails ke backend Go tanpa mock statis
+- [x] Sub-tugas P2.6: Refleksi sumber aktif yang faktual (`["dumpsys window"]`) tanpa klaim unverified logcat
+- [x] Sub-tugas P3.1: Validasi ketat YAML rules saat load (`ValidateRule`) untuk tipe aksi remediasi resmi (`disable`, `uninstall`, `revoke_permission`, `clear_appop`)
+- [x] Sub-tugas P3.2: Penegakan minimal satu kriteria kondisi matching (`HasAnyCondition`) dan perbaikan sintaks tipe remediasi pada rule YAML
+
+## Pengukuran & Kualitas (P2 & P3: Popup Hunter & Rules Hardening)
+- **Backend Go Test Suite**: 100% test lulus di seluruh 16 paket backend Go (`internal/logx`, `internal/secrets`, `internal/store`, `internal/adb`, `internal/preflight`, `internal/inventory`, `internal/apk`, `internal/rules`, `internal/engine`, `internal/intel`, `internal/audit`, `internal/monitor`, `internal/remediate`, `internal/report`, `internal/contract`, dan root `main`).
+- **Concurrency & Deadlock Prevention**: Pengujian konkuren 200 iterasi reader/writer simultan pada monitor manager lulus tanpa deadlock (`TestMonitorConcurrentSnapshotNoDeadlock`).
+- **3-Second Correlation Proximity**: Event > 3 detik diabaikan secara ketat; event <= 3 detik diatribusikan dengan bobot akurat (`TestMarkUserPopupThreeSecondWindow`).
+- **Rules Schema Integrity**: 100% dari 8 rule YAML lolos validasi taksonomi, bobot (1-100), severity, confidence, dan aksi remediasi resmi.
+- **Frontend Vitest Suite**: 118 pengujian lolos di 20 file tes (`npm run test`).
+- **ESLint & TypeScript**: 0 error, 0 warning pada `npm run lint` & `npm run typecheck`.
+- **Production Compilation (`wails build`)**: Standalone binary Windows x64 `build/bin/Jerion.exe` terkompilasi bersih dalam 18.2 detik.
+
+## Fase Fidelity Hardening (P1: Evidence Preservation & Canonical Scan ID) — riwayat selesai
+- [x] Sub-tugas P1.1: Penyelarasan ID Kanonis Scan (`ScanOptions.ScanID`) antara `app.go:ScanStart` dan `internal/engine/scanner.go:Scan`
+- [x] Sub-tugas P1.2: Pelaporan status scan parsial nyata (`Partial: isPartial`) bila ekstraksi/inspeksi APK pada Deep Scan mengalami kegagalan
+- [x] Sub-tugas P1.3: Pemetaan delta temuan forensik lengkap pada `ReportCompare()` (`NewFindings`, `ResolvedFindings`, `UnchangedFindings`) via `convertStoreFinding`
+- [x] Sub-tugas P1.4: Perhitungan agregasi 5 tingkat severity & penentuan verdict dinamis pada `store.ListScanSummaries` dan `app.go:ReportList`
+- [x] Sub-tugas P1.5: Pemanfaatan metadata perangkat nyata dari SQLite pada `ReportExport` (HTML & JSON) tanpa mock
+
+## Fase Fidelity Hardening (P0: Data Fidelity & Remediation Safety) — riwayat selesai
+- [x] Sub-tugas P0.1: Eliminasi fallback data perangkat semu (`Android 12`, `SDK 31`, `85%`) pada `convertDevice` di `app.go`
+- [x] Sub-tugas P0.2: Penegakan syarat wajib backup APK sebelum uninstall aplikasi pengguna pada `internal/remediate` (`BackupFailed` guardrail)
+- [x] Sub-tugas P0.3: Pengkabelan rencana remediasi nyata berdasarkan finding ID tanpa dummy `com.adware.sample` (`RemediateCreatePlan` & `RemediateExecute`)
+- [x] Sub-tugas P0.4: Verifikasi integritas checksum SHA-256 wajib pada unduhan ADB platform-tools Google (ADR-0002)
+- [x] Sub-tugas P0.5: Akurasi metadata aplikasi (`targetSdk`, `minSdk`, timestamp kosong jika tidak ada) & ringkasan scan `TotalApps` dinamis
 
 ## Fase 6 (Tahap T6) — riwayat selesai
 - [x] Sub-tugas 6.1: Konfigurasi Windows NSIS Installer & Packaging Final

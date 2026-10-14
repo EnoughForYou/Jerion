@@ -13,6 +13,7 @@ describe('Bridge Selector & Version', () => {
     expect(typeof bridge.device.getConnected).toBe('function');
     expect(typeof bridge.scan.quickScan).toBe('function');
     expect(typeof bridge.monitor.start).toBe('function');
+    expect(typeof bridge.monitor.markPopup).toBe('function');
     expect(typeof bridge.audit.run).toBe('function');
     expect(typeof bridge.remediate.execute).toBe('function');
     expect(typeof bridge.report.list).toBe('function');
