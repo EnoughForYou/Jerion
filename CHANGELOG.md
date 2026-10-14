@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Fidelity Hardening & Forensic Integrity**:
+  - **ADB Distribution & Official Checksum Verification**: Pinned official platform-tools download to Google Platform-Tools r37.0.1 (`platform-tools_r37.0.1-win.zip`) with verified SHA-256 integrity catalogs across Windows (`45f4d631...`), macOS (`ee39ad59...`), and Linux (`d230f138...`).
+  - **Remediation Boundary Security & Target Sanitization**: Implemented regex-based permission cleaning stripping evidence prefixes (`Declared/Requested:`) preventing validation errors, enforced mandatory non-empty target validation on `revoke_permission` and `clear_appop` rejecting bypasses with `InvalidAction`, and strictly validated that executed remediation actions originate from backend-verified plans.
+  - **Runtime Metadata Fidelity**: Evaluated overlay permissions strictly from granted permissions (`GrantedPermissions`), queried active accessibility services from system settings, active device admins from device policy manager, and battery optimization whitelist status from `deviceidle`, with conditional battery UI display avoiding misleading `0%` indications.
+  - **Scan Statistics Persistence & Error Handling**: Added SQLite migration v2 introducing `total_apps` column to `scan_results`, ensuring clean scans with zero findings accurately retain the count of apps scanned. Handled scan database persistence errors explicitly and scoped finding IDs to unique scan sessions.
+  - **Strict Rule Engine Decoding**: Integrated `yaml.NewDecoder` with `KnownFields(true)` across all detection rule packs, strictly rejecting unrecognized or misspelled YAML attributes.
+
 ## [1.0.0] - 2026-10-14
 
 ### Added
