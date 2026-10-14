@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"bytes"
 	"embed"
 	"fmt"
 	"io/fs"
@@ -142,8 +143,10 @@ func LoadEmbeddedRules() ([]RuleDefinition, error) {
 			return fmt.Errorf("read rule file %s: %w", path, err)
 		}
 
+		dec := yaml.NewDecoder(bytes.NewReader(data))
+		dec.KnownFields(true)
 		var rule RuleDefinition
-		if err := yaml.Unmarshal(data, &rule); err != nil {
+		if err := dec.Decode(&rule); err != nil {
 			return fmt.Errorf("unmarshal rule %s: %w", path, err)
 		}
 

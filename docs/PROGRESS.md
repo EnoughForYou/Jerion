@@ -1,28 +1,27 @@
 # PROGRESS
 
 ## Status sekarang
-- Fase aktif: Fidelity Hardening — Selesai Penuh (P0, P1, P2, P3)
-- Branch: phase/fidelity-hardening
+- Fase aktif: Fidelity Hardening Round 2 — Selesai Penuh
+- Branch: phase/fidelity-hardening-2
 - Terakhir selesai: Tahap 6 — Hardening, Installer & Rilis v1.0.0 (tag v1.0.0)
 
-## Fase Fidelity Hardening (P2: Popup Hunter Concurrency & Wiring, P3: Strict Rules Validation) — checklist
-- [x] Sub-tugas P2.1: Eliminasi potensi deadlock re-entrant `RLock` pada `internal/monitor/monitor.go:Snapshot` dengan helper `statusLocked()`
-- [x] Sub-tugas P2.2: Penyelarasan enum `EventType` monitor ke Kontrak 1.0.0 (`foreground_switch`, `overlay_shown`, `notification_posted`)
-- [x] Sub-tugas P2.3: Pembatasan timeline per kandidat (max 50) dan deduplikasi polling `TYPE_APPLICATION_OVERLAY` pada collector
-- [x] Sub-tugas P2.4: Penegakan korelasi jendela waktu 3 detik (< 3000ms) pada `MarkUserPopup` dan eliminasi atribusi event basi
-- [x] Sub-tugas P2.5: Pengkabelan `MonitorMarkPopup` dari tombol "Popup Just Appeared!" di UI React via bridge Wails ke backend Go tanpa mock statis
-- [x] Sub-tugas P2.6: Refleksi sumber aktif yang faktual (`["dumpsys window"]`) tanpa klaim unverified logcat
-- [x] Sub-tugas P3.1: Validasi ketat YAML rules saat load (`ValidateRule`) untuk tipe aksi remediasi resmi (`disable`, `uninstall`, `revoke_permission`, `clear_appop`)
-- [x] Sub-tugas P3.2: Penegakan minimal satu kriteria kondisi matching (`HasAnyCondition`) dan perbaikan sintaks tipe remediasi pada rule YAML
+## Fase Fidelity Hardening Round 2 (Checksum, Remediation Safety, Runtime Fidelity & Persistence) — checklist
+- [x] Sub-tugas H2.1: Penguncian URL arsip unduhan ADB ke Google Platform-Tools r37.0.1 resmi (`platform-tools_r37.0.1-win.zip`) dan pembaruan katalog SHA-256 (`45f4d631...` Windows, `ee39ad59...` Darwin, `d230f138...` Linux)
+- [x] Sub-tugas H2.2: Ekstraksi permission bersih tanpa prefiks (`Declared/Requested:`) pada `RemediateCreatePlan` dan penolakan aksi target kosong pada `internal/remediate`
+- [x] Sub-tugas H2.3: Validasi ketat rencana aksi backend pada `RemediateExecute` dan penolakan action ID yang tidak dikenal (`InvalidAction`)
+- [x] Sub-tugas H2.4: Akurasi metadata runtime: overlay aktif dari `GrantedPermissions`, status live Accessibility & Device Admin, optimasi baterai dari `dumpsys deviceidle whitelist`, dan mitigasi visual baterai `--`
+- [x] Sub-tugas H2.5: Persistensi statistik scan (`TotalApps`) di SQLite schema v2 (`scan_results.total_apps`), pelaporan eksplisit error `SaveScanResult`, dan scoping unik finding ID per scan
+- [x] Sub-tugas H2.6: Penegakan strict YAML decoding dengan `KnownFields(true)` pada rule engine loader
 
-## Pengukuran & Kualitas (P2 & P3: Popup Hunter & Rules Hardening)
+## Pengukuran & Kualitas (Fidelity Hardening Round 2)
 - **Backend Go Test Suite**: 100% test lulus di seluruh 16 paket backend Go (`internal/logx`, `internal/secrets`, `internal/store`, `internal/adb`, `internal/preflight`, `internal/inventory`, `internal/apk`, `internal/rules`, `internal/engine`, `internal/intel`, `internal/audit`, `internal/monitor`, `internal/remediate`, `internal/report`, `internal/contract`, dan root `main`).
-- **Concurrency & Deadlock Prevention**: Pengujian konkuren 200 iterasi reader/writer simultan pada monitor manager lulus tanpa deadlock (`TestMonitorConcurrentSnapshotNoDeadlock`).
-- **3-Second Correlation Proximity**: Event > 3 detik diabaikan secara ketat; event <= 3 detik diatribusikan dengan bobot akurat (`TestMarkUserPopupThreeSecondWindow`).
-- **Rules Schema Integrity**: 100% dari 8 rule YAML lolos validasi taksonomi, bobot (1-100), severity, confidence, dan aksi remediasi resmi.
+- **ADB Downloader Integrity**: Checksum SHA-256 r37.0.1 terverifikasi matematis terhadap arsip resmi Google (`45f4d631...` Windows, `ee39ad59...` Darwin, `d230f138...` Linux).
+- **Remediation Boundary Security**: Eksekusi aksi tanpa ID rencana backend tertolak (`wireError("InvalidAction")`); pencabutan permission dengan target kosong ditolak; prefiks permission disanitasi.
+- **Scan Persistence & Clean Scan Accuracy**: Kolom SQLite `total_apps` persisten di schema v2; riwayat scan bersih dengan 0 temuan tetap menampilkan jumlah aplikasi nyata tanpa hilang.
+- **Rule Engine Schema Strictness**: Seluruh rule YAML tervalidasi dengan `KnownFields(true)`, field asing/salah ketik otomatis ditolak saat startup.
 - **Frontend Vitest Suite**: 118 pengujian lolos di 20 file tes (`npm run test`).
 - **ESLint & TypeScript**: 0 error, 0 warning pada `npm run lint` & `npm run typecheck`.
-- **Production Compilation (`wails build`)**: Standalone binary Windows x64 `build/bin/Jerion.exe` terkompilasi bersih dalam 18.2 detik.
+- **Production Compilation (`wails build`)**: Standalone binary Windows x64 `build/bin/Jerion.exe` terkompilasi bersih dalam 19.1 detik.
 
 ## Fase Fidelity Hardening (P1: Evidence Preservation & Canonical Scan ID) — riwayat selesai
 - [x] Sub-tugas P1.1: Penyelarasan ID Kanonis Scan (`ScanOptions.ScanID`) antara `app.go:ScanStart` dan `internal/engine/scanner.go:Scan`

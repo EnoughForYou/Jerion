@@ -147,7 +147,7 @@ func (s *Scanner) Scan(
 						intelRes, _ := s.intel.Lookup(ctx, inspected.SHA256)
 						if intelRes != nil && intelRes.Classification != intel.ClassClean {
 							allFindings = append(allFindings, Finding{
-								ID:                fmt.Sprintf("f-intel-%s", pkgName),
+								ID:                fmt.Sprintf("%s-f-intel-%s", scanID, pkgName),
 								RuleID:            "INTEL-HASH-001",
 								Package:           pkgName,
 								Category:          string(intelRes.Classification),
@@ -176,7 +176,10 @@ func (s *Scanner) Scan(
 
 		// Evaluate declarative rules
 		findings := s.evaluator.EvaluateApp(*detailApp, apkDetail)
-		allFindings = append(allFindings, findings...)
+		for _, f := range findings {
+			f.ID = fmt.Sprintf("%s-%s", scanID, f.ID)
+			allFindings = append(allFindings, f)
+		}
 	}
 
 	if onProgress != nil {
@@ -225,7 +228,7 @@ func (s *Scanner) Scan(
 			})
 		}
 
-		_ = s.store.SaveScanResult(store.ScanRecord{
+		err := s.store.SaveScanResult(store.ScanRecord{
 			ID:           scanID,
 			DeviceSerial: serial,
 			Mode:         opts.Mode,
@@ -234,8 +237,13 @@ func (s *Scanner) Scan(
 			RulesVersion: "1.0.0",
 			AppVersion:   "0.4.0",
 			Partial:      isPartial,
+			TotalApps:    totalApps,
 			Findings:     storeFindings,
 		})
+		if err != nil {
+			s.logger.Error("engine: failed to save scan result to database", "scanId", scanID, "err", err)
+			return result, fmt.Errorf("failed to save scan result to history: %w", err)
+		}
 	}
 
 	if onProgress != nil {

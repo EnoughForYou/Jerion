@@ -1,7 +1,10 @@
 package rules
 
 import (
+	"bytes"
 	"testing"
+
+	"gopkg.in/yaml.v3"
 )
 
 func TestLoadEmbeddedRules(t *testing.T) {
@@ -80,5 +83,30 @@ func TestValidateRule(t *testing.T) {
 	emptyCond.Conditions = RuleConditions{}
 	if err := ValidateRule(&emptyCond); err == nil {
 		t.Errorf("expected rejection for rule with empty conditions")
+	}
+}
+
+func TestStrictYAMLDecodingRejectsUnknownFields(t *testing.T) {
+	badYAML := `
+id: TEST-001
+title: Unknown Field Rule
+category: adware
+severity: high
+confidence: high
+weight: 80
+why: Test
+false_positive_hint: Hint
+remediation:
+  - disable
+conditions:
+  installer: sideload
+unknown_unsupported_field: true
+`
+	dec := yaml.NewDecoder(bytes.NewReader([]byte(badYAML)))
+	dec.KnownFields(true)
+	var rule RuleDefinition
+	err := dec.Decode(&rule)
+	if err == nil {
+		t.Fatal("expected strict decoder to reject unknown field, but it succeeded")
 	}
 }

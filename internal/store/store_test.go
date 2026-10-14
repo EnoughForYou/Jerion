@@ -110,6 +110,7 @@ func TestStoreScansAndFindings(t *testing.T) {
 		RulesVersion: "1.0.0",
 		AppVersion:   "0.4.0",
 		Partial:      false,
+		TotalApps:    42,
 		Findings: []FindingRecord{
 			{
 				ID:                "f-001",
@@ -140,7 +141,7 @@ func TestStoreScansAndFindings(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetScanResult failed: %v", err)
 	}
-	if loaded.Mode != "quick" || len(loaded.Findings) != 1 {
+	if loaded.Mode != "quick" || len(loaded.Findings) != 1 || loaded.TotalApps != 42 {
 		t.Fatalf("unexpected loaded scan: %+v", loaded)
 	}
 	if loaded.Findings[0].RuleID != "ADWARE-001" || len(loaded.Findings[0].Evidence) != 1 {
@@ -152,7 +153,7 @@ func TestStoreScansAndFindings(t *testing.T) {
 	if err != nil || len(summaries) != 1 {
 		t.Fatalf("ListScanSummaries failed: %v", err)
 	}
-	if summaries[0].FindingCount != 1 || summaries[0].HighSeverityCount != 1 {
+	if summaries[0].FindingCount != 1 || summaries[0].HighSeverityCount != 1 || summaries[0].TotalApps != 42 {
 		t.Fatalf("unexpected summary count: %+v", summaries[0])
 	}
 

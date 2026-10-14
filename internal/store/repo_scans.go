@@ -43,6 +43,7 @@ type ScanRecord struct {
 	RulesVersion string          `json:"rulesVersion"`
 	AppVersion   string          `json:"appVersion"`
 	Partial      bool            `json:"partial"`
+	TotalApps    int             `json:"totalApps"`
 	Findings     []FindingRecord `json:"findings"`
 }
 
@@ -55,6 +56,7 @@ type ScanSummaryRecord struct {
 	FinishedAt        time.Time      `json:"finishedAt"`
 	FindingCount      int            `json:"findingCount"`
 	HighSeverityCount int            `json:"highSeverityCount"`
+	TotalApps         int            `json:"totalApps"`
 	Counts            map[string]int `json:"counts"`
 	Verdict           string         `json:"verdict"`
 }
@@ -78,14 +80,15 @@ func (s *Store) SaveScanResult(scan ScanRecord) error {
 	}
 
 	insertScan := `
-		INSERT INTO scan_results (id, device_serial, mode, started_at, finished_at, rules_version, app_version, partial)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO scan_results (id, device_serial, mode, started_at, finished_at, rules_version, app_version, partial, total_apps)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			finished_at = excluded.finished_at,
-			partial = excluded.partial;
+			partial = excluded.partial,
+			total_apps = excluded.total_apps;
 	`
 	_, err = tx.Exec(insertScan,
-		scan.ID, scan.DeviceSerial, scan.Mode, scan.StartedAt, scan.FinishedAt, scan.RulesVersion, scan.AppVersion, partialInt,
+		scan.ID, scan.DeviceSerial, scan.Mode, scan.StartedAt, scan.FinishedAt, scan.RulesVersion, scan.AppVersion, partialInt, scan.TotalApps,
 	)
 	if err != nil {
 		return fmt.Errorf("insert scan_result: %w", err)
@@ -142,11 +145,11 @@ func (s *Store) GetScanResult(id string) (*ScanRecord, error) {
 	var scan ScanRecord
 	var partialInt int
 	query := `
-		SELECT id, device_serial, mode, started_at, finished_at, rules_version, app_version, partial
+		SELECT id, device_serial, mode, started_at, finished_at, rules_version, app_version, partial, total_apps
 		FROM scan_results WHERE id = ?
 	`
 	err := s.db.QueryRow(query, id).Scan(
-		&scan.ID, &scan.DeviceSerial, &scan.Mode, &scan.StartedAt, &scan.FinishedAt, &scan.RulesVersion, &scan.AppVersion, &partialInt,
+		&scan.ID, &scan.DeviceSerial, &scan.Mode, &scan.StartedAt, &scan.FinishedAt, &scan.RulesVersion, &scan.AppVersion, &partialInt, &scan.TotalApps,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -231,7 +234,7 @@ func (s *Store) ListScanSummaries(deviceSerial string) ([]ScanSummaryRecord, err
 	defer s.mu.RUnlock()
 
 	query := `
-		SELECT s.id, s.device_serial, s.mode, s.started_at, s.finished_at,
+		SELECT s.id, s.device_serial, s.mode, s.started_at, s.finished_at, s.total_apps,
 		       COUNT(f.id) AS finding_count,
 		       COALESCE(SUM(CASE WHEN LOWER(f.severity) IN ('high', 'critical') THEN 1 ELSE 0 END), 0) AS high_count,
 		       COALESCE(SUM(CASE WHEN LOWER(f.severity) = 'critical' THEN 1 ELSE 0 END), 0) AS crit_count,
@@ -259,7 +262,7 @@ func (s *Store) ListScanSummaries(deviceSerial string) ([]ScanSummaryRecord, err
 		var sum ScanSummaryRecord
 		var critCount, medCount, lowCount, infoCount int
 		err := rows.Scan(
-			&sum.ID, &sum.DeviceSerial, &sum.Mode, &sum.StartedAt, &sum.FinishedAt,
+			&sum.ID, &sum.DeviceSerial, &sum.Mode, &sum.StartedAt, &sum.FinishedAt, &sum.TotalApps,
 			&sum.FindingCount, &sum.HighSeverityCount,
 			&critCount, &medCount, &lowCount, &infoCount,
 		)

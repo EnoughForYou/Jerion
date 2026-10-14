@@ -21,25 +21,28 @@ import (
 func PlatformToolsDownloadURL() string {
 	switch runtime.GOOS {
 	case "windows":
-		return "https://dl.google.com/android/repository/platform-tools-latest-windows.zip"
+		return "https://dl.google.com/android/repository/platform-tools_r37.0.1-win.zip"
 	case "darwin":
-		return "https://dl.google.com/android/repository/platform-tools-latest-darwin.zip"
+		return "https://dl.google.com/android/repository/platform-tools_r37.0.1-darwin.zip"
 	default:
-		return "https://dl.google.com/android/repository/platform-tools-latest-linux.zip"
+		return "https://dl.google.com/android/repository/platform-tools_r37.0.1-linux.zip"
 	}
 }
 
 // TrustedPlatformToolsHashes maintains a catalog of known official Google platform-tools SHA-256 digests.
 var TrustedPlatformToolsHashes = map[string][]string{
 	"windows": {
+		"45f4d63113e895ebde0c90f194099a4676b6ac653bd28d54314a9e022bbc1a99", // r37.0.1 Windows (and latest-windows.zip)
 		"86be168bfaae7ea1d86f9f5926ec3ba04164b4c73656910e54d89fa7a00f8aa4", // r35.0.2 Windows
 		"0c7fa823a31c50e419b4fcb5fdfcbbbe94e77749a215386db4b50c534433017a", // r35.0.1 Windows
 		"e4125d038eaeb6f391b1511fa6770f5e714652c7921a2f64fcb9e38d4c1537dc", // r34.0.5 Windows
 	},
 	"darwin": {
+		"ee39ad5967e95c2a07f04dbcbde96b1a0c916ba376096db5d2f498b7727a5d1d", // r37.0.1 Darwin
 		"6106e236314f36a56e297825d19aa91f14a60155a0247fe051871a2a1a2b25c3",
 	},
 	"linux": {
+		"d230f13842f60f782a8645f9c813f8f845bf36089ea7289f28c48f17979313f1", // r37.0.1 Linux
 		"7f2ec9cf5c6628c5a2c4e857ff17135ee7d21c0ad19a7168307db1854bc2845c",
 	},
 }

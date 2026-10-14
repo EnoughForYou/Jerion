@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -54,6 +55,33 @@ func wrapADBError(err error) error {
 		}
 	}
 	return wireError("InternalError", err.Error(), "Check application logs")
+}
+
+var rePermissionSnippet = regexp.MustCompile(`[a-zA-Z0-9_.]+\.permission\.[a-zA-Z0-9_]+`)
+
+func extractCleanPermission(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if m := rePermissionSnippet.FindString(raw); m != "" {
+		return m
+	}
+	for _, p := range []string{"Declared/Requested:", "Requested:", "Granted:", "Declared:"} {
+		if strings.HasPrefix(raw, p) {
+			raw = strings.TrimSpace(strings.TrimPrefix(raw, p))
+		}
+	}
+	if adb.ValidatePermissionName(raw) == nil {
+		return raw
+	}
+	return ""
+}
+
+func containsString(slice []string, val string) bool {
+	for _, item := range slice {
+		if item == val {
+			return true
+		}
+	}
+	return false
 }
 
 // App encapsulates all backend services exposed to Wails v2.
@@ -420,6 +448,48 @@ func (a *App) InventoryList(filter contract.InventoryFilter) ([]contract.AppInfo
 		return nil, wireError("AdbMissing", err.Error(), "Ensure ADB is running")
 	}
 
+	// Fetch active system states once for batch accuracy
+	accessMap := make(map[string]bool)
+	if out, _, runErr := a.runner.Run(ctx, serial, "shell", "settings", "get", "secure", "enabled_accessibility_services"); runErr == nil {
+		raw := strings.TrimSpace(string(out))
+		if raw != "" && raw != "null" && raw != "value is null" {
+			for _, svc := range strings.Split(raw, ":") {
+				parts := strings.Split(svc, "/")
+				if len(parts) > 0 && parts[0] != "" {
+					accessMap[parts[0]] = true
+				}
+			}
+		}
+	}
+
+	adminMap := make(map[string]bool)
+	if out, _, runErr := a.runner.Run(ctx, serial, "shell", "dpm", "list-owners"); runErr == nil {
+		for _, line := range strings.Split(string(out), "\n") {
+			line = strings.TrimSpace(line)
+			if strings.Contains(line, "/") {
+				pkg := strings.Split(line, "/")[0]
+				pkg = strings.TrimSpace(strings.TrimPrefix(pkg, "admin="))
+				if pkg != "" {
+					adminMap[pkg] = true
+				}
+			}
+		}
+	}
+
+	whitelistMap := make(map[string]bool)
+	if out, _, runErr := a.runner.Run(ctx, serial, "shell", "dumpsys", "deviceidle", "whitelist"); runErr == nil {
+		for _, line := range strings.Split(string(out), "\n") {
+			line = strings.TrimSpace(line)
+			parts := strings.Split(line, ",")
+			for _, p := range parts {
+				p = strings.TrimSpace(p)
+				if p != "" {
+					whitelistMap[p] = true
+				}
+			}
+		}
+	}
+
 	var res []contract.AppInfo
 	for _, app := range apps {
 		if filter.Search != "" {
@@ -428,7 +498,7 @@ func (a *App) InventoryList(filter contract.InventoryFilter) ([]contract.AppInfo
 				continue
 			}
 		}
-		res = append(res, a.convertAppInfo(app))
+		res = append(res, a.convertAppInfo(app, accessMap, adminMap, whitelistMap))
 	}
 
 	return res, nil
@@ -450,7 +520,28 @@ func (a *App) InventoryGet(packageName string) (*contract.AppInfo, error) {
 		return nil, wireError("ParseFailure", err.Error(), "Check package existence")
 	}
 
-	appDto := a.convertAppInfo(*detail)
+	accessMap := make(map[string]bool)
+	if out, _, runErr := a.runner.Run(ctx, serial, "shell", "settings", "get", "secure", "enabled_accessibility_services"); runErr == nil {
+		if strings.Contains(string(out), packageName+"/") {
+			accessMap[packageName] = true
+		}
+	}
+
+	adminMap := make(map[string]bool)
+	if out, _, runErr := a.runner.Run(ctx, serial, "shell", "dpm", "list-owners"); runErr == nil {
+		if strings.Contains(string(out), packageName) {
+			adminMap[packageName] = true
+		}
+	}
+
+	whitelistMap := make(map[string]bool)
+	if out, _, runErr := a.runner.Run(ctx, serial, "shell", "dumpsys", "deviceidle", "is-whitelisted", packageName); runErr == nil {
+		if strings.TrimSpace(string(out)) == "true" {
+			whitelistMap[packageName] = true
+		}
+	}
+
+	appDto := a.convertAppInfo(*detail, accessMap, adminMap, whitelistMap)
 	return &appDto, nil
 }
 
@@ -478,7 +569,7 @@ func (a *App) InventoryExtractApk(packageName string, targetPath string) (string
 	return basePath, nil
 }
 
-func (a *App) convertAppInfo(app inventory.AppInfo) contract.AppInfo {
+func (a *App) convertAppInfo(app inventory.AppInfo, activeAccessMap map[string]bool, activeAdminMap map[string]bool, batteryWhitelistMap map[string]bool) contract.AppInfo {
 	installedAt := ""
 	if !app.FirstInstall.IsZero() {
 		installedAt = app.FirstInstall.UTC().Format(time.RFC3339)
@@ -496,25 +587,34 @@ func (a *App) convertAppInfo(app inventory.AppInfo) contract.AppInfo {
 	}
 
 	var dangPerms []string
-	hasOverlay := false
-	hasAccess := false
-	isDevAdmin := false
 	for _, p := range perms {
-		if strings.Contains(p, "SYSTEM_ALERT_WINDOW") {
+		if strings.Contains(p, "SYSTEM_ALERT_WINDOW") ||
+			strings.Contains(p, "BIND_ACCESSIBILITY_SERVICE") ||
+			strings.Contains(p, "BIND_DEVICE_ADMIN") ||
+			strings.Contains(p, "RECEIVE_BOOT_COMPLETED") {
 			dangPerms = append(dangPerms, p)
-			hasOverlay = true
-		}
-		if strings.Contains(p, "BIND_ACCESSIBILITY_SERVICE") {
-			dangPerms = append(dangPerms, p)
-			hasAccess = true
-		}
-		if strings.Contains(p, "BIND_DEVICE_ADMIN") {
-			dangPerms = append(dangPerms, p)
-			isDevAdmin = true
 		}
 	}
 	if len(dangPerms) == 0 {
 		dangPerms = []string{}
+	}
+
+	// Active overlay check: must be actively granted
+	hasOverlay := containsString(app.GrantedPermissions, "android.permission.SYSTEM_ALERT_WINDOW")
+
+	hasAccess := false
+	if activeAccessMap != nil {
+		hasAccess = activeAccessMap[app.Package]
+	}
+
+	isDevAdmin := false
+	if activeAdminMap != nil {
+		isDevAdmin = activeAdminMap[app.Package]
+	}
+
+	isBatteryOptimized := true
+	if batteryWhitelistMap != nil {
+		isBatteryOptimized = !batteryWhitelistMap[app.Package]
 	}
 
 	sigs := app.CertSHA256
@@ -528,6 +628,12 @@ func (a *App) convertAppInfo(app inventory.AppInfo) contract.AppInfo {
 	}
 	if hasOverlay {
 		flags = append(flags, "overlay_granted")
+	}
+	if hasAccess {
+		flags = append(flags, "accessibility_active")
+	}
+	if isDevAdmin {
+		flags = append(flags, "device_admin_active")
 	}
 
 	return contract.AppInfo{
@@ -547,7 +653,7 @@ func (a *App) convertAppInfo(app inventory.AppInfo) contract.AppInfo {
 		HasOverlayPermission:       hasOverlay,
 		HasAccessibilityPermission: hasAccess,
 		IsDeviceAdmin:              isDevAdmin,
-		IsBatteryOptimized:         false,
+		IsBatteryOptimized:         isBatteryOptimized,
 		Signatures:                 sigs,
 		SuspiciousFlags:            flags,
 	}
@@ -867,14 +973,16 @@ func (a *App) convertStoreScanRecord(record *store.ScanRecord) contract.ScanResu
 		compAt = &s
 	}
 
-	totalApps := 0
-	pkgs := make(map[string]struct{})
-	for _, f := range record.Findings {
-		if f.Package != "" {
-			pkgs[f.Package] = struct{}{}
+	totalApps := record.TotalApps
+	if totalApps == 0 {
+		pkgs := make(map[string]struct{})
+		for _, f := range record.Findings {
+			if f.Package != "" {
+				pkgs[f.Package] = struct{}{}
+			}
 		}
+		totalApps = len(pkgs)
 	}
-	totalApps = len(pkgs)
 
 	status := "completed"
 	if record.Partial {
@@ -1074,8 +1182,11 @@ func (a *App) RemediateCreatePlan(findingIds []string) (contract.RemediationPlan
 				actionType = foundFinding.RecommendedAction.Type
 			}
 			for _, ev := range foundFinding.Evidence {
-				if ev.Type == "permission" && strings.Contains(ev.Details, "android.permission.") {
-					perm = strings.TrimSpace(ev.Details)
+				if ev.Type == "permission" && strings.Contains(ev.Details, "permission.") {
+					cleaned := extractCleanPermission(ev.Details)
+					if cleaned != "" {
+						perm = cleaned
+					}
 				}
 			}
 		} else if a.store != nil {
@@ -1087,8 +1198,11 @@ func (a *App) RemediateCreatePlan(findingIds []string) (contract.RemediationPlan
 					actionType = record.Actions[0]
 				}
 				for _, ev := range record.Evidence {
-					if strings.Contains(ev.Snippet, "android.permission.") {
-						perm = strings.TrimSpace(ev.Snippet)
+					if strings.Contains(ev.Snippet, "permission.") {
+						cleaned := extractCleanPermission(ev.Snippet)
+						if cleaned != "" {
+							perm = cleaned
+						}
 					}
 				}
 			}
@@ -1097,6 +1211,18 @@ func (a *App) RemediateCreatePlan(findingIds []string) (contract.RemediationPlan
 		if pkg == "" {
 			a.logger.Warn("remediate: finding not found or missing package", "findingId", fid)
 			continue
+		}
+
+		if actionType == remediate.ActionRevokePermission && perm == "" {
+			actionType = remediate.ActionDisable
+		}
+		if actionType == remediate.ActionClearAppop {
+			if strings.Contains(perm, "SYSTEM_ALERT_WINDOW") {
+				appop = "SYSTEM_ALERT_WINDOW"
+			}
+			if appop == "" {
+				actionType = remediate.ActionDisable
+			}
 		}
 
 		// Detect if system package
@@ -1153,21 +1279,11 @@ func (a *App) RemediateExecute(plan contract.RemediationPlan) ([]contract.Action
 		cachedAct, exists := a.cachedActions[actDto.ID]
 		a.mu.RUnlock()
 
-		var action remediate.Action
-		if exists {
-			action = cachedAct
-		} else {
-			// Detect system package dynamically if not in memory
-			isSystem := false
-			stdout, _, runErr := a.runner.Run(ctx, serial, "shell", "pm", "path", actDto.Package)
-			if runErr == nil {
-				p := string(stdout)
-				if strings.Contains(p, "/system/") || strings.Contains(p, "/product/") || strings.Contains(p, "/vendor/") || strings.Contains(p, "/apex/") {
-					isSystem = true
-				}
-			}
-			action = a.remediate.CreateAction(actDto.Type, actDto.Package, "", "", isSystem)
+		if !exists {
+			a.logger.Warn("remediate: unrecognized or expired action ID in plan", "actionId", actDto.ID, "package", actDto.Package)
+			return nil, wireError("InvalidAction", fmt.Sprintf("Action ID '%s' is unrecognized or expired. Actions must originate from a verified backend plan.", actDto.ID), "Re-generate the remediation plan before executing.")
 		}
+		action := cachedAct
 
 		logEntry, execErr := a.remediate.Execute(ctx, serial, action)
 		if logEntry != nil {

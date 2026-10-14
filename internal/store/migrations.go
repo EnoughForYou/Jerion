@@ -104,6 +104,13 @@ CREATE TABLE IF NOT EXISTS intel_hashes (
 );
 `,
 	},
+	{
+		version: 2,
+		name:    "add_total_apps_to_scan_results",
+		sql: `
+ALTER TABLE scan_results ADD COLUMN total_apps INTEGER NOT NULL DEFAULT 0;
+`,
+	},
 }
 
 // RunMigrations executes all unapplied schema migrations in sequence.

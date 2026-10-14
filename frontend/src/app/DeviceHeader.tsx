@@ -56,7 +56,7 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
             <div className="flex items-center gap-2 ml-2">
               {getStatusBadge()}
 
-              {typeof activeDevice.batteryLevel === 'number' ? (
+              {activeDevice.connectionState === 'ready' && typeof activeDevice.batteryLevel === 'number' && activeDevice.batteryLevel > 0 ? (
                 <span className="inline-flex items-center gap-1 text-xs text-text-secondary bg-raised/70 px-2 py-0.5 rounded-sm border border-separator/30">
                   {activeDevice.isCharging ? (
                     <BatteryCharging className="w-3.5 h-3.5 text-ok" />

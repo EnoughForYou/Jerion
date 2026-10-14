@@ -231,6 +231,34 @@ func TestRemediationPlanCreation(t *testing.T) {
 	}
 }
 
+func TestRemediateEmptyTargetRejection(t *testing.T) {
+	fake := adb.NewFakeRunner()
+	mgr := remediate.NewManager(fake, nil, logx.GetDefault(), "")
+	ctx := context.Background()
+
+	// 1. Revoke permission with empty target must fail
+	emptyPermAct := remediate.Action{
+		ID:      "act-empty-perm",
+		Type:    remediate.ActionRevokePermission,
+		Package: "com.test.app",
+	}
+	_, err := mgr.Execute(ctx, "dev-1", emptyPermAct)
+	if err == nil || !strings.Contains(err.Error(), "InvalidAction") {
+		t.Fatalf("expected InvalidAction error for empty revoke permission target, got: %v", err)
+	}
+
+	// 2. Clear appop with empty target must fail
+	emptyAppopAct := remediate.Action{
+		ID:      "act-empty-appop",
+		Type:    remediate.ActionClearAppop,
+		Package: "com.test.app",
+	}
+	_, err = mgr.Execute(ctx, "dev-1", emptyAppopAct)
+	if err == nil || !strings.Contains(err.Error(), "InvalidAction") {
+		t.Fatalf("expected InvalidAction error for empty clear appop target, got: %v", err)
+	}
+}
+
 func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
