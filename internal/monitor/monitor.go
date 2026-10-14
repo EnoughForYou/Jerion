@@ -15,10 +15,14 @@ import (
 type EventType string
 
 const (
-	EventWindowFocusChange  EventType = "window_focus_change"
-	EventPackageStateChange EventType = "package_state_change"
+	EventForegroundSwitch   EventType = "foreground_switch"
 	EventOverlayShown       EventType = "overlay_shown"
-	EventLogcatTrigger      EventType = "logcat_trigger"
+	EventNotificationPosted EventType = "notification_posted"
+
+	// Backward-compatibility aliases
+	EventWindowFocusChange  EventType = EventForegroundSwitch
+	EventPackageStateChange EventType = EventForegroundSwitch
+	EventLogcatTrigger      EventType = EventNotificationPosted
 )
 
 // MonitorStatus represents real-time daemon state.
@@ -101,11 +105,7 @@ func (m *Manager) OnCandidate(cb CandidateCallback) {
 	m.candidateCb = append(m.candidateCb, cb)
 }
 
-// Status returns current daemon activity state.
-func (m *Manager) Status() MonitorStatus {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
+func (m *Manager) statusLocked() MonitorStatus {
 	var startedAtStr *string
 	if m.startedAt != nil {
 		s := m.startedAt.Format(time.RFC3339)
@@ -114,7 +114,7 @@ func (m *Manager) Status() MonitorStatus {
 
 	sources := []string{}
 	if m.isActive {
-		sources = []string{"dumpsys window", "logcat"}
+		sources = []string{"dumpsys window"}
 	}
 
 	return MonitorStatus{
@@ -124,12 +124,19 @@ func (m *Manager) Status() MonitorStatus {
 	}
 }
 
+// Status returns current daemon activity state.
+func (m *Manager) Status() MonitorStatus {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.statusLocked()
+}
+
 // Snapshot returns the current collection of events and ranked candidates.
 func (m *Manager) Snapshot() MonitorSnapshot {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	status := m.Status()
+	status := m.statusLocked()
 
 	eventsCopy := make([]MonitorEvent, len(m.events))
 	copy(eventsCopy, m.events)
@@ -205,30 +212,65 @@ func (m *Manager) RecordEvent(evt MonitorEvent) {
 
 // MarkUserPopup records a manual trigger and correlates recent events (< 3000ms).
 func (m *Manager) MarkUserPopup(t time.Time) {
+	if t.IsZero() {
+		t = time.Now().UTC()
+	}
+
 	m.mu.Lock()
 	var recentCandidate *MonitorCandidate
-	// Find most recent overlay or window event in last 3s
+
+	// Find most recent non-system overlay or foreground event within 3 seconds of t
 	for _, e := range m.events {
-		if e.Package != "" && !stringsHasSystemPrefix(e.Package) {
-			cand, ok := m.candidates[e.Package]
-			if !ok {
-				cand = &MonitorCandidate{
-					Package:        e.Package,
-					AppLabel:       prettifyPackage(e.Package),
-					Confidence:     "high",
-					Score:          90,
-					TimelineEvents: []MonitorEvent{e},
-					WhyFlagged:     "Captured immediately adjacent to manual 'Popup Just Appeared!' trigger.",
-				}
-				m.candidates[e.Package] = cand
-			} else {
+		if e.Package == "" || stringsHasSystemPrefix(e.Package) {
+			continue
+		}
+
+		evtTime, err := time.Parse(time.RFC3339, e.Timestamp)
+		if err != nil {
+			continue
+		}
+
+		diff := t.Sub(evtTime)
+		if diff < 0 {
+			diff = -diff
+		}
+		if diff > 3*time.Second {
+			continue
+		}
+
+		cand, ok := m.candidates[e.Package]
+		if !ok {
+			score := 85
+			confidence := "medium"
+			why := "Foreground activity captured within 3s of manual 'Popup Just Appeared!' trigger."
+			if e.Type == EventOverlayShown {
+				score = 95
+				confidence = "high"
+				why = "Active TYPE_APPLICATION_OVERLAY captured within 3s of manual 'Popup Just Appeared!' trigger."
+			}
+
+			cand = &MonitorCandidate{
+				Package:        e.Package,
+				AppLabel:       prettifyPackage(e.Package),
+				Confidence:     confidence,
+				Score:          score,
+				TimelineEvents: []MonitorEvent{e},
+				WhyFlagged:     why,
+			}
+			m.candidates[e.Package] = cand
+		} else {
+			if e.Type == EventOverlayShown {
 				cand.Score = 95
 				cand.Confidence = "high"
-				cand.WhyFlagged = "Emphasized by user mark trigger during active window overlay."
+				cand.WhyFlagged = "Emphasized by user mark trigger during active window overlay (< 3s)."
+			} else if cand.Score < 85 {
+				cand.Score = 85
+				cand.Confidence = "medium"
+				cand.WhyFlagged = "Correlated with foreground transition adjacent to user mark trigger (< 3s)."
 			}
-			recentCandidate = cand
-			break
 		}
+		recentCandidate = cand
+		break
 	}
 	candListeners := m.candidateCb
 	m.mu.Unlock()
@@ -271,6 +313,9 @@ func (m *Manager) evaluateAttribution(evt MonitorEvent) {
 		m.candidates[evt.Package] = cand
 	} else {
 		cand.TimelineEvents = append([]MonitorEvent{evt}, cand.TimelineEvents...)
+		if len(cand.TimelineEvents) > 50 {
+			cand.TimelineEvents = cand.TimelineEvents[:50]
+		}
 		if evt.Type == EventOverlayShown && cand.Score < 85 {
 			cand.Score = 85
 			cand.Confidence = "high"

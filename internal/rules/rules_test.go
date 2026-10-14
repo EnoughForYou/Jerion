@@ -39,6 +39,9 @@ func TestValidateRule(t *testing.T) {
 		Why:               "Test description",
 		FalsePositiveHint: "Test hint",
 		Remediation:       []string{"uninstall"},
+		Conditions: RuleConditions{
+			Installer: "sideload",
+		},
 	}
 	if err := ValidateRule(valid); err != nil {
 		t.Errorf("expected valid rule, got error: %v", err)
@@ -63,5 +66,19 @@ func TestValidateRule(t *testing.T) {
 	invalidWeight.Weight = 150
 	if err := ValidateRule(&invalidWeight); err == nil {
 		t.Errorf("expected rejection for weight > 100")
+	}
+
+	// Invalid remediation action
+	invalidRem := *valid
+	invalidRem.Remediation = []string{"delete_permanently"}
+	if err := ValidateRule(&invalidRem); err == nil {
+		t.Errorf("expected rejection for invalid remediation action")
+	}
+
+	// Empty conditions
+	emptyCond := *valid
+	emptyCond.Conditions = RuleConditions{}
+	if err := ValidateRule(&emptyCond); err == nil {
+		t.Errorf("expected rejection for rule with empty conditions")
 	}
 }

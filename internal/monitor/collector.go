@@ -14,6 +14,7 @@ func (m *Manager) runCollectorLoop(ctx context.Context, serial string) {
 	defer ticker.Stop()
 
 	var lastPackage string
+	var lastOverlayPkg string
 
 	for {
 		select {
@@ -36,7 +37,7 @@ func (m *Manager) runCollectorLoop(ctx context.Context, serial string) {
 				evt := MonitorEvent{
 					ID:        fmt.Sprintf("evt-focus-%d", time.Now().UnixNano()),
 					Timestamp: now,
-					Type:      EventWindowFocusChange,
+					Type:      EventForegroundSwitch,
 					Package:   focus.Package,
 					Details: map[string]any{
 						"activity": focus.Activity,
@@ -50,6 +51,7 @@ func (m *Manager) runCollectorLoop(ctx context.Context, serial string) {
 			if strings.Contains(outStr, "TYPE_APPLICATION_OVERLAY") {
 				// Identify overlay owner if present in dumpsys window
 				lines := strings.Split(outStr, "\n")
+				foundOverlay := false
 				for _, l := range lines {
 					if strings.Contains(l, "TYPE_APPLICATION_OVERLAY") {
 						trimmed := strings.TrimSpace(l)
@@ -58,23 +60,35 @@ func (m *Manager) runCollectorLoop(ctx context.Context, serial string) {
 							if strings.Contains(p, "/") {
 								pkgCandidate := strings.Split(p, "/")[0]
 								if pkgCandidate != "" && !stringsHasSystemPrefix(pkgCandidate) {
-									evt := MonitorEvent{
-										ID:        fmt.Sprintf("evt-overlay-%d", time.Now().UnixNano()),
-										Timestamp: now,
-										Type:      EventOverlayShown,
-										Package:   pkgCandidate,
-										Details: map[string]any{
-											"windowType": "TYPE_APPLICATION_OVERLAY",
-											"rawLine":    trimmed,
-										},
+									foundOverlay = true
+									if pkgCandidate != lastOverlayPkg {
+										lastOverlayPkg = pkgCandidate
+										evt := MonitorEvent{
+											ID:        fmt.Sprintf("evt-overlay-%d", time.Now().UnixNano()),
+											Timestamp: now,
+											Type:      EventOverlayShown,
+											Package:   pkgCandidate,
+											Details: map[string]any{
+												"windowType": "TYPE_APPLICATION_OVERLAY",
+												"rawLine":    trimmed,
+											},
+										}
+										m.RecordEvent(evt)
 									}
-									m.RecordEvent(evt)
 									break
 								}
 							}
 						}
+						if foundOverlay {
+							break
+						}
 					}
 				}
+				if !foundOverlay {
+					lastOverlayPkg = ""
+				}
+			} else {
+				lastOverlayPkg = ""
 			}
 		}
 	}

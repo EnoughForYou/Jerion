@@ -31,6 +31,8 @@ export function InventoryGet(arg1:string):Promise<contract.AppInfo>;
 
 export function InventoryList(arg1:contract.InventoryFilter):Promise<Array<contract.AppInfo>>;
 
+export function MonitorMarkPopup():Promise<void>;
+
 export function MonitorSnapshot():Promise<contract.MonitorSnapshot>;
 
 export function MonitorStart():Promise<void>;

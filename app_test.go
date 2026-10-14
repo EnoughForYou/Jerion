@@ -478,3 +478,53 @@ func TestClamAVAppIntegration(t *testing.T) {
 	}
 }
 
+func TestAppMonitorWorkflow(t *testing.T) {
+	app, fake := setupTestApp(t)
+	defer app.store.Close()
+
+	fake.SetResponse("dumpsys window", `
+  mCurrentFocus=Window{12345 u0 com.popup.spammer/com.popup.spammer.AdActivity}
+  Window #1 Window{67890 u0 com.popup.spammer/com.popup.spammer.OverlayView}:
+    ty=TYPE_APPLICATION_OVERLAY
+`, "", nil)
+
+	fake.SetResponse("devices -l", "MOCK-0001 device product:mock model:MockPhone device:mock_dev\n", "", nil)
+	_, _ = app.tracker.PollOnce(context.Background())
+	app.activeSerial = "MOCK-0001"
+
+	// Start monitor
+	if err := app.MonitorStart(); err != nil {
+		t.Fatalf("MonitorStart failed: %v", err)
+	}
+
+	snap, err := app.MonitorSnapshot()
+	if err != nil {
+		t.Fatalf("MonitorSnapshot failed: %v", err)
+	}
+	if !snap.Status.IsActive {
+		t.Fatalf("expected monitor status active")
+	}
+	if len(snap.Status.SourcesActive) != 1 || snap.Status.SourcesActive[0] != "dumpsys window" {
+		t.Fatalf("expected SourcesActive ['dumpsys window'], got %v", snap.Status.SourcesActive)
+	}
+
+	// Trigger MarkUserPopup
+	if err := app.MonitorMarkPopup(); err != nil {
+		t.Fatalf("MonitorMarkPopup failed: %v", err)
+	}
+
+	// Stop monitor
+	if err := app.MonitorStop(); err != nil {
+		t.Fatalf("MonitorStop failed: %v", err)
+	}
+
+	snapStopped, err := app.MonitorSnapshot()
+	if err != nil {
+		t.Fatalf("MonitorSnapshot failed: %v", err)
+	}
+	if snapStopped.Status.IsActive {
+		t.Fatalf("expected monitor status inactive after stop")
+	}
+}
+
+

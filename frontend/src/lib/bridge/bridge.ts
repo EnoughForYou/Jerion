@@ -49,6 +49,7 @@ export interface MonitorService {
   start(): Promise<void>;
   stop(): Promise<void>;
   snapshot(): Promise<MonitorSnapshot>;
+  markPopup(): Promise<void>;
 }
 
 export interface AuditService {

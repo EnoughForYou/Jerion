@@ -7,7 +7,7 @@ weight: 75
 why: Application was installed from an untrusted source and declares REQUEST_INSTALL_PACKAGES.
 false_positive_hint: Alternative open-source app stores (such as F-Droid) legitimately install packages.
 remediation:
-  - revoke-permission
+  - revoke_permission
   - uninstall
 conditions:
   is_system: false

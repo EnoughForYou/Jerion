@@ -919,6 +919,11 @@ func (a *App) MonitorStop() error {
 	return nil
 }
 
+func (a *App) MonitorMarkPopup() error {
+	a.monitor.MarkUserPopup(time.Now().UTC())
+	return nil
+}
+
 func (a *App) MonitorSnapshot() (contract.MonitorSnapshot, error) {
 	snap := a.monitor.Snapshot()
 

@@ -183,6 +183,15 @@ describe('MockBridge Lifecycle & Event Emission Suite', () => {
       const stoppedSnapshot = await bridge.monitor.snapshot();
       expect(stoppedSnapshot.status.isActive).toBe(false);
     });
+
+    it('triggers manual popup marker and attributes candidate', async () => {
+      await bridge.monitor.start();
+      await bridge.monitor.markPopup();
+      const snap = await bridge.monitor.snapshot();
+      expect(snap.candidates.length).toBeGreaterThan(0);
+      expect(snap.candidates[0].score).toBe(95);
+      await bridge.monitor.stop();
+    });
   });
 
   describe('Audit Service', () => {

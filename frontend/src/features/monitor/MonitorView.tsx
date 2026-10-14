@@ -88,41 +88,22 @@ export const MonitorView: React.FC = () => {
     }
   };
 
-  const handleMarkPopup = () => {
-    const markTime = new Date().toISOString();
-    setMarkerFeedback(t('monitor.markPopupSuccess'));
+  const handleMarkPopup = async () => {
+    try {
+      await bridge.monitor.markPopup();
+      setMarkerFeedback(t('monitor.markPopupSuccess'));
 
-    const targetPackage = 'com.cleaner.master';
-    const targetLabel = 'Cleaner Master';
+      const snap = await bridge.monitor.snapshot();
+      setSnapshot(snap);
+      setCandidates(snap.candidates);
+      setEvents(snap.events);
 
-    // Emit simulated overlay event on mock bridge
-    const popupEvt: MonitorEvent = {
-      id: `evt-user-mark-${Date.now()}`,
-      timestamp: markTime,
-      type: 'overlay_shown',
-      package: targetPackage,
-      details: {
-        trigger: 'User Marked Popup',
-        windowType: 'TYPE_APPLICATION_OVERLAY',
-        attributionScore: 95,
-      },
-    };
-    setEvents((prev) => [popupEvt, ...prev]);
-
-    // Recalculate or emphasize candidate
-    const topCand: MonitorCandidate = {
-      package: targetPackage,
-      appLabel: targetLabel,
-      confidence: 'high',
-      score: 95,
-      timelineEvents: [popupEvt],
-      whyFlagged: 'Foreground overlay captured immediately following user mark trigger.',
-    };
-    setCandidates((prev) => [topCand, ...prev.filter((c) => c.package !== topCand.package)]);
-
-    setTimeout(() => {
-      setMarkerFeedback(null);
-    }, 4000);
+      setTimeout(() => {
+        setMarkerFeedback(null);
+      }, 4000);
+    } catch (err) {
+      console.error('Failed to mark popup:', err);
+    }
   };
 
   return (
