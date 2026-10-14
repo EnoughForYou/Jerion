@@ -1,9 +1,15 @@
 # PROGRESS
 
 ## Status sekarang
-- Fase aktif: 5 — Polish, Hardening & End-to-End Verification (Tahap T5) [Selesai]
-- Branch: phase/5-hardening
+- Fase aktif: 6 — Hardening, Installer & Rilis v1.0.0 (Tahap T6)
+- Branch: phase/6-release
 - Terakhir selesai: Tahap 5 — Polish, Hardening & End-to-End Verification (tag v0.5.0)
+
+## Fase 6 (Tahap T6) — checklist
+- [x] Sub-tugas 6.1: Konfigurasi Windows NSIS Installer & Packaging Final
+- [ ] Sub-tugas 6.2: Audit Keamanan & Guardrail Produksi (PRD §6.8)
+- [ ] Sub-tugas 6.3: Dokumentasi Final & Panduan Perangkat Pengguna
+- [ ] Sub-tugas 6.4: Gerbang Selesai-Tahap T6 (Rilis v1.0.0)
 
 ## Fase 5 (Tahap T5) — riwayat selesai
 - [x] Sub-tugas 5.1: Bridge Runtime Auto-Detection & Bump Versi Kontrak `1.0.0`
