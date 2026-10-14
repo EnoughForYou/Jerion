@@ -10,7 +10,7 @@
 - [x] Sub-tugas 5.2: Hardening Ketahanan ADB & Kasus Tepi (Edge Cases)
 - [x] Sub-tugas 5.3: Perluasan Rules Forensik & Baseline XOS 10.6 (Infinix Note 11S)
 - [x] Sub-tugas 5.4: UI Polish, Aksesibilitas (WCAG AA) & Checklist Anti-AI-Slop
-- [ ] Sub-tugas 5.5: Konfigurasi Packaging & Windows Installer
+- [x] Sub-tugas 5.5: Konfigurasi Packaging & Windows Installer
 - [ ] Sub-tugas 5.6: Gerbang Selesai-Tahap T5
 
 ## Fase 4 (Tahap T4) — riwayat selesai
