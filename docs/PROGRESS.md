@@ -2,18 +2,16 @@
 
 ## Status sekarang
 - Fase aktif: 5 — Polish, Hardening & End-to-End Verification (Tahap T5)
-- Branch: phase/4-backend (siap merge ke main)
+- Branch: phase/5-hardening
 - Terakhir selesai: Tahap 4 — Backend Go Core & Engine (tag v0.4.0)
 
-## Fase 4 (Tahap T4) — checklist
-- [x] Sub-tugas 4.1: Paket fondasi & penyimpanan (`internal/logx`, `internal/secrets`, `internal/store` via pure-Go SQLite `modernc.org/sqlite`)
-- [x] Sub-tugas 4.2: Lapisan ADB Core & Preflight (`internal/adb`, `internal/preflight`)
-- [x] Sub-tugas 4.3: Inventaris Aplikasi & Analisis APK (`internal/inventory`, `internal/apk`)
-- [x] Sub-tugas 4.4: Scan Engine, Rules & Intel (`internal/engine`, `internal/rules`, `internal/intel`)
-- [x] Sub-tugas 4.5: System Audit & Popup Hunter Monitor (`internal/audit`, `internal/monitor`)
-- [x] Sub-tugas 4.6: Remediasi & Laporan (`internal/remediate`, `internal/report`)
-- [x] Sub-tugas 4.7: Service Layer & Go DTOs (`app.go` Wails bindings)
-- [x] Sub-tugas 4.8: Gerbang selesai-tahap T4
+## Fase 5 (Tahap T5) — checklist
+- [x] Sub-tugas 5.1: Bridge Runtime Auto-Detection & Bump Versi Kontrak `1.0.0`
+- [ ] Sub-tugas 5.2: Hardening Ketahanan ADB & Kasus Tepi (Edge Cases)
+- [ ] Sub-tugas 5.3: Perluasan Rules Forensik & Baseline XOS 10.6 (Infinix Note 11S)
+- [ ] Sub-tugas 5.4: UI Polish, Aksesibilitas (WCAG AA) & Checklist Anti-AI-Slop
+- [ ] Sub-tugas 5.5: Konfigurasi Packaging & Windows Installer
+- [ ] Sub-tugas 5.6: Gerbang Selesai-Tahap T5
 
 ## Fase 4 (Tahap T4) — riwayat selesai
 - [x] Sub-tugas 4.1: Paket fondasi & penyimpanan (`internal/logx`, `internal/secrets`, `internal/store` via pure-Go SQLite `modernc.org/sqlite`)
