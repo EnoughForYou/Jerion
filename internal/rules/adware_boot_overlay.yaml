@@ -1,0 +1,17 @@
+id: ADW-003
+title: Persistent Boot-Triggered Overlay Adware
+category: aggressive-ads
+severity: high
+confidence: high
+weight: 85
+why: Application holds both fullscreen overlay and boot autostart privileges, allowing aggressive intrusive ad popups immediately upon device power on.
+false_positive_hint: Certain assistive touch and call recording utilities legitimately run at boot and display overlays.
+remediation:
+  - disable
+  - revoke-permission
+  - uninstall
+conditions:
+  is_system: false
+  required_permissions:
+    - android.permission.SYSTEM_ALERT_WINDOW
+    - android.permission.RECEIVE_BOOT_COMPLETED

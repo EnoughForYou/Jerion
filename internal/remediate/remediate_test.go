@@ -29,7 +29,13 @@ func TestGuardrails(t *testing.T) {
 		t.Fatalf("expected core android to be blocked")
 	}
 
-	// 3. User app
+	// 3. Transsion XOS system app
+	blockedXOS, _ := remediate.CheckGuardrail("com.transsion.launcher")
+	if !blockedXOS {
+		t.Fatalf("expected com.transsion.launcher to be blocked by safety guardrail")
+	}
+
+	// 4. User app
 	blockedUser, _ := remediate.CheckGuardrail("com.suspicious.adware")
 	if blockedUser {
 		t.Fatalf("expected com.suspicious.adware to NOT be blocked")

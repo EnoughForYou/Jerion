@@ -1,0 +1,16 @@
+id: BNK-001
+title: Potential Banking Trojan Accessibility Overlay
+category: banking-trojan-indicators
+severity: critical
+confidence: high
+weight: 95
+why: Application holds both accessibility service and fullscreen overlay privileges. This combination is commonly exploited by Android banking malware to hijack screens and capture keystrokes or credentials.
+false_positive_hint: Recognized accessibility suites such as screen readers and password managers legitimately require both permissions.
+remediation:
+  - disable
+  - uninstall
+conditions:
+  is_system: false
+  required_permissions:
+    - android.permission.BIND_ACCESSIBILITY_SERVICE
+    - android.permission.SYSTEM_ALERT_WINDOW

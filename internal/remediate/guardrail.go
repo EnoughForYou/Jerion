@@ -30,6 +30,9 @@ var (
 		"com.android.launcher3":                 "AOSP home launcher",
 		"com.google.android.apps.nexuslauncher": "Google Pixel launcher",
 		"com.transsion.launcher":                "Transsion / XOS desktop launcher",
+		"com.transsion.systemupdate":            "Transsion XOS system update daemon",
+		"com.transsion.smartpanel":              "Transsion XOS smart panel accessibility tool",
+		"com.transsion.phonemaster":             "Transsion XOS phone master device manager",
 	}
 )
 
