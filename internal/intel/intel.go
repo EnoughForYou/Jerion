@@ -68,6 +68,7 @@ func (l *LocalProvider) Lookup(ctx context.Context, sha256Hex string) (*IntelRes
 type Aggregator struct {
 	local   *LocalProvider
 	secrets *secrets.Manager
+	clamav  *ClamAVClient
 }
 
 // NewAggregator creates an intelligence aggregator.
@@ -76,6 +77,40 @@ func NewAggregator(s *store.Store, sm *secrets.Manager) *Aggregator {
 		local:   NewLocalProvider(s),
 		secrets: sm,
 	}
+}
+
+// SetClamAVClient configures the ClamAV daemon client.
+func (a *Aggregator) SetClamAVClient(c *ClamAVClient) {
+	a.clamav = c
+}
+
+// GetClamAVClient returns the configured ClamAV daemon client, if any.
+func (a *Aggregator) GetClamAVClient() *ClamAVClient {
+	return a.clamav
+}
+
+// ScanFileWithClamAV scans an APK file using ClamAV if configured.
+func (a *Aggregator) ScanFileWithClamAV(ctx context.Context, filePath string) (*IntelResult, error) {
+	if a.clamav == nil {
+		return nil, ErrClamAVUnavailable
+	}
+	res, err := a.clamav.ScanFile(ctx, filePath)
+	if err != nil {
+		return nil, err
+	}
+	if res.Infected {
+		return &IntelResult{
+			Classification: ClassMalware,
+			ThreatName:     res.Virus,
+			Source:         "clamav",
+			Positives:      1,
+			Total:          1,
+		}, nil
+	}
+	return &IntelResult{
+		Classification: ClassClean,
+		Source:         "clamav",
+	}, nil
 }
 
 // Lookup queries local threat intel cache first.

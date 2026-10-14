@@ -614,3 +614,38 @@ export namespace contract {
 
 }
 
+export namespace main {
+	
+	export class ClamAVConfig {
+	    enabled: boolean;
+	    host: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ClamAVConfig(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.enabled = source["enabled"];
+	        this.host = source["host"];
+	    }
+	}
+	export class ClamAVStatus {
+	    connected: boolean;
+	    version?: string;
+	    error?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ClamAVStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.connected = source["connected"];
+	        this.version = source["version"];
+	        this.error = source["error"];
+	    }
+	}
+
+}
+
