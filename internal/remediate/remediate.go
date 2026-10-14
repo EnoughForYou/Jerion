@@ -198,24 +198,26 @@ func (m *Manager) Execute(ctx context.Context, serial string, action Action) (*A
 			}
 		}
 	case ActionRevokePermission:
-		if action.TargetPermission != "" {
-			if err := ValidatePermissionName(action.TargetPermission); err != nil {
-				return nil, fmt.Errorf(`JERION_ERR:{"code":"ParseFailure","message":"%s","remedy":"Verify permission format"}`, err.Error())
-			}
-			_, stderr, err := m.runner.Run(ctx, serial, "shell", "pm", "revoke", action.Package, action.TargetPermission)
-			if err != nil {
-				execErr = fmt.Errorf("revoke permission failed: %v (%s)", err, string(stderr))
-			}
+		if action.TargetPermission == "" {
+			return nil, fmt.Errorf(`JERION_ERR:{"code":"InvalidAction","message":"Target permission cannot be empty for revoke_permission action","remedy":"Specify a valid permission name"}`)
+		}
+		if err := ValidatePermissionName(action.TargetPermission); err != nil {
+			return nil, fmt.Errorf(`JERION_ERR:{"code":"ParseFailure","message":"%s","remedy":"Verify permission format"}`, err.Error())
+		}
+		_, stderr, err := m.runner.Run(ctx, serial, "shell", "pm", "revoke", action.Package, action.TargetPermission)
+		if err != nil {
+			execErr = fmt.Errorf("revoke permission failed: %v (%s)", err, string(stderr))
 		}
 	case ActionClearAppop:
-		if action.TargetAppop != "" {
-			_, stderr, err := m.runner.Run(ctx, serial, "shell", "cmd", "appops", "set", action.Package, action.TargetAppop, "default")
-			if err != nil {
-				// Fallback to appops without cmd
-				_, stderr2, err2 := m.runner.Run(ctx, serial, "shell", "appops", "set", action.Package, action.TargetAppop, "default")
-				if err2 != nil {
-					execErr = fmt.Errorf("clear appop failed: %v (%s / %s)", err, string(stderr), string(stderr2))
-				}
+		if action.TargetAppop == "" {
+			return nil, fmt.Errorf(`JERION_ERR:{"code":"InvalidAction","message":"Target appop cannot be empty for clear_appop action","remedy":"Specify a valid appop name"}`)
+		}
+		_, stderr, err := m.runner.Run(ctx, serial, "shell", "cmd", "appops", "set", action.Package, action.TargetAppop, "default")
+		if err != nil {
+			// Fallback to appops without cmd
+			_, stderr2, err2 := m.runner.Run(ctx, serial, "shell", "appops", "set", action.Package, action.TargetAppop, "default")
+			if err2 != nil {
+				execErr = fmt.Errorf("clear appop failed: %v (%s / %s)", err, string(stderr), string(stderr2))
 			}
 		}
 	default:

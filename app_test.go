@@ -222,6 +222,26 @@ func TestAppServicesIntegration(t *testing.T) {
 		t.Fatalf("expected 0 actions for unknown finding, got %d", len(unknownPlan.Actions))
 	}
 
+	// Unrecognized action ID in plan must be rejected by backend
+	fakePlan := contract.RemediationPlan{
+		Actions: []contract.RemediationAction{
+			{
+				ID:      "act-unrecognized-999",
+				Type:    "disable",
+				Package: "com.malicious.fake",
+			},
+		},
+	}
+	_, fakeErr := app.RemediateExecute(fakePlan)
+	if fakeErr == nil || !strings.Contains(fakeErr.Error(), "InvalidAction") {
+		t.Fatalf("expected InvalidAction error for unrecognized action ID, got: %v", fakeErr)
+	}
+
+	// Test permission cleaning
+	if p := extractCleanPermission("Declared/Requested: android.permission.SYSTEM_ALERT_WINDOW"); p != "android.permission.SYSTEM_ALERT_WINDOW" {
+		t.Fatalf("expected cleaned permission, got '%s'", p)
+	}
+
 	fake.SetResponse("pm disable-user --user 0 com.adware.sample", "Package com.adware.sample new state: disabled-user", "", nil)
 	execLogs, err := app.RemediateExecute(plan)
 	if err != nil {
