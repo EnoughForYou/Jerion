@@ -581,6 +581,7 @@ func (a *App) ScanStart(options contract.ScanOptions) (string, error) {
 		}()
 
 		engineOpts := engine.ScanOptions{
+			ScanID:        scanID,
 			Mode:          options.Mode,
 			IncludeSystem: options.IncludeSystem,
 		}
@@ -751,13 +752,18 @@ func (a *App) convertEngineScanResult(res *engine.ScanResult) contract.ScanResul
 		totalApps = len(pkgs)
 	}
 
+	status := "completed"
+	if res.Partial {
+		status = "partial"
+	}
+
 	return contract.ScanResult{
 		ID:          res.ID,
 		DeviceID:    fmt.Sprintf("dev-%s", res.DeviceSerial),
 		Mode:        res.Mode,
 		StartedAt:   res.StartedAt.UTC().Format(time.RFC3339),
 		CompletedAt: &compAt,
-		Status:      "completed",
+		Status:      status,
 		Findings:    findings,
 		Summary: contract.SecuritySummary{
 			Counts:     counts,
@@ -765,6 +771,67 @@ func (a *App) convertEngineScanResult(res *engine.ScanResult) contract.ScanResul
 			LastScanAt: &compAt,
 			Verdict:    verdict,
 		},
+	}
+}
+
+func (a *App) convertStoreFinding(f store.FindingRecord) contract.Finding {
+	sev := strings.ToLower(f.Severity)
+	var evs []contract.Evidence
+	for _, e := range f.Evidence {
+		evType := "manifest"
+		srcLower := strings.ToLower(e.Source)
+		if strings.Contains(srcLower, "permission") {
+			evType = "permission"
+		} else if strings.Contains(srcLower, "intel") || strings.Contains(srcLower, "hash") {
+			evType = "hash"
+		} else if strings.Contains(srcLower, "class") {
+			evType = "class_prefix"
+		} else if strings.Contains(srcLower, "log") {
+			evType = "log"
+		} else if strings.Contains(srcLower, "setting") {
+			evType = "setting"
+		}
+
+		evs = append(evs, contract.Evidence{
+			Type:    evType,
+			Title:   e.Source,
+			Details: e.Snippet,
+		})
+	}
+	if len(evs) == 0 {
+		evs = []contract.Evidence{}
+	}
+
+	pkgStr := f.Package
+	var pkgPtr *string
+	if pkgStr != "" {
+		pkgPtr = &pkgStr
+	}
+
+	var recAct *contract.RemediationAction
+	if len(f.Actions) > 0 && pkgStr != "" {
+		actType := f.Actions[0]
+		recAct = &contract.RemediationAction{
+			ID:       fmt.Sprintf("act-rec-%s", f.ID),
+			Type:     actType,
+			Package:  pkgStr,
+			Title:    fmt.Sprintf("Remediate %s on %s", actType, pkgStr),
+			Impact:   "Action recommended to mitigate flagged threat.",
+			Undoable: true,
+		}
+	}
+
+	return contract.Finding{
+		ID:                f.ID,
+		RuleID:            f.RuleID,
+		Title:             f.Title,
+		Severity:          sev,
+		Confidence:        f.Confidence,
+		Package:           pkgPtr,
+		WhyFlagged:        f.WhyFlagged,
+		FalsePositiveHint: f.FalsePositiveHint,
+		Evidence:          evs,
+		RecommendedAction: recAct,
 	}
 }
 
@@ -781,33 +848,10 @@ func (a *App) convertStoreScanRecord(record *store.ScanRecord) contract.ScanResu
 	for _, f := range record.Findings {
 		sev := strings.ToLower(f.Severity)
 		counts[sev]++
-
-		var evs []contract.Evidence
-		for _, e := range f.Evidence {
-			evs = append(evs, contract.Evidence{
-				Type:    "manifest",
-				Title:   e.Source,
-				Details: e.Snippet,
-			})
-		}
-
-		pkgStr := f.Package
-		var pkgPtr *string
-		if pkgStr != "" {
-			pkgPtr = &pkgStr
-		}
-
-		findings = append(findings, contract.Finding{
-			ID:                f.ID,
-			RuleID:            f.RuleID,
-			Title:             f.Title,
-			Severity:          sev,
-			Confidence:        f.Confidence,
-			Package:           pkgPtr,
-			WhyFlagged:        f.WhyFlagged,
-			FalsePositiveHint: f.FalsePositiveHint,
-			Evidence:          evs,
-		})
+		findings = append(findings, a.convertStoreFinding(f))
+	}
+	if len(findings) == 0 {
+		findings = []contract.Finding{}
 	}
 
 	verdict := "clean"
@@ -832,13 +876,18 @@ func (a *App) convertStoreScanRecord(record *store.ScanRecord) contract.ScanResu
 	}
 	totalApps = len(pkgs)
 
+	status := "completed"
+	if record.Partial {
+		status = "partial"
+	}
+
 	return contract.ScanResult{
 		ID:          record.ID,
 		DeviceID:    fmt.Sprintf("dev-%s", record.DeviceSerial),
 		Mode:        record.Mode,
 		StartedAt:   record.StartedAt.UTC().Format(time.RFC3339),
 		CompletedAt: compAt,
-		Status:      "completed",
+		Status:      status,
 		Findings:    findings,
 		Summary: contract.SecuritySummary{
 			Counts:     counts,
@@ -1212,19 +1261,30 @@ func (a *App) ReportList() ([]contract.ScanSummaryItem, error) {
 			s := r.FinishedAt.UTC().Format(time.RFC3339)
 			compAt = &s
 		}
-		res = append(res, contract.ScanSummaryItem{
-			ID:          r.ID,
-			StartedAt:   r.StartedAt.UTC().Format(time.RFC3339),
-			CompletedAt: compAt,
-			Mode:        r.Mode,
-			Verdict:     "review",
-			FindingsCount: map[string]int{
+		counts := r.Counts
+		if counts == nil {
+			counts = map[string]int{
 				"critical": 0,
 				"high":     r.HighSeverityCount,
 				"medium":   0,
 				"low":      0,
 				"info":     0,
-			},
+			}
+		}
+		verdict := r.Verdict
+		if verdict == "" {
+			verdict = "clean"
+			if r.HighSeverityCount > 0 {
+				verdict = "high_risk"
+			}
+		}
+		res = append(res, contract.ScanSummaryItem{
+			ID:            r.ID,
+			StartedAt:     r.StartedAt.UTC().Format(time.RFC3339),
+			CompletedAt:   compAt,
+			Mode:          r.Mode,
+			Verdict:       verdict,
+			FindingsCount: counts,
 		})
 	}
 
@@ -1264,12 +1324,36 @@ func (a *App) ReportCompare(scanIdA string, scanIdB string) (contract.ScanCompar
 		FindingsCount: comp.ScanB.FindingsCount,
 	}
 
+	var newFindings []contract.Finding
+	for _, f := range comp.NewFindings {
+		newFindings = append(newFindings, a.convertStoreFinding(f))
+	}
+	if len(newFindings) == 0 {
+		newFindings = []contract.Finding{}
+	}
+
+	var resolvedFindings []contract.Finding
+	for _, f := range comp.ResolvedFindings {
+		resolvedFindings = append(resolvedFindings, a.convertStoreFinding(f))
+	}
+	if len(resolvedFindings) == 0 {
+		resolvedFindings = []contract.Finding{}
+	}
+
+	var unchangedFindings []contract.Finding
+	for _, f := range comp.UnchangedFindings {
+		unchangedFindings = append(unchangedFindings, a.convertStoreFinding(f))
+	}
+	if len(unchangedFindings) == 0 {
+		unchangedFindings = []contract.Finding{}
+	}
+
 	return contract.ScanComparison{
 		ScanA:             itemA,
 		ScanB:             itemB,
-		NewFindings:       []contract.Finding{},
-		ResolvedFindings:  []contract.Finding{},
-		UnchangedFindings: []contract.Finding{},
+		NewFindings:       newFindings,
+		ResolvedFindings:  resolvedFindings,
+		UnchangedFindings: unchangedFindings,
 	}, nil
 }
 
@@ -1297,10 +1381,24 @@ func (a *App) ReportExport(options contract.ReportExportOptions) (string, error)
 	} else {
 		devInfo := report.DeviceInfo{
 			Serial:       rec.DeviceSerial,
-			Model:        "Connected Device",
-			Manufacturer: "Android",
-			AndroidVer:   "12",
-			SDKInt:       31,
+			Model:        "Unknown Device",
+			Manufacturer: "Unknown",
+			AndroidVer:   "Unknown",
+			SDKInt:       0,
+		}
+		if a.store != nil {
+			if dRec, err := a.store.GetDevice(rec.DeviceSerial); err == nil && dRec != nil {
+				if dRec.Model != "" {
+					devInfo.Model = dRec.Model
+				}
+				if dRec.Manufacturer != "" {
+					devInfo.Manufacturer = dRec.Manufacturer
+				}
+				if dRec.AndroidVersion != "" {
+					devInfo.AndroidVer = dRec.AndroidVersion
+				}
+				devInfo.SDKInt = dRec.SDK
+			}
 		}
 		htmlData, err := report.ExportHTML(*rec, devInfo, false)
 		if err != nil {

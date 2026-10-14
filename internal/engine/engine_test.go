@@ -267,13 +267,21 @@ requested permissions:
 		t.Fatalf("NewScanner failed: %v", err)
 	}
 
-	// Execute Quick Scan
+	// Execute Quick Scan with canonical ScanID
+	canonicalID := "scan-canonical-42"
 	var progressRecords []ScanProgress
-	quickResult, err := scanner.Scan(context.Background(), "DEV-TEST-01", ScanOptions{Mode: "quick"}, func(p ScanProgress) {
+	quickResult, err := scanner.Scan(context.Background(), "DEV-TEST-01", ScanOptions{ScanID: canonicalID, Mode: "quick"}, func(p ScanProgress) {
 		progressRecords = append(progressRecords, p)
 	})
 	if err != nil {
 		t.Fatalf("QuickScan failed: %v", err)
+	}
+
+	if quickResult.ID != canonicalID {
+		t.Errorf("expected canonical scan ID %s, got %s", canonicalID, quickResult.ID)
+	}
+	if quickResult.TotalApps != 1 {
+		t.Errorf("expected TotalApps=1, got %d", quickResult.TotalApps)
 	}
 
 	if quickResult.Mode != "quick" || len(quickResult.Findings) == 0 {

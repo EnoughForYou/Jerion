@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/EnoughForYou/Jerion/internal/adb"
 	"github.com/EnoughForYou/Jerion/internal/contract"
@@ -238,6 +240,137 @@ func TestAppServicesIntegration(t *testing.T) {
 	undoneLog, err := app.RemediateUndo(execLogs[0].ID)
 	if err != nil || undoneLog.Status != "undone" {
 		t.Fatalf("RemediateUndo failed: %v", err)
+	}
+
+	// 9. Report Service & Canonical Comparison
+	now := time.Now().UTC()
+	scan1 := store.ScanRecord{
+		ID:           "scan-comp-1",
+		DeviceSerial: "MOCK-0001",
+		Mode:         "quick",
+		StartedAt:    now.Add(-2 * time.Hour),
+		FinishedAt:   now.Add(-1 * time.Hour),
+		RulesVersion: "1.0.0",
+		AppVersion:   "0.4.0",
+		Findings: []store.FindingRecord{
+			{
+				ID:         "find-old-resolved",
+				ScanID:     "scan-comp-1",
+				RuleID:     "RULE-A",
+				Package:    "com.resolved.adware",
+				Category:   "adware",
+				Severity:   "high",
+				Confidence: "high",
+				Weight:     80,
+				Title:      "Resolved Adware",
+				WhyFlagged: "Old threat",
+				Evidence:   []store.EvidenceRecord{{Source: "permission", Snippet: "android.permission.SYSTEM_ALERT_WINDOW"}},
+				Actions:    []string{"disable"},
+			},
+			{
+				ID:         "find-shared-unchanged",
+				ScanID:     "scan-comp-1",
+				RuleID:     "RULE-B",
+				Package:    "com.shared.threat",
+				Category:   "malware",
+				Severity:   "critical",
+				Confidence: "high",
+				Weight:     95,
+				Title:      "Persistent Threat",
+				WhyFlagged: "Persisting threat",
+				Evidence:   []store.EvidenceRecord{{Source: "hash", Snippet: "abc123"}},
+				Actions:    []string{"uninstall"},
+			},
+		},
+	}
+	scan2 := store.ScanRecord{
+		ID:           "scan-comp-2",
+		DeviceSerial: "MOCK-0001",
+		Mode:         "quick",
+		StartedAt:    now.Add(-30 * time.Minute),
+		FinishedAt:   now,
+		RulesVersion: "1.0.0",
+		AppVersion:   "0.4.0",
+		Findings: []store.FindingRecord{
+			{
+				ID:         "find-shared-scan2",
+				ScanID:     "scan-comp-2",
+				RuleID:     "RULE-B",
+				Package:    "com.shared.threat",
+				Category:   "malware",
+				Severity:   "critical",
+				Confidence: "high",
+				Weight:     95,
+				Title:      "Persistent Threat",
+				WhyFlagged: "Persisting threat",
+				Evidence:   []store.EvidenceRecord{{Source: "hash", Snippet: "abc123"}},
+				Actions:    []string{"uninstall"},
+			},
+			{
+				ID:         "find-new-threat",
+				ScanID:     "scan-comp-2",
+				RuleID:     "RULE-C",
+				Package:    "com.new.spyware",
+				Category:   "spyware",
+				Severity:   "medium",
+				Confidence: "medium",
+				Weight:     50,
+				Title:      "New Spyware",
+				WhyFlagged: "Newly introduced threat",
+				Evidence:   []store.EvidenceRecord{{Source: "manifest", Snippet: "hidden_service"}},
+				Actions:    []string{"disable"},
+			},
+		},
+	}
+	if err := app.store.SaveScanResult(scan1); err != nil {
+		t.Fatalf("SaveScanResult scan1 failed: %v", err)
+	}
+	if err := app.store.SaveScanResult(scan2); err != nil {
+		t.Fatalf("SaveScanResult scan2 failed: %v", err)
+	}
+
+	// Test ReportList
+	reports, err := app.ReportList()
+	if err != nil {
+		t.Fatalf("ReportList failed: %v", err)
+	}
+	if len(reports) < 2 {
+		t.Fatalf("expected at least 2 reports, got %d", len(reports))
+	}
+	if reports[0].Verdict != "high_risk" {
+		t.Errorf("expected high_risk verdict for scan with critical finding, got %s", reports[0].Verdict)
+	}
+
+	// Test ReportCompare
+	comp, err := app.ReportCompare(scan1.ID, scan2.ID)
+	if err != nil {
+		t.Fatalf("ReportCompare failed: %v", err)
+	}
+	if len(comp.NewFindings) != 1 {
+		t.Errorf("expected 1 new finding, got %d", len(comp.NewFindings))
+	}
+	if len(comp.ResolvedFindings) != 1 {
+		t.Errorf("expected 1 resolved finding, got %d", len(comp.ResolvedFindings))
+	}
+	if len(comp.UnchangedFindings) != 1 {
+		t.Errorf("expected 1 unchanged finding, got %d", len(comp.UnchangedFindings))
+	}
+
+	// Test ReportExport (HTML and JSON)
+	exportedJSON, err := app.ReportExport(contract.ReportExportOptions{ScanID: scan2.ID, Format: "json"})
+	if err != nil {
+		t.Fatalf("ReportExport JSON failed: %v", err)
+	}
+	if _, err := os.Stat(exportedJSON); err != nil {
+		t.Errorf("expected exported JSON file to exist: %s", exportedJSON)
+	}
+
+	exportedHTML, err := app.ReportExport(contract.ReportExportOptions{ScanID: scan2.ID, Format: "html"})
+	if err != nil {
+		t.Fatalf("ReportExport HTML failed: %v", err)
+	}
+	if _, err := os.Stat(exportedHTML); err != nil {
+		t.Errorf("expected exported HTML file to exist: %s", exportedHTML)
 	}
 }
 

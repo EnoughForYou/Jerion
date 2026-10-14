@@ -33,6 +33,7 @@ type ScanProgress struct {
 
 // ScanOptions configures scan parameters.
 type ScanOptions struct {
+	ScanID         string   `json:"scanId,omitempty"`
 	Mode           string   `json:"mode"` // "quick" | "deep"
 	TargetPackages []string `json:"targetPackages,omitempty"`
 	IncludeSystem  bool     `json:"includeSystem"`

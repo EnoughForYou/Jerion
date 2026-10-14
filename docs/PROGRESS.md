@@ -1,23 +1,30 @@
 # PROGRESS
 
 ## Status sekarang
-- Fase aktif: Fidelity Hardening — Keamanan & Kebenaran Data (Prioritas 0)
+- Fase aktif: Fidelity Hardening — Preservasi Bukti & Kanonisasi ID Scan (Prioritas 1)
 - Branch: phase/fidelity-hardening
 - Terakhir selesai: Tahap 6 — Hardening, Installer & Rilis v1.0.0 (tag v1.0.0)
 
-## Fase Fidelity Hardening (P0: Data Fidelity & Remediation Safety) — checklist
+## Fase Fidelity Hardening (P1: Evidence Preservation & Canonical Scan ID) — checklist
+- [x] Sub-tugas P1.1: Penyelarasan ID Kanonis Scan (`ScanOptions.ScanID`) antara `app.go:ScanStart` dan `internal/engine/scanner.go:Scan`
+- [x] Sub-tugas P1.2: Pelaporan status scan parsial nyata (`Partial: isPartial`) bila ekstraksi/inspeksi APK pada Deep Scan mengalami kegagalan
+- [x] Sub-tugas P1.3: Pemetaan delta temuan forensik lengkap pada `ReportCompare()` (`NewFindings`, `ResolvedFindings`, `UnchangedFindings`) via `convertStoreFinding`
+- [x] Sub-tugas P1.4: Perhitungan agregasi 5 tingkat severity & penentuan verdict dinamis pada `store.ListScanSummaries` dan `app.go:ReportList`
+- [x] Sub-tugas P1.5: Pemanfaatan metadata perangkat nyata dari SQLite pada `ReportExport` (HTML & JSON) tanpa mock
+
+## Pengukuran & Kualitas (P1: Evidence Preservation)
+- **Backend Go Test Suite**: 100% test lulus di seluruh 16 paket backend Go (`internal/logx`, `internal/secrets`, `internal/store`, `internal/adb`, `internal/preflight`, `internal/inventory`, `internal/apk`, `internal/rules`, `internal/engine`, `internal/intel`, `internal/audit`, `internal/monitor`, `internal/remediate`, `internal/report`, `internal/contract`, dan root `main`).
+- **Scan Comparison & History Fidelity**: Verifikasi delta scan otomatis (new, resolved, unchanged) dan ekspor laporan JSON/HTML teruji hijau.
+- **Frontend Vitest Suite**: 117 pengujian lolos di 20 file tes (`npm run test`).
+- **ESLint & TypeScript**: 0 error, 0 warning pada `npm run lint` & `npm run typecheck`.
+- **Production Compilation (`wails build`)**: Standalone binary Windows x64 `build/bin/Jerion.exe` terkompilasi bersih dalam 20.5 detik.
+
+## Fase Fidelity Hardening (P0: Data Fidelity & Remediation Safety) — riwayat selesai
 - [x] Sub-tugas P0.1: Eliminasi fallback data perangkat semu (`Android 12`, `SDK 31`, `85%`) pada `convertDevice` di `app.go`
 - [x] Sub-tugas P0.2: Penegakan syarat wajib backup APK sebelum uninstall aplikasi pengguna pada `internal/remediate` (`BackupFailed` guardrail)
 - [x] Sub-tugas P0.3: Pengkabelan rencana remediasi nyata berdasarkan finding ID tanpa dummy `com.adware.sample` (`RemediateCreatePlan` & `RemediateExecute`)
 - [x] Sub-tugas P0.4: Verifikasi integritas checksum SHA-256 wajib pada unduhan ADB platform-tools Google (ADR-0002)
 - [x] Sub-tugas P0.5: Akurasi metadata aplikasi (`targetSdk`, `minSdk`, timestamp kosong jika tidak ada) & ringkasan scan `TotalApps` dinamis
-
-## Pengukuran & Kualitas (P0: Data Fidelity & Safety)
-- **Backend Go Test Suite**: 100% test lulus di seluruh 16 paket backend Go (`internal/logx`, `internal/secrets`, `internal/store`, `internal/adb`, `internal/preflight`, `internal/inventory`, `internal/apk`, `internal/rules`, `internal/engine`, `internal/intel`, `internal/audit`, `internal/monitor`, `internal/remediate`, `internal/report`, `internal/contract`, dan root `main`).
-- **Remediation Guardrail**: Test positif dan negatif untuk uninstall user app lulus; uninstall gagal total jika backup APK ditolak perangkat; backupPath tercatat di log audit dan berhasil di-undo.
-- **Frontend Vitest Suite**: 117 pengujian lolos di 20 file tes.
-- **ESLint & TypeScript**: 0 error, 0 warning pada `npm run lint` & `npm run typecheck`.
-- **Production Compilation (`wails build`)**: Standalone binary Windows x64 `build/bin/Jerion.exe` terkompilasi bersih dalam 19.1 detik.
 
 ## Fase 6 (Tahap T6) — riwayat selesai
 - [x] Sub-tugas 6.1: Konfigurasi Windows NSIS Installer & Packaging Final
