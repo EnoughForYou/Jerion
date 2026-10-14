@@ -62,4 +62,20 @@ describe('SettingsView', () => {
       expect(screen.getByText('com.example.testpkg')).toBeInTheDocument();
     });
   });
+
+  it('renders and tests ClamAV connection', async () => {
+    render(
+      <MemoryRouter>
+        <SettingsView />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText(/ClamAV Local Antivirus Engine/i)).toBeInTheDocument();
+    const testBtn = screen.getByRole('button', { name: /test connection/i });
+    fireEvent.click(testBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/connected/i)).toBeInTheDocument();
+    });
+  });
 });

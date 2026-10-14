@@ -104,6 +104,7 @@
 - ADR-0002: Kebijakan distribusi ADB dan preflight per-peluncuran (P1–P7)
 - ADR-0003: Kebijakan UI English-only dengan lapisan i18n
 - ADR-0004: Zod sebagai Single Source of Truth untuk Runtime Schema Kontrak
+- ADR-0005: ClamAV Daemon (clamd TCP) Integration for Local Threat Scanning
 
 ## Masalah terbuka / blocker
 - golangci-lint lokal: Tidak terverifikasi (binary golangci-lint belum terpasang di mesin dev)

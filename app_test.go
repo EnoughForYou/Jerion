@@ -272,3 +272,45 @@ func TestWrapADBError(t *testing.T) {
 	}
 }
 
+func TestClamAVAppIntegration(t *testing.T) {
+	app, _ := setupTestApp(t)
+	defer app.store.Close()
+
+	// 1. Initial config
+	cfg, err := app.ClamAVGetConfig()
+	if err != nil {
+		t.Fatalf("ClamAVGetConfig failed: %v", err)
+	}
+	if cfg.Enabled {
+		t.Fatalf("expected ClamAV disabled initially")
+	}
+	if cfg.Host != "127.0.0.1:3310" {
+		t.Fatalf("expected default host 127.0.0.1:3310, got %s", cfg.Host)
+	}
+
+	// 2. Save config
+	if err := app.ClamAVSaveConfig(true, "10.0.0.5:3310"); err != nil {
+		t.Fatalf("ClamAVSaveConfig failed: %v", err)
+	}
+
+	cfgUpdated, err := app.ClamAVGetConfig()
+	if err != nil {
+		t.Fatalf("ClamAVGetConfig failed: %v", err)
+	}
+	if !cfgUpdated.Enabled || cfgUpdated.Host != "10.0.0.5:3310" {
+		t.Fatalf("expected enabled=true host=10.0.0.5:3310, got %+v", cfgUpdated)
+	}
+
+	// 3. Test connection to unreachable endpoint
+	status, err := app.ClamAVTestConnection("127.0.0.1:54321")
+	if err != nil {
+		t.Fatalf("unexpected error from TestConnection: %v", err)
+	}
+	if status.Connected {
+		t.Fatalf("expected Connected false for non-listening host")
+	}
+	if status.Error == "" {
+		t.Fatalf("expected non-empty error message")
+	}
+}
+

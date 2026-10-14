@@ -22,6 +22,18 @@ export function AuditRun() {
   return window['go']['main']['App']['AuditRun']();
 }
 
+export function ClamAVGetConfig() {
+  return window['go']['main']['App']['ClamAVGetConfig']();
+}
+
+export function ClamAVSaveConfig(arg1, arg2) {
+  return window['go']['main']['App']['ClamAVSaveConfig'](arg1, arg2);
+}
+
+export function ClamAVTestConnection(arg1) {
+  return window['go']['main']['App']['ClamAVTestConnection'](arg1);
+}
+
 export function DeviceGetConnected() {
   return window['go']['main']['App']['DeviceGetConnected']();
 }

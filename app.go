@@ -1306,3 +1306,66 @@ func (a *App) AllowlistAdd(entry contract.AllowlistEntry) (contract.AllowlistEnt
 func (a *App) AllowlistRemove(id string) error {
 	return a.store.RemoveAllowlistEntry(id)
 }
+
+// --- 10. ClamAV Service ---
+
+// ClamAVConfig represents the local ClamAV engine configuration.
+type ClamAVConfig struct {
+	Enabled bool   `json:"enabled"`
+	Host    string `json:"host"`
+}
+
+// ClamAVStatus represents the result of testing the ClamAV daemon connection.
+type ClamAVStatus struct {
+	Connected bool   `json:"connected"`
+	Version   string `json:"version,omitempty"`
+	Error     string `json:"error,omitempty"`
+}
+
+// ClamAVGetConfig retrieves the ClamAV configuration.
+func (a *App) ClamAVGetConfig() (ClamAVConfig, error) {
+	all, _ := a.store.GetAllSettings()
+	enabled := false
+	if e, ok := all["clamav_enabled"]; ok && e == "true" {
+		enabled = true
+	}
+	host := intel.DefaultClamAVAddress
+	if h, ok := all["clamav_host"]; ok && h != "" {
+		host = h
+	}
+	return ClamAVConfig{
+		Enabled: enabled,
+		Host:    host,
+	}, nil
+}
+
+// ClamAVSaveConfig saves the ClamAV configuration.
+func (a *App) ClamAVSaveConfig(enabled bool, host string) error {
+	trimmedHost := strings.TrimSpace(host)
+	if trimmedHost == "" {
+		trimmedHost = intel.DefaultClamAVAddress
+	}
+	if err := a.store.SetSetting("clamav_enabled", fmt.Sprintf("%t", enabled)); err != nil {
+		return err
+	}
+	return a.store.SetSetting("clamav_host", trimmedHost)
+}
+
+// ClamAVTestConnection probes the ClamAV daemon at the specified host.
+func (a *App) ClamAVTestConnection(host string) (ClamAVStatus, error) {
+	client := intel.NewClamAVClient(host)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	ver, err := client.Version(ctx)
+	if err != nil {
+		return ClamAVStatus{
+			Connected: false,
+			Error:     err.Error(),
+		}, nil
+	}
+	return ClamAVStatus{
+		Connected: true,
+		Version:   ver,
+	}, nil
+}

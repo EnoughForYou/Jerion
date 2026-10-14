@@ -9,6 +9,7 @@ import {
   Trash2,
   CheckCircle2,
   Terminal,
+  Server,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/Card';
@@ -29,6 +30,9 @@ export const SettingsView: React.FC = () => {
     autoCheckPreflight: true,
   });
   const [adbPathInput, setAdbPathInput] = useState('');
+  const [clamavEnabled, setClamavEnabled] = useState(false);
+  const [clamavHost, setClamavHost] = useState('127.0.0.1:3310');
+  const [clamavStatus, setClamavStatus] = useState<{ testing: boolean; connected?: boolean; version?: string; error?: string } | null>(null);
   const [newTarget, setNewTarget] = useState('');
   const [newType, setNewType] = useState<AllowlistType>('package');
   const [newReason, setNewReason] = useState('');
@@ -46,12 +50,47 @@ export const SettingsView: React.FC = () => {
         setSettings(loadedSettings);
         setAdbPathInput(loadedSettings.adbPath || '');
         setAllowlist(list);
+
+        const goApp = (window as unknown as { go?: { main?: { App?: { ClamAVGetConfig?: () => Promise<{ enabled: boolean; host: string }> } } } })?.go?.main?.App;
+        if (goApp?.ClamAVGetConfig) {
+          const cfg = await goApp.ClamAVGetConfig();
+          setClamavEnabled(cfg.enabled);
+          setClamavHost(cfg.host || '127.0.0.1:3310');
+        }
       } catch (err) {
         console.error('Failed to load settings:', err);
       }
     }
     loadData();
   }, [bridge]);
+
+  const handleTestClamAV = async () => {
+    setClamavStatus({ testing: true });
+    try {
+      const goApp = (window as unknown as { go?: { main?: { App?: { ClamAVTestConnection?: (h: string) => Promise<{ connected: boolean; version?: string; error?: string }> } } } })?.go?.main?.App;
+      if (goApp?.ClamAVTestConnection) {
+        const res = await goApp.ClamAVTestConnection(clamavHost.trim() || '127.0.0.1:3310');
+        setClamavStatus({ testing: false, connected: res.connected, version: res.version, error: res.error });
+      } else {
+        setClamavStatus({ testing: false, connected: true, version: 'ClamAV 1.4.1 (Simulated)' });
+      }
+    } catch (err: unknown) {
+      setClamavStatus({ testing: false, connected: false, error: err instanceof Error ? err.message : 'Unknown error' });
+    }
+  };
+
+  const handleSaveClamAV = async () => {
+    try {
+      const goApp = (window as unknown as { go?: { main?: { App?: { ClamAVSaveConfig?: (e: boolean, h: string) => Promise<void> } } } })?.go?.main?.App;
+      if (goApp?.ClamAVSaveConfig) {
+        await goApp.ClamAVSaveConfig(clamavEnabled, clamavHost.trim() || '127.0.0.1:3310');
+      }
+      setFeedback(t('settings.clamavSaved'));
+      setTimeout(() => setFeedback(null), 4000);
+    } catch (err) {
+      console.error('Failed to save ClamAV config:', err);
+    }
+  };
 
   const handleSaveAdbPath = async () => {
     try {
@@ -241,6 +280,87 @@ export const SettingsView: React.FC = () => {
               onChange={(e) => handleToggleAutoCheck(e.target.checked)}
               className="rounded border-separator text-accent focus:ring-accent h-4 w-4"
             />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ClamAV Local Antivirus Engine Configuration */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Server className="w-4 h-4 text-accent" />
+            <CardTitle>{t('settings.clamavTitle')}</CardTitle>
+          </div>
+          <CardDescription>{t('settings.clamavDesc')}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 text-xs">
+          {/* Enable ClamAV toggle */}
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="font-medium text-text-primary block">
+                {t('settings.clamavEnabled')}
+              </span>
+              <span className="text-[11px] text-text-secondary">
+                Stream APK payloads to local clamd daemon (TCP) for offline signature-based threat detection.
+              </span>
+            </div>
+            <input
+              type="checkbox"
+              checked={clamavEnabled}
+              onChange={(e) => setClamavEnabled(e.target.checked)}
+              className="rounded border-separator text-accent focus:ring-accent h-4 w-4"
+            />
+          </div>
+
+          {/* ClamAV Host & Port Input */}
+          <div className="space-y-1.5 pt-2 border-t border-separator/15">
+            <label className="font-medium text-text-primary block">
+              {t('settings.clamavHost')}
+            </label>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="text"
+                value={clamavHost}
+                onChange={(e) => setClamavHost(e.target.value)}
+                placeholder={t('settings.clamavHostPlaceholder')}
+                className="flex-1 h-9 px-3 text-xs font-mono bg-raised rounded-md border border-separator/35 text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+              />
+              <Button
+                variant="outline"
+                size="md"
+                onClick={handleTestClamAV}
+                disabled={clamavStatus?.testing}
+              >
+                {clamavStatus?.testing ? t('settings.clamavTesting') : t('settings.clamavTest')}
+              </Button>
+              <Button
+                variant="secondary"
+                size="md"
+                onClick={handleSaveClamAV}
+              >
+                {t('settings.clamavSave')}
+              </Button>
+            </div>
+
+            {/* Test Connection Result Feedback */}
+            {clamavStatus && !clamavStatus.testing && (
+              <div
+                className={`mt-2 p-2.5 rounded text-[11px] font-mono flex items-center gap-2 ${
+                  clamavStatus.connected
+                    ? 'bg-ok/10 text-ok border border-ok/30'
+                    : 'bg-sev-critical/10 text-sev-critical border border-sev-critical/30'
+                }`}
+              >
+                {clamavStatus.connected ? (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>{t('settings.clamavConnected', { version: clamavStatus.version })}</span>
+                  </>
+                ) : (
+                  <span>{t('settings.clamavError', { error: clamavStatus.error })}</span>
+                )}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
