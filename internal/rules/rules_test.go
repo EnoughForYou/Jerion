@@ -19,8 +19,8 @@ func TestLoadEmbeddedRules(t *testing.T) {
 		ruleMap[r.ID] = r
 	}
 
-	// Verify required initial rules exist
-	expectedRuleIDs := []string{"ADW-001", "ADW-002", "STK-001", "DRO-001", "ADM-001"}
+	// Verify required rules exist
+	expectedRuleIDs := []string{"ADW-001", "ADW-002", "ADW-003", "STK-001", "DRO-001", "ADM-001", "BNK-001", "PUA-001"}
 	for _, id := range expectedRuleIDs {
 		if _, ok := ruleMap[id]; !ok {
 			t.Errorf("missing expected rule: %s", id)

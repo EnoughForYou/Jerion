@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -29,6 +30,30 @@ import (
 
 func wireError(code, message, remedy string) error {
 	return fmt.Errorf(`JERION_ERR:{"code":"%s","message":"%s","remedy":"%s"}`, code, message, remedy)
+}
+
+func wrapADBError(err error) error {
+	if err == nil {
+		return nil
+	}
+	var adbErr *adb.ADBError
+	if errors.As(err, &adbErr) {
+		switch adbErr.Code {
+		case adb.ErrCodeAdbMissing:
+			return wireError("AdbMissing", adbErr.Message, "Install platform-tools or configure custom ADB path in Settings")
+		case adb.ErrCodeDeviceUnauthorized:
+			return wireError("DeviceUnauthorized", adbErr.Message, "Check phone screen and authorize computer RSA key")
+		case adb.ErrCodeDeviceOffline:
+			return wireError("DeviceOffline", adbErr.Message, "Reconnect USB cable or toggle USB debugging")
+		case adb.ErrCodeTimeout:
+			return wireError("Timeout", adbErr.Message, "Command took too long to respond; verify device responsiveness")
+		case adb.ErrCodePermissionDenied:
+			return wireError("PermissionDenied", adbErr.Message, "Operation requires elevated Android permissions")
+		default:
+			return wireError("InternalError", adbErr.Message, "Check ADB and device state")
+		}
+	}
+	return wireError("InternalError", err.Error(), "Check application logs")
 }
 
 // App encapsulates all backend services exposed to Wails v2.
@@ -133,6 +158,23 @@ func (a *App) startup(ctx context.Context) {
 
 	// Device changed event emitter
 	a.tracker.AddListener(func(devices []adb.DeviceInfo, active *adb.DeviceInfo) {
+		a.mu.Lock()
+		activeSerial := a.activeSerial
+		if active == nil || (activeSerial != "" && active.Serial != activeSerial) {
+			// Cancel active scans for disconnected or superseded device
+			for scanID, cancel := range a.activeScans {
+				a.logger.Warn("device disconnected during active scan; cancelling cleanly", "scanId", scanID, "serial", activeSerial)
+				cancel()
+				delete(a.activeScans, scanID)
+			}
+			if active == nil {
+				a.activeSerial = ""
+			} else {
+				a.activeSerial = active.Serial
+			}
+		}
+		a.mu.Unlock()
+
 		if a.ctx != nil {
 			var devDto *contract.Device
 			if active != nil {
@@ -338,16 +380,24 @@ func (a *App) getTargetSerial() (string, error) {
 	serial := a.activeSerial
 	a.mu.RUnlock()
 
+	active := a.tracker.ActiveDevice()
+	if active == nil {
+		return "", wireError("DeviceOffline", "No Android device is currently connected", "Connect device via USB and ensure USB debugging is enabled")
+	}
+
+	if active.State == adb.StateUnauthorized {
+		return "", wireError("DeviceUnauthorized", "RSA security fingerprint not authorized on device", "Check your phone display and tap 'Allow' or 'Always allow from this computer'")
+	}
+
+	if active.State != adb.StateReady {
+		return "", wireError("DeviceOffline", fmt.Sprintf("Device is in '%s' state", string(active.State)), "Reconnect device or restart ADB server")
+	}
+
 	if serial != "" {
 		return serial, nil
 	}
 
-	active := a.tracker.ActiveDevice()
-	if active != nil && active.State == adb.StateReady {
-		return active.Serial, nil
-	}
-
-	return "", wireError("DeviceOffline", "No ready Android device is selected", "Connect device and approve USB debugging prompt")
+	return active.Serial, nil
 }
 
 func (a *App) InventoryList(filter contract.InventoryFilter) ([]contract.AppInfo, error) {

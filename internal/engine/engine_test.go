@@ -146,6 +146,73 @@ func TestRuleEvaluatorPositiveAndNegative(t *testing.T) {
 	if hasFinding(findings, "ADM-001") {
 		t.Errorf("expected ADM-001 negative for Play Store mdm app")
 	}
+
+	// 6. ADW-003 (Boot-Triggered Overlay Adware)
+	posADW3 := inventory.AppInfo{
+		Package:              "com.popup.bootspammer",
+		IsSystem:             false,
+		RequestedPermissions: []string{"android.permission.SYSTEM_ALERT_WINDOW", "android.permission.RECEIVE_BOOT_COMPLETED"},
+	}
+	findings = evaluator.EvaluateApp(posADW3, nil)
+	if !hasFinding(findings, "ADW-003") {
+		t.Errorf("expected ADW-003 positive match")
+	}
+
+	negADW3 := inventory.AppInfo{
+		Package:              "com.popup.noboot",
+		IsSystem:             false,
+		RequestedPermissions: []string{"android.permission.SYSTEM_ALERT_WINDOW"},
+	}
+	findings = evaluator.EvaluateApp(negADW3, nil)
+	if hasFinding(findings, "ADW-003") {
+		t.Errorf("expected ADW-003 negative when missing RECEIVE_BOOT_COMPLETED")
+	}
+
+	// 7. BNK-001 (Banking Trojan Accessibility Overlay)
+	posBNK1 := inventory.AppInfo{
+		Package:              "com.malicious.bankhijack",
+		IsSystem:             false,
+		RequestedPermissions: []string{"android.permission.BIND_ACCESSIBILITY_SERVICE", "android.permission.SYSTEM_ALERT_WINDOW"},
+	}
+	findings = evaluator.EvaluateApp(posBNK1, nil)
+	if !hasFinding(findings, "BNK-001") {
+		t.Errorf("expected BNK-001 positive match")
+	}
+
+	negBNK1 := inventory.AppInfo{
+		Package:              "com.accessibility.reader",
+		IsSystem:             false,
+		RequestedPermissions: []string{"android.permission.BIND_ACCESSIBILITY_SERVICE"},
+	}
+	findings = evaluator.EvaluateApp(negBNK1, nil)
+	if hasFinding(findings, "BNK-001") {
+		t.Errorf("expected BNK-001 negative when missing SYSTEM_ALERT_WINDOW")
+	}
+
+	// 8. PUA-001 (Sideloaded Hidden Notification Spammer)
+	posPUA1 := inventory.AppInfo{
+		Package:              "com.spam.hiddennotify",
+		IsSystem:             false,
+		HasLauncher:          false,
+		Installer:            nil, // sideload
+		RequestedPermissions: []string{"android.permission.POST_NOTIFICATIONS"},
+	}
+	findings = evaluator.EvaluateApp(posPUA1, nil)
+	if !hasFinding(findings, "PUA-001") {
+		t.Errorf("expected PUA-001 positive match")
+	}
+
+	negPUA1 := inventory.AppInfo{
+		Package:              "com.store.legitnotify",
+		IsSystem:             false,
+		HasLauncher:          false,
+		Installer:            &storeInstaller,
+		RequestedPermissions: []string{"android.permission.POST_NOTIFICATIONS"},
+	}
+	findings = evaluator.EvaluateApp(negPUA1, nil)
+	if hasFinding(findings, "PUA-001") {
+		t.Errorf("expected PUA-001 negative when installed from Play Store")
+	}
 }
 
 func TestQuickScanAndDeepScan(t *testing.T) {

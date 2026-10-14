@@ -1,0 +1,18 @@
+id: PUA-001
+title: Sideloaded Hidden Notification Spammer
+category: pua
+severity: medium
+confidence: medium
+weight: 60
+why: Application was sideloaded outside official app stores and lacks a launcher icon, but requests notification privileges to broadcast intrusive spam ads.
+false_positive_hint: Headless IoT helper services and background sync engines may legitimately lack launcher icons.
+remediation:
+  - revoke-permission
+  - disable
+  - uninstall
+conditions:
+  is_system: false
+  has_launcher: false
+  installer: sideload
+  required_permissions:
+    - android.permission.POST_NOTIFICATIONS

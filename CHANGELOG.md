@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-14
+
+### Added
+- **Stage T5 (Polish, Hardening & End-to-End Verification)**:
+  - **Runtime Bridge Auto-Detection & Contract 1.0.0**: Seamless Wails desktop runtime detection (`window.go?.main?.App`) in `frontend/src/lib/bridge/index.ts` allowing automatic bridge selection between production Wails bindings and test mock environments without environment variables. Contract version bumped to `1.0.0` with Vitest suite coverage.
+  - **ADB Robustness & Edge Case Hardening**: Hardened abrupt disconnection handling in `app.go` tracker listener cancelling active scans cleanly via context and notifying the UI immediately (`device:changed = null`). Added typed wire error mapping (`wrapADBError`) for `AdbMissing`, `DeviceUnauthorized`, `DeviceOffline`, `Timeout`, and `PermissionDenied` with actionable user guidance and RSA prompt remediation.
+  - **Forensic Rule Pack & OEM Baseline Protection**: Added 3 new YAML forensic detection rules: `ADW-003` (persistent boot overlay adware), `BNK-001` (banking trojan overlay & accessibility abuse), and `PUA-001` (sideloaded headless notification spammers) with positive and negative table-driven unit tests. Expanded `internal/remediate` critical system package guardrails with Infinix / Transsion XOS 10.6 baseline packages (`com.transsion.launcher`, `com.transsion.systemupdate`, `com.transsion.smartpanel`, `com.transsion.phonemaster`).
+  - **UI Accessibility (WCAG 2.1 AA) & Anti-AI-Slop**: Implemented universal `:focus-visible` high-contrast outline ring across all interactive controls, calm non-intrusive scrollbar tokens, unified selection colors, and global `@media (prefers-reduced-motion: reduce)` animation override in `frontend/src/style.css`. Verified PRD §5.6 anti-slop guidelines (1 accent color, icon+label+color severity badges, zero lorem/unsubstantiated claims, zero decorative beams/auroras).
+  - **Windows Release Packaging**: Enriched `wails.json` application metadata (`companyName`, `productName`, `productVersion: "0.5.0"`, `copyright`, `comments`) automatically populating Windows executable version resource (`build/windows/info.json`) and NSIS installer scripts (`build/windows/installer/project.nsi`).
+  - **Verification Gate**: 100% green tests across 16 backend Go packages, 116 passing tests across 20 Vitest test files in frontend, zero ESLint/TypeScript errors, passed `check:no-mock` dead-code elimination, and clean `wails build` production compilation producing `build/bin/Jerion.exe` in under 18 seconds.
+
 ## [0.4.0] - 2026-10-14
 
 ### Added

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/EnoughForYou/Jerion/internal/adb"
@@ -208,3 +209,66 @@ func TestAppServicesIntegration(t *testing.T) {
 		t.Fatalf("RemediateUndo failed: %v", err)
 	}
 }
+
+func TestAppEdgeCases(t *testing.T) {
+	app, fake := setupTestApp(t)
+	defer app.store.Close()
+
+	ctx := context.Background()
+
+	// 1. No device connected
+	fake.SetResponse("devices -l", "List of devices attached\n\n", "", nil)
+	_, _ = app.tracker.PollOnce(ctx)
+
+	_, err := app.InventoryList(contract.InventoryFilter{Category: "all"})
+	if err == nil || !strings.Contains(err.Error(), "DeviceOffline") {
+		t.Fatalf("expected DeviceOffline when no device connected, got %v", err)
+	}
+
+	// 2. Unauthorized device
+	fake.SetResponse("devices -l", "List of devices attached\nMOCK-UNAUTH unauthorized transport_id:2\n", "", nil)
+	_, _ = app.tracker.PollOnce(ctx)
+
+	_, err = app.InventoryList(contract.InventoryFilter{Category: "all"})
+	if err == nil || !strings.Contains(err.Error(), "DeviceUnauthorized") {
+		t.Fatalf("expected DeviceUnauthorized for unauthorized device, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "RSA security fingerprint") {
+		t.Fatalf("expected RSA guidance in error remedy, got %v", err)
+	}
+
+	// 3. Abrupt disconnect during session
+	fake.SetResponse("devices -l", "List of devices attached\nMOCK-READY device transport_id:3\n", "", nil)
+	_, _ = app.tracker.PollOnce(ctx)
+	if app.tracker.ActiveDevice() == nil || app.tracker.ActiveDevice().Serial != "MOCK-READY" {
+		t.Fatalf("expected active device MOCK-READY")
+	}
+
+	// Device unplugged!
+	fake.SetResponse("devices -l", "List of devices attached\n\n", "", nil)
+	_, _ = app.tracker.PollOnce(ctx)
+	if app.tracker.ActiveDevice() != nil {
+		t.Fatalf("expected active device to become nil after unplug, got %+v", app.tracker.ActiveDevice())
+	}
+}
+
+func TestWrapADBError(t *testing.T) {
+	errMissing := adb.NewADBError(adb.ErrCodeAdbMissing, "adb not found", nil)
+	wErr := wrapADBError(errMissing)
+	if !strings.Contains(wErr.Error(), "AdbMissing") {
+		t.Fatalf("expected AdbMissing code, got: %v", wErr)
+	}
+
+	errUnauth := adb.NewADBError(adb.ErrCodeDeviceUnauthorized, "unauthorized", nil)
+	wErr2 := wrapADBError(errUnauth)
+	if !strings.Contains(wErr2.Error(), "DeviceUnauthorized") {
+		t.Fatalf("expected DeviceUnauthorized code, got: %v", wErr2)
+	}
+
+	errTimeout := adb.NewADBError(adb.ErrCodeTimeout, "timeout", nil)
+	wErr3 := wrapADBError(errTimeout)
+	if !strings.Contains(wErr3.Error(), "Timeout") {
+		t.Fatalf("expected Timeout code, got: %v", wErr3)
+	}
+}
+

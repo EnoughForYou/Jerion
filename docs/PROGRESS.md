@@ -1,19 +1,26 @@
 # PROGRESS
 
 ## Status sekarang
-- Fase aktif: 5 — Polish, Hardening & End-to-End Verification (Tahap T5)
-- Branch: phase/4-backend (siap merge ke main)
-- Terakhir selesai: Tahap 4 — Backend Go Core & Engine (tag v0.4.0)
+- Fase aktif: 5 — Polish, Hardening & End-to-End Verification (Tahap T5) [Selesai]
+- Branch: phase/5-hardening
+- Terakhir selesai: Tahap 5 — Polish, Hardening & End-to-End Verification (tag v0.5.0)
 
-## Fase 4 (Tahap T4) — checklist
-- [x] Sub-tugas 4.1: Paket fondasi & penyimpanan (`internal/logx`, `internal/secrets`, `internal/store` via pure-Go SQLite `modernc.org/sqlite`)
-- [x] Sub-tugas 4.2: Lapisan ADB Core & Preflight (`internal/adb`, `internal/preflight`)
-- [x] Sub-tugas 4.3: Inventaris Aplikasi & Analisis APK (`internal/inventory`, `internal/apk`)
-- [x] Sub-tugas 4.4: Scan Engine, Rules & Intel (`internal/engine`, `internal/rules`, `internal/intel`)
-- [x] Sub-tugas 4.5: System Audit & Popup Hunter Monitor (`internal/audit`, `internal/monitor`)
-- [x] Sub-tugas 4.6: Remediasi & Laporan (`internal/remediate`, `internal/report`)
-- [x] Sub-tugas 4.7: Service Layer & Go DTOs (`app.go` Wails bindings)
-- [x] Sub-tugas 4.8: Gerbang selesai-tahap T4
+## Fase 5 (Tahap T5) — riwayat selesai
+- [x] Sub-tugas 5.1: Bridge Runtime Auto-Detection & Bump Versi Kontrak `1.0.0`
+- [x] Sub-tugas 5.2: Hardening Ketahanan ADB & Kasus Tepi (Edge Cases)
+- [x] Sub-tugas 5.3: Perluasan Rules Forensik & Baseline XOS 10.6 (Infinix Note 11S)
+- [x] Sub-tugas 5.4: UI Polish, Aksesibilitas (WCAG AA) & Checklist Anti-AI-Slop
+- [x] Sub-tugas 5.5: Konfigurasi Packaging & Windows Installer
+- [x] Sub-tugas 5.6: Gerbang Selesai-Tahap T5 (tag v0.5.0)
+
+## Pengukuran & Kualitas (Tahap T5)
+- **Backend Go Test Suite**: 100% test lulus di seluruh 16 paket backend Go (`internal/logx`, `internal/secrets`, `internal/store`, `internal/adb`, `internal/preflight`, `internal/inventory`, `internal/apk`, `internal/rules`, `internal/engine`, `internal/intel`, `internal/audit`, `internal/monitor`, `internal/remediate`, `internal/report`, `internal/contract`, dan root `main`).
+- **Contract Fidelity (Strict Two-Way)**: Bridge contract `1.0.0 (FROZEN)` terverifikasi dua arah dengan auto-detection runtime Wails (`window.go?.main?.App`).
+- **Frontend Vitest Suite**: 116 pengujian lolos di 20 file tes (termasuk pengujian bridge runtime auto-detection).
+- **ESLint & TypeScript**: 0 error, 0 warning pada `npm run lint` & `npm run typecheck`.
+- **Mock Elimination (`npm run check:no-mock`)**: 0 marker mock atau skema runtime terdeteksi pada bundle produksi Vite.
+- **Production Compilation (`wails build`)**: Binary Windows x64 `build/bin/Jerion.exe` terkompilasi bersih dalam 17.6 detik dengan metadata Windows v0.5.0.
+- **Accessibility & Anti-AI-Slop**: Kepatuhan penuh WCAG 2.1 AA Focus Visible (`:focus-visible` ring), token-based scrollbar & text selection, `prefers-reduced-motion` override, serta zero-slop design system.
 
 ## Fase 4 (Tahap T4) — riwayat selesai
 - [x] Sub-tugas 4.1: Paket fondasi & penyimpanan (`internal/logx`, `internal/secrets`, `internal/store` via pure-Go SQLite `modernc.org/sqlite`)
