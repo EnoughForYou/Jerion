@@ -8,7 +8,7 @@
 ## Fase 6 (Tahap T6) — checklist
 - [x] Sub-tugas 6.1: Konfigurasi Windows NSIS Installer & Packaging Final
 - [x] Sub-tugas 6.2: Audit Keamanan & Guardrail Produksi (PRD §6.8)
-- [ ] Sub-tugas 6.3: Dokumentasi Final & Panduan Perangkat Pengguna
+- [x] Sub-tugas 6.3: Dokumentasi Final & Panduan Perangkat Pengguna
 - [ ] Sub-tugas 6.4: Gerbang Selesai-Tahap T6 (Rilis v1.0.0)
 
 ## Fase 5 (Tahap T5) — riwayat selesai
