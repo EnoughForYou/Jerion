@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-14
+
+### Added
+- **Stage T6 (Hardening, Installer & Production Release v1.0.0)**:
+  - **Windows Packaging & NSIS Release Target**: Finalized `wails.json` metadata for v1.0.0 release. Verified NSIS project script (`build/windows/installer/project.nsi`) with WebView2 automatic runtime detection and installation bootstrapper (`wails.webview2runtime`), Start Menu and Desktop shortcuts, and clean uninstallation cleanup.
+  - **Comprehensive Security Guardrail Verification**: Hardened table-driven security tests in `internal/remediate/remediate_test.go` covering full shell injection vectors (pipes, subshells, quotes, redirections) on package and permission inputs. Verified zero credential leakage (OS native keychain with write-only frontend boundaries), complete critical package denylist protection (Android Core + Transsion XOS 10.6), and 100% offline self-contained HTML report export without CDN dependencies.
+  - **Documentation & Primary Device Baseline**: Expanded `README.md` with full feature overview (P1–P7 Preflight, Virtualized Inventory, Evidence Scan Engine, Popup Hunter, Security Audit, Guardrailed Remediation, Offline Reports) and quality verification instructions. Documented Infinix Note 11S / XOS 10.6 hardware testing procedures, Developer Options setup, and background Power Marathon telemetry characteristics in `docs/devices/infinix-note-11s.md`.
+  - **Final Release Gate (All 100% Green)**: Completed all verification criteria per PRD §8.0: 100% pass across all 16 backend Go packages, 116 passing tests across 20 Vitest test files in frontend, zero ESLint/TypeScript errors, passed `check:no-mock` dead-code elimination, and clean `wails build` production compilation producing `build/bin/Jerion.exe`.
+
 ## [0.5.0] - 2026-10-14
 
 ### Added
