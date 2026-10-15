@@ -167,7 +167,7 @@ func (d *Downloader) DownloadAndExtract(ctx context.Context, expectedSHA string,
 	// 2. Checksum verification (mandatory per ADR-0002)
 	computedSHA := hex.EncodeToString(hasher.Sum(nil))
 	if expectedSHA != "" {
-		if !strings.EqualFold(computedSHA, expectedSHA) && !IsTrustedPlatformToolsHash(runtime.GOOS, computedSHA) {
+		if !strings.EqualFold(computedSHA, expectedSHA) {
 			return "", fmt.Errorf("checksum verification failed: expected %s, got %s", expectedSHA, computedSHA)
 		}
 	} else {

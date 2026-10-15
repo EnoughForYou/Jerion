@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/EnoughForYou/Jerion/internal/adb"
 )
 
 // PackagePathEntry captures pm list output.
@@ -244,3 +246,88 @@ func containsString(slice []string, val string) bool {
 	}
 	return false
 }
+
+// ParseDeviceAdmins extracts active device admin packages from dumpsys device_policy or dpm list-owners.
+// It handles formats such as:
+// "User 0: admin=com.example.admin/.AdminReceiver"
+// "admin=com.example.admin/.AdminReceiver"
+// "com.google.android.apps.work.clouddpc/.receivers.CloudDeviceAdminReceiver"
+func ParseDeviceAdmins(output string) map[string]bool {
+	admins := make(map[string]bool)
+	reAdmin := regexp.MustCompile(`(?:admin=|\s|^)([a-zA-Z0-9_.]+)/[a-zA-Z0-9_.]*`)
+	inAdminsSection := false
+
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+
+		if strings.Contains(trimmed, "Enabled Device Admins") || strings.Contains(trimmed, "Active Admins") {
+			inAdminsSection = true
+			continue
+		}
+		if inAdminsSection {
+			// A non-indented header that ends with ":" and is not "Enabled Device Admins (user ...):" marks section end
+			if len(line) > 0 && line[0] != ' ' && line[0] != '\t' && strings.HasSuffix(trimmed, ":") && !strings.Contains(trimmed, "Admins") {
+				inAdminsSection = false
+			}
+		}
+
+		if inAdminsSection || strings.Contains(trimmed, "admin=") {
+			if m := reAdmin.FindStringSubmatch(trimmed); len(m) >= 2 {
+				pkg := m[1]
+				if err := adb.ValidatePackageName(pkg); err == nil {
+					admins[pkg] = true
+				}
+			}
+		}
+	}
+	return admins
+}
+
+// ParseAppOpsOverlay parses dumpsys appops output to identify packages with SYSTEM_ALERT_WINDOW actively allowed.
+func ParseAppOpsOverlay(output string) map[string]bool {
+	overlayMap := make(map[string]bool)
+	lines := strings.Split(output, "\n")
+	currentPkg := ""
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+
+		if strings.HasPrefix(trimmed, "Package ") {
+			pkgPart := strings.TrimPrefix(trimmed, "Package ")
+			pkgPart = strings.Trim(pkgPart, "[]:")
+			currentPkg = strings.TrimSpace(pkgPart)
+			continue
+		}
+
+		if currentPkg != "" && strings.Contains(trimmed, "SYSTEM_ALERT_WINDOW") {
+			lower := strings.ToLower(trimmed)
+			// Check for negative modes
+			if strings.Contains(lower, "ignore") || strings.Contains(lower, "deny") || strings.Contains(lower, "default") || strings.Contains(lower, "mode=1") || strings.Contains(lower, "mode=2") || strings.Contains(lower, "mode=3") {
+				continue
+			}
+			if strings.Contains(lower, "allow") || strings.Contains(lower, "mode=0") || strings.Contains(lower, "mode=allow") {
+				if err := adb.ValidatePackageName(currentPkg); err == nil {
+					overlayMap[currentPkg] = true
+				}
+			}
+		}
+	}
+	return overlayMap
+}
+
+// ParseSingleAppOpOverlay parses the output of `appops get <pkg> SYSTEM_ALERT_WINDOW` or `cmd appops get <pkg> SYSTEM_ALERT_WINDOW`.
+func ParseSingleAppOpOverlay(output string) bool {
+	lower := strings.ToLower(strings.TrimSpace(output))
+	if lower == "" || strings.Contains(lower, "no operations") || strings.Contains(lower, "ignore") || strings.Contains(lower, "deny") || strings.Contains(lower, "default") || strings.Contains(lower, "mode=1") || strings.Contains(lower, "mode=2") || strings.Contains(lower, "mode=3") {
+		return false
+	}
+	return strings.Contains(lower, "allow") || strings.Contains(lower, "mode=0") || strings.Contains(lower, "mode=allow")
+}
+
