@@ -32,6 +32,11 @@
     "unauthorizedPrompt": "Unlock your phone screen and look for the 'Allow USB debugging?' prompt.",
     "unauthorizedAction": "Check 'Always allow from this computer' and tap 'Allow'.",
     "unauthorizedTip": "Prompt not showing? Swipe down your Android notification shade, switch USB mode from 'Charging only' to 'File Transfer (MTP)', or toggle USB Debugging in Developer Options.",
+    "offlineTitle": "Device Offline / Inactive",
+    "offlinePrompt": "Your Android phone is detected via USB but the ADB connection is currently offline.",
+    "offlineTip": "Try unlocking your phone, reconnecting the USB cable, or switching USB mode to 'File Transfer (MTP)'. Ensure USB Debugging is turned on in Developer Options.",
+    "zeroFootprint": "Zero-Footprint Mode (ADB Shell Connected)",
+    "zeroFootprintDesc": "Analysis runs via native Android shell without installing bloatware or permanent background daemons on your phone.",
     "pendingAuth": "Pending Authorization",
     "checkAgain": "Check Device Again"
   },
@@ -151,6 +156,13 @@
       "findingsTotal": "Total Findings",
       "highRisk": "High & Critical Threats",
       "lastScan": "Last Scanned"
+    },
+    "quickActions": {
+      "title": "Device Operations",
+      "apps": "Inspect Installed Apps",
+      "audit": "System Security Audit",
+      "monitor": "Popup Hunter",
+      "scan": "Start Threat Scan"
     }
   },
   "onboarding": {

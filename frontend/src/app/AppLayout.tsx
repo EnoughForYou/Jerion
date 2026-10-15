@@ -85,7 +85,7 @@ export const AppLayout: React.FC = () => {
 
   return (
     <SidebarProvider defaultOpen={true}>
-      <div className="flex h-screen w-screen min-w-[900px] min-h-[600px] overflow-hidden bg-base text-text-primary">
+      <div className="flex h-screen w-full min-w-0 min-h-0 overflow-hidden bg-base text-text-primary">
         {/* Left Sidebar Navigation */}
         <Sidebar>
           <SidebarBody>

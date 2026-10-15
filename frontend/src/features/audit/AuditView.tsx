@@ -72,9 +72,9 @@ export const AuditView: React.FC = () => {
       if (selectedStatus !== 'all' && item.status !== selectedStatus) return false;
       if (!q) return true;
       return (
-        item.title.toLowerCase().includes(q) ||
-        item.summary.toLowerCase().includes(q) ||
-        item.category.toLowerCase().includes(q)
+        (item.title || '').toLowerCase().includes(q) ||
+        (item.summary || '').toLowerCase().includes(q) ||
+        (item.category || '').toLowerCase().includes(q)
       );
     });
   }, [items, searchQuery, selectedCategory, selectedStatus]);

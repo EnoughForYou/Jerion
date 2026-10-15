@@ -310,7 +310,7 @@ export const MonitorView: React.FC = () => {
 
                         <div className="flex items-center gap-2 shrink-0">
                           <span className="text-[10px] text-text-secondary font-mono">
-                            {evt.timestamp.slice(11, 19)}
+                            {(evt.timestamp || '').slice(11, 19)}
                           </span>
                           {isExpanded ? (
                             <ChevronUp className="w-3.5 h-3.5 text-text-secondary" />
@@ -322,7 +322,7 @@ export const MonitorView: React.FC = () => {
 
                       {isExpanded && (
                         <div className="mt-2 pt-2 border-t border-separator/15 space-y-1 text-[11px] font-mono text-text-secondary bg-base/60 p-2 rounded">
-                          {Object.entries(evt.details).map(([key, val]) => (
+                          {Object.entries(evt.details || {}).map(([key, val]) => (
                             <div key={key} className="flex gap-2">
                               <span className="text-accent">{key}:</span>
                               <span className="text-text-primary break-all">{String(val)}</span>

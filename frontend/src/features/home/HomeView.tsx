@@ -106,6 +106,7 @@ export const HomeView: React.FC = () => {
   // Determine device connection state for conditional rendering
   const isDeviceReady = device?.connectionState === 'ready';
   const isDeviceUnauthorized = device?.connectionState === 'unauthorized';
+  const isDeviceOffline = device?.connectionState === 'offline';
 
   return (
     <div className="space-y-5">
@@ -186,6 +187,78 @@ export const HomeView: React.FC = () => {
         </div>
       )}
 
+      {/* Notice when Device is Connected but Offline in ADB */}
+      {isDeviceOffline && (
+        <div className="p-4 rounded-lg bg-sev-medium/10 border border-sev-medium/30 text-xs text-text-primary space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sev-medium font-semibold text-sm">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span>{t('device.offlineTitle', 'Device Offline / Inactive')}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={loadData}
+                disabled={isLoading}
+              >
+                <RotateCcw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+                <span>{t('device.checkAgain', 'Check Device Again')}</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowOnboarding(true)}
+              >
+                {t('onboarding.title')}
+              </Button>
+            </div>
+          </div>
+          <p className="text-xs text-text-primary font-medium leading-relaxed">
+            {t('device.offlinePrompt', 'Your Android phone is detected via USB but the ADB connection is currently offline.')}
+          </p>
+          <div className="flex items-start gap-2 p-2.5 rounded bg-surface/60 border border-separator/20 text-[11px] text-text-secondary leading-relaxed">
+            <HelpCircle className="w-3.5 h-3.5 text-accent shrink-0 mt-0.5" />
+            <span>{t('device.offlineTip', "Try unlocking your phone, reconnecting the USB cable, or switching USB mode to 'File Transfer (MTP)'. Ensure USB Debugging is turned on in Developer Options.")}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Zero-Footprint Banner when Device is Fully Ready */}
+      {isDeviceReady && (
+        <div className="p-3.5 rounded-lg bg-ok/10 border border-ok/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5">
+            <CheckCircle2 className="w-4 h-4 text-ok shrink-0" />
+            <div>
+              <span className="font-semibold text-text-primary block text-xs">
+                {t('device.zeroFootprint', 'Zero-Footprint Mode (ADB Shell Connected)')}
+              </span>
+              <span className="text-[11px] text-text-secondary leading-relaxed">
+                {t('device.zeroFootprintDesc', 'Analysis runs via native Android shell without installing bloatware or permanent background daemons on your phone.')}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/apps')}
+            >
+              <Smartphone className="w-3.5 h-3.5 text-accent" />
+              <span>{t('home.quickActions.apps', 'Inspect Apps')}</span>
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => navigate('/audit')}
+            >
+              <Shield className="w-3.5 h-3.5" />
+              <span>{t('home.quickActions.audit', 'System Audit')}</span>
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Grid: Device Specs & Security Summary */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* Hardware & OS Card (3uTools Dense Grid) */}
@@ -214,7 +287,7 @@ export const HomeView: React.FC = () => {
                     {t('home.deviceLabels.model')}
                   </dt>
                   <dd className="text-text-primary font-semibold">
-                    {device.model || t('device.status.unauthorized')}
+                    {device.model || (isDeviceOffline ? t('device.status.offline') : t('device.status.unauthorized'))}
                   </dd>
                 </div>
                 <div>
@@ -224,6 +297,8 @@ export const HomeView: React.FC = () => {
                   <dd className="text-text-primary">
                     {isDeviceReady
                       ? device.manufacturer
+                      : isDeviceOffline
+                      ? t('device.status.offline')
                       : t('device.pendingAuth', 'Pending Authorization')}
                   </dd>
                 </div>
@@ -234,9 +309,11 @@ export const HomeView: React.FC = () => {
                   <dd className="text-text-primary">
                     {isDeviceReady
                       ? t('home.deviceLabels.androidVersionValue', {
-                          version: device.androidVersion,
-                          sdk: device.sdkInt,
+                          version: device.androidVersion || 'Unknown',
+                          sdk: device.sdkInt || 0,
                         })
+                      : isDeviceOffline
+                      ? t('device.status.offline')
                       : t('device.pendingAuth', 'Pending Authorization')}
                   </dd>
                 </div>
@@ -261,8 +338,8 @@ export const HomeView: React.FC = () => {
                         : t('home.deviceLabels.batteryValue', {
                             level: device.batteryLevel,
                           })
-                      : device.isCharging
-                      ? 'Charging (' + t('device.pendingAuth', 'Pending Authorization') + ')'
+                      : isDeviceOffline
+                      ? t('device.status.offline')
                       : t('device.pendingAuth', 'Pending Authorization')}
                   </dd>
                 </div>
