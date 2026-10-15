@@ -151,4 +151,36 @@ describe('RemediateView & RemediateConfirmDialog', () => {
 
     bridge.remediate.execute = originalExecute;
   });
+
+  it('closes confirmation dialog and displays error banner when bridge execution rejects', async () => {
+    const bridge = getBridge();
+    const originalExecute = bridge.remediate.execute;
+
+    // Simulate backend error rejection
+    bridge.remediate.execute = vi.fn().mockRejectedValue(
+      new Error('Duplicate action ID in plan.')
+    );
+
+    render(
+      <MemoryRouter>
+        <RemediateView />
+      </MemoryRouter>
+    );
+
+    const executeBtn = await screen.findByRole('button', { name: /execute staged actions/i });
+    fireEvent.click(executeBtn);
+
+    const proceedBtn = await screen.findByRole('button', { name: /proceed with execution/i });
+    fireEvent.click(proceedBtn);
+
+    // Dialog must close and error feedback must appear
+    await waitFor(() => {
+      expect(screen.getByText('Duplicate action ID in plan.')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('heading', { name: /confirm remediation plan/i })).not.toBeInTheDocument();
+
+    bridge.remediate.execute = originalExecute;
+  });
 });
+

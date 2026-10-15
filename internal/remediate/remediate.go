@@ -188,6 +188,11 @@ func (m *Manager) logFailedAction(serial string, action Action, err error) *Acti
 			saved := true
 			auditSaved = &saved
 		}
+	} else {
+		saved := false
+		auditSaved = &saved
+		serr := "database store not configured"
+		auditError = &serr
 	}
 
 	entry.AuditSaved = auditSaved
@@ -324,6 +329,11 @@ func (m *Manager) Execute(ctx context.Context, serial string, action Action) (*A
 			saved := true
 			auditSaved = &saved
 		}
+	} else {
+		saved := false
+		auditSaved = &saved
+		serr := "database store not configured"
+		auditError = &serr
 	}
 
 	logEntry := &ActionLogEntry{

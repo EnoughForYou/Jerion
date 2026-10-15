@@ -554,9 +554,12 @@ func (a *App) InventoryGet(packageName string) (*contract.AppInfo, error) {
 		if allowed, ok := inventory.ParseSingleAppOpOverlay(string(out)); ok {
 			overlayMap = map[string]bool{packageName: allowed}
 		}
-	} else if out2, _, runErr2 := a.runner.Run(ctx, serial, "shell", "appops", "get", packageName, "SYSTEM_ALERT_WINDOW"); runErr2 == nil {
-		if allowed, ok := inventory.ParseSingleAppOpOverlay(string(out2)); ok {
-			overlayMap = map[string]bool{packageName: allowed}
+	}
+	if overlayMap == nil {
+		if out2, _, runErr2 := a.runner.Run(ctx, serial, "shell", "appops", "get", packageName, "SYSTEM_ALERT_WINDOW"); runErr2 == nil {
+			if allowed, ok := inventory.ParseSingleAppOpOverlay(string(out2)); ok {
+				overlayMap = map[string]bool{packageName: allowed}
+			}
 		}
 	}
 
@@ -1078,6 +1081,8 @@ func (a *App) convertStoreScanRecord(record *store.ScanRecord) contract.ScanResu
 		verdict = "high_risk"
 	} else if counts["medium"] > 0 {
 		verdict = "review"
+	} else if record.Partial {
+		verdict = "review"
 	}
 
 	var compAt *string
@@ -1281,7 +1286,7 @@ func (a *App) RemediateCreatePlan(findingIds []string) (contract.RemediationPlan
 		// 1. Look in cached scan results
 		var foundFinding *contract.Finding
 		for _, res := range a.cachedResults {
-			if res.DeviceID != expectedDevID {
+			if res == nil || res.DeviceID != expectedDevID {
 				continue
 			}
 			for _, f := range res.Findings {
@@ -1447,7 +1452,7 @@ func (a *App) RemediateExecute(plan contract.RemediationPlan) ([]contract.Action
 	a.mu.Unlock()
 
 	// Phase 2: Execution using verified canonical backend actions
-	var results []contract.ActionLogEntry
+	results := make([]contract.ActionLogEntry, 0, len(reservedActions))
 	for _, cachedAct := range reservedActions {
 		canonicalActDto := contract.RemediationAction{
 			ID:            cachedAct.ID,
@@ -1474,12 +1479,16 @@ func (a *App) RemediateExecute(plan contract.RemediationPlan) ([]contract.Action
 			})
 		} else if execErr != nil {
 			errStr := execErr.Error()
+			auditSaved := false
+			auditErr := "action execution failed before audit"
 			results = append(results, contract.ActionLogEntry{
-				ID:        fmt.Sprintf("log-%d", time.Now().UnixNano()),
-				Timestamp: time.Now().UTC().Format(time.RFC3339),
-				Action:    canonicalActDto,
-				Status:    "failed",
-				Error:     &errStr,
+				ID:         fmt.Sprintf("log-%d", time.Now().UnixNano()),
+				Timestamp:  time.Now().UTC().Format(time.RFC3339),
+				Action:     canonicalActDto,
+				Status:     "failed",
+				Error:      &errStr,
+				AuditSaved: &auditSaved,
+				AuditError: &auditErr,
 			})
 		}
 		if execErr != nil {
@@ -1502,7 +1511,7 @@ func (a *App) RemediateGetHistory() ([]contract.ActionLogEntry, error) {
 		return nil, err
 	}
 
-	var dtos []contract.ActionLogEntry
+	dtos := make([]contract.ActionLogEntry, 0, len(history))
 	for _, h := range history {
 		dtos = append(dtos, contract.ActionLogEntry{
 			ID:        h.ID,
@@ -1570,7 +1579,7 @@ func (a *App) ReportList() ([]contract.ScanSummaryItem, error) {
 		return nil, err
 	}
 
-	var res []contract.ScanSummaryItem
+	res := make([]contract.ScanSummaryItem, 0, len(records))
 	for _, r := range records {
 		var compAt *string
 		if !r.FinishedAt.IsZero() {

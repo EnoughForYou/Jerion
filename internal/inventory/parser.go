@@ -307,9 +307,9 @@ func ParseAppOpsOverlay(output string) (map[string]bool, bool) {
 
 	// Must contain recognizable AppOps signatures
 	isRecognized := strings.Contains(lower, "appops service state") ||
-		strings.Contains(output, "Package ") ||
-		strings.Contains(output, "No operations") ||
-		strings.Contains(output, "SYSTEM_ALERT_WINDOW") ||
+		strings.Contains(lower, "package ") ||
+		strings.Contains(lower, "no operations") ||
+		strings.Contains(lower, "system_alert_window") ||
 		strings.Contains(lower, "op system_alert_window")
 
 	if !isRecognized {
@@ -326,10 +326,18 @@ func ParseAppOpsOverlay(output string) (map[string]bool, bool) {
 			continue
 		}
 
-		if strings.HasPrefix(l, "Package ") {
-			pkgPart := strings.TrimPrefix(l, "Package ")
-			pkgPart = strings.Trim(pkgPart, "[]:")
-			currentPkg = strings.TrimSpace(pkgPart)
+		lowerLine := strings.ToLower(l)
+		if strings.HasPrefix(lowerLine, "package ") {
+			pkgPart := strings.TrimSpace(l[len("package "):])
+			fields := strings.Fields(pkgPart)
+			if len(fields) > 0 {
+				token := strings.Trim(fields[0], "[]:()")
+				if err := adb.ValidatePackageName(token); err == nil {
+					currentPkg = token
+				} else {
+					currentPkg = ""
+				}
+			}
 			continue
 		}
 
@@ -340,9 +348,7 @@ func ParseAppOpsOverlay(output string) (map[string]bool, bool) {
 				continue
 			}
 			if strings.Contains(lineLower, "allow") || strings.Contains(lineLower, "mode=0") || strings.Contains(lineLower, "mode=allow") {
-				if err := adb.ValidatePackageName(currentPkg); err == nil {
-					overlayMap[currentPkg] = true
-				}
+				overlayMap[currentPkg] = true
 			}
 		}
 	}

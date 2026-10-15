@@ -307,6 +307,20 @@ func TestAuditPersistenceReporting(t *testing.T) {
 	if entry2.AuditError == nil || *entry2.AuditError == "" {
 		t.Fatalf("expected non-empty AuditError when store is closed")
 	}
+
+	// 3. Store unconfigured (nil store)
+	mgrNil := remediate.NewManager(fake, nil, logger, tmpDir)
+	act3 := mgrNil.CreateAction(remediate.ActionDisable, "com.test.app", "", "", false)
+	entry3, err := mgrNil.Execute(ctx, serial, act3)
+	if err != nil {
+		t.Fatalf("execute should succeed even without store: %v", err)
+	}
+	if entry3.AuditSaved == nil || *entry3.AuditSaved {
+		t.Fatalf("expected AuditSaved to be false when store is nil")
+	}
+	if entry3.AuditError == nil || *entry3.AuditError != "database store not configured" {
+		t.Fatalf("expected 'database store not configured' AuditError, got: %v", entry3.AuditError)
+	}
 }
 
 func TestMain(m *testing.M) {

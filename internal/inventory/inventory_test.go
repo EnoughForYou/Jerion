@@ -274,5 +274,37 @@ func TestParseAppOpsOverlay(t *testing.T) {
 	if allowed, rec := ParseSingleAppOpOverlay(""); allowed || rec {
 		t.Errorf("expected empty string to be recognized=false; got allowed=%v, rec=%v", allowed, rec)
 	}
+
+	// Dumpsys appops with bracketed UID format (e.g. Package com.test.threat [10001]:)
+	bracketOutput := `Current AppOps Service state:
+  Package com.test.bracketed [10001]:
+    SYSTEM_ALERT_WINDOW: allow; time=+2s ago
+  Package com.test.parenthesis (uid 10002):
+    SYSTEM_ALERT_WINDOW: allow
+`
+	bMap, bOk := ParseAppOpsOverlay(bracketOutput)
+	if !bOk {
+		t.Errorf("expected bracketed dumpsys appops output to be recognized")
+	}
+	if !bMap["com.test.bracketed"] {
+		t.Errorf("expected com.test.bracketed to be parsed as allowed=true")
+	}
+	if !bMap["com.test.parenthesis"] {
+		t.Errorf("expected com.test.parenthesis to be parsed as allowed=true")
+	}
+
+	// Lowercase package header format (package com.test.lowercase:)
+	lowerOutput := `appops service state:
+  package com.test.lowercase:
+    SYSTEM_ALERT_WINDOW: allow
+`
+	lMap, lOk := ParseAppOpsOverlay(lowerOutput)
+	if !lOk {
+		t.Errorf("expected lowercase dumpsys appops output to be recognized")
+	}
+	if !lMap["com.test.lowercase"] {
+		t.Errorf("expected com.test.lowercase to be parsed as allowed=true")
+	}
 }
+
 
