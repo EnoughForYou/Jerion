@@ -75,7 +75,9 @@ type ProgressFunc func(downloadedBytes, totalBytes int64)
 
 // Downloader securely downloads and unpacks Google Android platform-tools.
 type Downloader struct {
-	client *http.Client
+	client      *http.Client
+	downloadURL string
+	toolsDir    string
 }
 
 // NewDownloader creates an ADB Downloader.
@@ -87,16 +89,42 @@ func NewDownloader() *Downloader {
 	}
 }
 
+// NewDownloaderWithURL creates an ADB Downloader with custom download URL and optional tools directory.
+func NewDownloaderWithURL(downloadURL string, toolsDir string) *Downloader {
+	return &Downloader{
+		client: &http.Client{
+			Timeout: 10 * time.Minute,
+		},
+		downloadURL: downloadURL,
+		toolsDir:    toolsDir,
+	}
+}
+
 // DownloadAndExtract downloads the official zip, verifies checksum strictly (mandatory per ADR-0002),
 // and safely extracts platform-tools into destDir.
 func (d *Downloader) DownloadAndExtract(ctx context.Context, expectedSHA string, onProgress ProgressFunc) (string, error) {
-	url := PlatformToolsDownloadURL()
-
-	destExec, err := adb.DefaultAppToolsPath()
-	if err != nil {
-		return "", fmt.Errorf("resolve tools path: %w", err)
+	url := d.downloadURL
+	if url == "" {
+		url = PlatformToolsDownloadURL()
 	}
-	toolsDir := filepath.Dir(filepath.Dir(destExec)) // %LOCALAPPDATA%\Jerion\tools
+
+	var toolsDir string
+	var destExec string
+	if d.toolsDir != "" {
+		toolsDir = d.toolsDir
+		execName := "adb"
+		if runtime.GOOS == "windows" {
+			execName = "adb.exe"
+		}
+		destExec = filepath.Join(toolsDir, "platform-tools", execName)
+	} else {
+		resolved, err := adb.DefaultAppToolsPath()
+		if err != nil {
+			return "", fmt.Errorf("resolve tools path: %w", err)
+		}
+		destExec = resolved
+		toolsDir = filepath.Dir(filepath.Dir(destExec)) // %LOCALAPPDATA%\Jerion\tools
+	}
 
 	if err := os.MkdirAll(toolsDir, 0o750); err != nil {
 		return "", fmt.Errorf("create tools directory: %w", err)

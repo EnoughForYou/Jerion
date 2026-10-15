@@ -235,7 +235,9 @@ export const ScanView: React.FC = () => {
               <CardTitle>{t('scan.results')}</CardTitle>
               <CardDescription>
                 {t('scan.findingsCount', { count: filteredFindings.length })}
-                {scanResult?.completedAt && ` · Verdict: ${scanResult.summary.verdict.toUpperCase()}`}
+                {scanResult?.completedAt &&
+                  (scanResult.status === 'completed' || scanResult.status === 'partial') &&
+                  ` · Verdict: ${scanResult.summary.verdict.toUpperCase()}`}
               </CardDescription>
             </div>
 
@@ -278,10 +280,22 @@ export const ScanView: React.FC = () => {
         </CardHeader>
         <CardContent>
           {filteredFindings.length === 0 ? (
-            <div className="py-8 text-center text-xs text-text-secondary">
-              <CheckCircle2 className="w-8 h-8 text-ok mx-auto mb-2 opacity-80" />
-              {t('scan.noFindings')}
-            </div>
+            scanResult && (scanResult.status === 'failed' || scanResult.status === 'cancelled') ? (
+              <div className="py-8 text-center text-xs text-text-secondary space-y-2">
+                <AlertTriangle className="w-8 h-8 text-warning mx-auto mb-2 opacity-80" />
+                <p className="font-medium text-text-primary">
+                  {scanResult.status === 'cancelled' ? t('scan.scanCancelled') : t('scan.scanFailed')}
+                </p>
+                <p className="text-[11px] text-text-secondary max-w-sm mx-auto">
+                  {t('scan.incompleteNotice')}
+                </p>
+              </div>
+            ) : (
+              <div className="py-8 text-center text-xs text-text-secondary">
+                <CheckCircle2 className="w-8 h-8 text-ok mx-auto mb-2 opacity-80" />
+                {t('scan.noFindings')}
+              </div>
+            )
           ) : (
             <div className="space-y-3">
               {filteredFindings.map((finding) => (

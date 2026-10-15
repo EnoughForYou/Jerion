@@ -33,6 +33,8 @@ export namespace contract {
 	    status: string;
 	    error?: string;
 	    backupPath?: string;
+	    auditSaved?: boolean;
+	    auditError?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new ActionLogEntry(source);
@@ -46,6 +48,8 @@ export namespace contract {
 	        this.status = source["status"];
 	        this.error = source["error"];
 	        this.backupPath = source["backupPath"];
+	        this.auditSaved = source["auditSaved"];
+	        this.auditError = source["auditError"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

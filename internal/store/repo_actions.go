@@ -28,6 +28,10 @@ func (s *Store) LogAction(act ActionLogRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	if s.db == nil {
+		return fmt.Errorf("database connection closed")
+	}
+
 	if act.Timestamp.IsZero() {
 		act.Timestamp = time.Now().UTC()
 	}

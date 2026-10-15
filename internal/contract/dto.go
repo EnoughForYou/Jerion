@@ -179,6 +179,8 @@ type ActionLogEntry struct {
 	Status     string            `json:"status"` // "success" | "failed" | "undone"
 	Error      *string           `json:"error,omitempty"`
 	BackupPath *string           `json:"backupPath,omitempty"`
+	AuditSaved *bool             `json:"auditSaved,omitempty"`
+	AuditError *string           `json:"auditError,omitempty"`
 }
 
 // ScanSummaryItem represents a summary record for scan history.

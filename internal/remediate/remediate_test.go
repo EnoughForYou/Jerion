@@ -262,6 +262,53 @@ func TestRemediateEmptyTargetRejection(t *testing.T) {
 	}
 }
 
+func TestAuditPersistenceReporting(t *testing.T) {
+	fake := adb.NewFakeRunner()
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test_audit.db")
+	st, err := store.Open(dbPath)
+	if err != nil {
+		t.Fatalf("failed to init store: %v", err)
+	}
+
+	logger := logx.GetDefault()
+	mgr := remediate.NewManager(fake, st, logger, tmpDir)
+	ctx := context.Background()
+	serial := "test-device"
+
+	fake.SetResponse("pm disable-user --user 0 com.test.app", "Package com.test.app new state: disabled-user", "", nil)
+	act := mgr.CreateAction(remediate.ActionDisable, "com.test.app", "", "", false)
+
+	// 1. Success case: store is open and healthy
+	entry1, err := mgr.Execute(ctx, serial, act)
+	if err != nil {
+		t.Fatalf("execute failed: %v", err)
+	}
+	if entry1.AuditSaved == nil || !*entry1.AuditSaved {
+		t.Fatalf("expected AuditSaved to be true on healthy store")
+	}
+	if entry1.AuditError != nil {
+		t.Fatalf("expected nil AuditError on healthy store, got: %s", *entry1.AuditError)
+	}
+
+	// 2. Failure case: store database is closed, so LogAction fails
+	st.Close()
+	act2 := mgr.CreateAction(remediate.ActionDisable, "com.test.app", "", "", false)
+	entry2, err := mgr.Execute(ctx, serial, act2)
+	if err != nil {
+		t.Fatalf("execute command should not fail even if store fails: %v", err)
+	}
+	if entry2.Status != "success" {
+		t.Fatalf("expected device action to still report success, got: %s", entry2.Status)
+	}
+	if entry2.AuditSaved == nil || *entry2.AuditSaved {
+		t.Fatalf("expected AuditSaved to be false when store is closed")
+	}
+	if entry2.AuditError == nil || *entry2.AuditError == "" {
+		t.Fatalf("expected non-empty AuditError when store is closed")
+	}
+}
+
 func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }

@@ -1,11 +1,33 @@
 # PROGRESS
 
 ## Status sekarang
-- Fase aktif: Fidelity Hardening Round 3 — Selesai Penuh
-- Branch: phase/fidelity-hardening-3
-- Terakhir selesai: Fidelity Hardening Round 2 (merge commit 8e494f3)
+- Fase aktif: Fidelity Hardening Round 4 — Selesai Penuh
+- Branch: phase/fidelity-hardening-4
+- Terakhir selesai: Fidelity Hardening Round 3 (merge commit e958c69)
 
-## Fase Fidelity Hardening Round 3 (Device Binding, Remediation Failure Reporting, AppOps & Runtime Truth) — checklist
+## Fase Fidelity Hardening Round 4 (Fail-Closed Device Binding, Pre-validation, Scan Verdict Honesty & Downloader Regression Test) — checklist
+- [x] Sub-tugas H4.1: Pengikatan rencana remediasi fail-closed ke serial perangkat (`wireError("DeviceOffline")` saat perangkat kosong/offline di `RemediateCreatePlan` dan `RemediateExecute`), serta penyaringan finding store SQLite hanya untuk serial perangkat aktif
+- [x] Sub-tugas H4.2: Pra-validasi (pre-validation) seluruh action ID dan kecocokan serial sebelum mengeksekusi aksi pertama di perangkat, serta rekonstruksi hasil DTO kanonis dari cache backend terpercaya
+- [x] Sub-tugas H4.3: Kejujuran verdict scan (`Summary.Verdict = "review"` pada scan failed/cancelled) dan penyembunyian verdict semu pada UI frontend dengan alert notice yang jelas
+- [x] Sub-tugas H4.4: Ketepatan runtime three-state (flag `overlay_status_unknown` saat AppOps gagal, fallback `dpm list-owners` untuk Device Admin dengan flag `device_admin_unknown`, dan penanganan whitelist baterai kosong/gagal dengan `battery_status_unknown`)
+- [x] Sub-tugas H4.5: Pelaporan eksplisit status persistensi audit log (`auditSaved: *bool`, `auditError: *string`) pada `ActionLogEntry` di backend DTO, TS bridge schema, dan Wails models tanpa membatalkan aksi perangkat yang telah sukses
+- [x] Sub-tugas H4.6: Pengujian regresi end-to-end `httptest.Server` pada `DownloadAndExtract` yang memverifikasi penolakan langsung checksum SHA-256 yang tidak cocok dan penerimaan arsip sah
+
+## Pengukuran & Kualitas (Fidelity Hardening Round 4)
+- **Backend Go Test Suite**: 100% test lulus di seluruh 16 paket backend Go (`internal/logx`, `internal/secrets`, `internal/store`, `internal/adb`, `internal/preflight`, `internal/inventory`, `internal/apk`, `internal/rules`, `internal/engine`, `internal/intel`, `internal/audit`, `internal/monitor`, `internal/remediate`, `internal/report`, `internal/contract`, dan root `main`) dengan `go test -count=1 ./...`.
+- **Go Vet**: Lulus bersih tanpa peringatan (`go vet ./...`).
+- **Fail-Closed Device Remediation**: Pembuatan atau eksekusi rencana tanpa perangkat aktif langsung tertolak dengan `DeviceOffline`. Finding dari serial lain tidak dapat dibuatkan rencana untuk perangkat aktif.
+- **Pre-validation & Anti-Drift**: Rencana dengan ID aksi yang tidak dikenal atau serial yang tidak cocok langsung digagalkan sebelum aksi pertama dieksekusi di perangkat fisik. Hasil yang dikembalikan terikat ke DTO kanonis backend.
+- **Scan Verdict Honesty**: Scan yang gagal/dibatalkan tidak pernah menghasilkan verdict "clean". Frontend menyembunyikan verdict dan menampilkan warning alert transparan.
+- **Runtime Three-State Truth**: Flag `overlay_status_unknown`, `device_admin_unknown`, dan `battery_status_unknown` menjamin kejujuran kondisi sistem saat query ADB tidak berhasil.
+- **Audit Persistence Reporting**: Kegagalan penyimpanan SQLite audit log terdeteksi dan dilaporkan via `auditSaved: false` dan `auditError` tanpa merusak status eksekusi perangkat.
+- **Downloader Regression Test**: Uji live server HTTP `httptest.Server` membuktikan kegagalan checksum menolak ekstraksi dan membersihkan file sementara.
+- **Frontend Vitest Suite**: 119 pengujian lolos di 20 file tes (`npm run test`).
+- **ESLint & TypeScript**: 0 error, 0 warning pada `npm run lint` & `npm run typecheck`.
+- **Mock Elimination (`npm run check:no-mock`)**: 0 marker mock terdeteksi pada bundle produksi Vite.
+- **Production Compilation (`wails build`)**: Standalone binary Windows x64 `build/bin/Jerion.exe` terkompilasi bersih dalam 20.18 detik.
+
+## Fase Fidelity Hardening Round 3 (Device Binding, Remediation Failure Reporting, AppOps & Runtime Truth) — riwayat selesai
 - [x] Sub-tugas H3.1: Pengikatan rencana remediasi ke serial perangkat (`DeviceSerial`), penolakan eksekusi lintas perangkat (`DeviceMismatch`), invalidasi aksi single-use dari cache backend, dan pembersihan cache saat perangkat berganti/terputus
 - [x] Sub-tugas H3.2: Pelaporan terstruktur kegagalan remediasi (`Status: "failed"`, `Error: &errStr`) pada guardrail/backup failure di `remediate.Execute` dan `RemediateExecute`, tersimpan ke SQLite audit log tanpa kehilangan catatan
 - [x] Sub-tugas H3.3: Verifikasi status aktif izin overlay via AppOps (`SYSTEM_ALERT_WINDOW` mode allow) via `dumpsys appops` dan `appops get`, mengeliminasi kesalahan pembacaan dari install permissions
@@ -14,17 +36,6 @@
 - [x] Sub-tugas H3.6: Unifikasi konversi tipe evidence kanonis (`mapEvidenceType`) pada scan langsung (`convertEngineScanResult`) dan scan persisten (`convertStoreFinding`)
 - [x] Sub-tugas H3.7: Emisi terminal failure event (`scan:done` dengan status failed/cancelled) saat scan gagal atau dibatalkan untuk mencegah UI macet
 - [x] Sub-tugas H3.8: Penegakan verifikasi checksum ketat (`expectedSHA`) pada unduhan resmi Google Platform-Tools r37.0.1 tanpa fallback ke hash versi lama
-
-## Pengukuran & Kualitas (Fidelity Hardening Round 3)
-- **Backend Go Test Suite**: 100% test lulus di seluruh 16 paket backend Go (`internal/logx`, `internal/secrets`, `internal/store`, `internal/adb`, `internal/preflight`, `internal/inventory`, `internal/apk`, `internal/rules`, `internal/engine`, `internal/intel`, `internal/audit`, `internal/monitor`, `internal/remediate`, `internal/report`, `internal/contract`, dan root `main`).
-- **Device Remediation Binding**: Rencana yang dibuat untuk Serial A tertolak saat dieksekusi di Serial B (`wireError("DeviceMismatch")`); aksi yang telah dieksekusi langsung dihapus dari cache backend (anti-replay).
-- **Remediation Failure Propagation**: Kegagalan backup APK atau guardrail dilaporkan secara terstruktur dengan `Status: "failed"` dan error detail, tercatat di `action_log`.
-- **Runtime Truth (AppOps & Device Admin)**: Overlay diverifikasi dari state aktif AppOps (`mode=allow`); Device Admin mencakup seluruh active administrator dari `dumpsys device_policy`.
-- **Battery Optimization Honesty**: Status whitelist gagal membaca menghasilkan flag `battery_status_unknown` dan `isBatteryOptimized: false` tanpa asumsi palsu.
-- **Terminal Scan Events**: Scanner error atau pembatalan memancarkan `scan:done` dengan status `failed`/`cancelled`, UI tidak pernah menggantung.
-- **Frontend Vitest Suite**: 118 pengujian lolos di 20 file tes (`npm run test`).
-- **ESLint & TypeScript**: 0 error, 0 warning pada `npm run lint` & `npm run typecheck`.
-- **Production Compilation (`wails build`)**: Standalone binary Windows x64 `build/bin/Jerion.exe` terkompilasi bersih dalam 20.35 detik.
 
 ## Fase Fidelity Hardening Round 2 (Checksum, Remediation Safety, Runtime Fidelity & Persistence) — riwayat selesai
 - [x] Sub-tugas H2.1: Penguncian URL arsip unduhan ADB ke Google Platform-Tools r37.0.1 resmi (`platform-tools_r37.0.1-win.zip`) dan pembaruan katalog SHA-256 (`45f4d631...` Windows, `ee39ad59...` Darwin, `d230f138...` Linux)
