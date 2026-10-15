@@ -33,6 +33,7 @@ type handlerRule struct {
 // FakeRunner provides a thread-safe Runner mock for unit testing without physical devices.
 type FakeRunner struct {
 	mu           sync.Mutex
+	adbPath      string
 	calls        []CallRecord
 	responses    map[string]cannedResponse
 	handlers     []handlerRule
@@ -45,6 +46,20 @@ func NewFakeRunner() *FakeRunner {
 	return &FakeRunner{
 		responses: make(map[string]cannedResponse),
 	}
+}
+
+// SetADBPath records the active executable path.
+func (f *FakeRunner) SetADBPath(path string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.adbPath = path
+}
+
+// ADBPath returns the active executable path.
+func (f *FakeRunner) ADBPath() string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.adbPath
 }
 
 // SetResponse registers canned output when args joined contain commandSubstr.

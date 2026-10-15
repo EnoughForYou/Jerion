@@ -1,22 +1,24 @@
 # PROGRESS
 
 ## Status sekarang
-- Fase aktif: Preflight Resolution Fix — Selesai Penuh
-- Branch: phase/preflight-actions-fix
-- Terakhir selesai: Fidelity Hardening Round 5 (merge commit 5eefb87)
+- Fase aktif: Runner ADB Path Sync & Mock Audit — Selesai Penuh
+- Branch: phase/runner-adb-path-sync
+- Terakhir selesai: Preflight Resolution Fix (merge commit 9c5ccb0)
 
-## Fase Preflight Resolution Fix (Download Action, Live Progress & Native File Dialog) — checklist
-- [x] Sub-tugas PF.1: Populasi `SourceURL` otomatis pada DTO Preflight (`app.go:convertPreflightCheck`) saat biner ADB missing, mengaktifkan tombol Download resmi Google di UI
-- [x] Sub-tugas PF.2: Integrasi native Windows Open File Dialog (`wailsRuntime.OpenFileDialog`) pada `PreflightSelectAdbPath`, memungkinkan pengguna memilih file `adb.exe` melalui Windows Explorer saat klik "Choose existing..."
-- [x] Sub-tugas PF.3: Pengiriman live download progress events (`preflight:update`) selama `PreflightDownloadAdb` dan auto-retry/transition setelah biner terpasang
-- [x] Sub-tugas PF.4: Penambahan pengujian unit Vitest dan Go backend untuk alur resolusi download, path picker, dan validasi URL Google
+## Fase Runner ADB Path Sync & Mock Audit — checklist
+- [x] Sub-tugas SYNC.1: Sinkronisasi aktif path biner ADB dari `adb.Manager` ke `adb.Runner` (`RealRunner.SetADBPath`) pada `ResolveADBPath()`, `SetCustomPath()`, `CheckVersion()`, dan `StartServer()`, mengeliminasi kegagalan `exec: "adb": executable file not found in %PATH%`
+- [x] Sub-tugas SYNC.2: Resolusi defensif mandiri di `RealRunner.Run()` yang secara otomatis mengadopsi direktori default tools aplikasi (`%LOCALAPPDATA%\Jerion\tools\platform-tools\adb.exe`) saat biner tidak ditemukan pada system PATH
+- [x] Sub-tugas SYNC.3: Sinkronisasi runner saat startup aplikasi di `NewAppWithDeps` dan saat pembaruan pengaturan di `SettingsUpdate`
+- [x] Sub-tugas SYNC.4: Audit menyeluruh mock data di seluruh proyek — konfirmasi 0 mock data di bundle produksi (`check:no-mock`), 0 mock objects di backend produksi Go, dan data real-time penuh dari ADB hardware & SQLite
+- [x] Sub-tugas SYNC.5: Penambahan isolasi environment test pada `preflight_test.go` dan unit test verifikasi sinkronisasi runner path pada `adb_test.go`
 
-## Pengukuran & Kualitas (Preflight Resolution Fix)
+## Pengukuran & Kualitas (Runner ADB Path Sync & Mock Audit)
 - **Backend Go Test Suite**: 100% test lulus di seluruh 16 paket backend Go (`go test -count=1 ./...`).
 - **Go Vet**: Lulus bersih tanpa peringatan (`go vet ./...`).
 - **Frontend Vitest Suite**: 127 pengujian lolos di 20 file tes (`npm run test`).
 - **ESLint & TypeScript**: 0 error, 0 warning pada `npm run lint` & `npm run typecheck`.
-- **Production Compilation (`wails build`)**: Standalone binary Windows x64 `build/bin/Jerion.exe` terkompilasi bersih dalam 18.96 detik.
+- **Mock Elimination (`npm run check:no-mock`)**: 0 marker mock di seluruh bundle produksi.
+- **Production Compilation (`wails build`)**: Standalone binary Windows x64 `build/bin/Jerion.exe` terkompilasi bersih dalam 18.83 detik.
 - **Backend Go Test Suite**: 100% test lulus di seluruh 16 paket backend Go (`internal/logx`, `internal/secrets`, `internal/store`, `internal/adb`, `internal/preflight`, `internal/inventory`, `internal/apk`, `internal/rules`, `internal/engine`, `internal/intel`, `internal/audit`, `internal/monitor`, `internal/remediate`, `internal/report`, `internal/contract`, dan root `main`) dengan `go test -count=1 ./...`.
 - **Go Vet**: Lulus bersih tanpa peringatan (`go vet ./...`).
 - **Strict DeviceID Binding**: Cache scan result tanpa DeviceID atau dengan serial berbeda tertolak langsung di `RemediateCreatePlan`, dengan nil-guard aman pada cache iteration.
