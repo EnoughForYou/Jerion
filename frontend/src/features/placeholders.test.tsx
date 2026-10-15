@@ -57,6 +57,36 @@ describe('Feature Placeholder Views with Mock Bridge Fixtures', () => {
     bridge.device.getConnected = originalGetConnected;
   });
 
+  it('renders HomeView safely when device is offline and displays offline guidance banner', async () => {
+    const bridge = (await import('../lib/bridge')).getBridge();
+    const originalGetConnected = bridge.device.getConnected;
+    bridge.device.getConnected = async () => ({
+      id: 'dev-offline',
+      serial: 'OFFLINE1234',
+      model: 'Offline Android Device',
+      manufacturer: 'Offline',
+      androidVersion: 'Offline',
+      sdkInt: 0,
+      batteryLevel: 0,
+      isCharging: false,
+      connectionState: 'offline' as const,
+      isEmulator: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <HomeView />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Device Offline \/ Inactive/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Offline/i).length).toBeGreaterThan(0);
+    });
+
+    bridge.device.getConnected = originalGetConnected;
+  });
+
   it('renders HomeView defensively when report list is null or returns null findings', async () => {
     const bridge = (await import('../lib/bridge')).getBridge();
     const originalList = bridge.report.list;
@@ -75,6 +105,37 @@ describe('Feature Placeholder Views with Mock Bridge Fixtures', () => {
     });
 
     bridge.report.list = originalList;
+  });
+
+  it('renders ReportsView defensively when scan comparison contains null findings arrays', async () => {
+    const bridge = (await import('../lib/bridge')).getBridge();
+    const originalCompare = bridge.report.compare;
+    const mockSummary = {
+      id: 'scan-1',
+      startedAt: '2026-03-30T10:00:00Z',
+      mode: 'quick' as const,
+      verdict: 'clean' as const,
+      findingsCount: { info: 0, low: 0, medium: 0, high: 0, critical: 0 },
+    };
+    bridge.report.compare = async () => ({
+      scanA: mockSummary,
+      scanB: { ...mockSummary, id: 'scan-2' },
+      newFindings: null as unknown as [],
+      resolvedFindings: null as unknown as [],
+      unchangedFindings: null as unknown as [],
+    });
+
+    render(
+      <MemoryRouter>
+        <ReportsView />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Scan Reports')).toBeInTheDocument();
+    });
+
+    bridge.report.compare = originalCompare;
   });
 
   it('renders AppsView with realistic inventory package table', async () => {

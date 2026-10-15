@@ -148,12 +148,12 @@ export const ReportsView: React.FC = () => {
             {/* Expanded Detailed Delta */}
             {showDiffDetails && (
               <div className="space-y-3 pt-2 border-t border-separator/20 text-xs">
-                {comparison.newFindings.length > 0 && (
+                {(comparison.newFindings?.length ?? 0) > 0 && (
                   <div className="space-y-1.5">
                     <span className="font-semibold text-sev-critical text-xs block">
                       New Threats Detected:
                     </span>
-                    {comparison.newFindings.map((f) => (
+                    {(comparison.newFindings || []).map((f) => (
                       <div
                         key={f.id}
                         className="p-2 rounded bg-sev-critical/5 border border-sev-critical/15 flex items-center justify-between"
@@ -168,12 +168,12 @@ export const ReportsView: React.FC = () => {
                   </div>
                 )}
 
-                {comparison.resolvedFindings.length > 0 && (
+                {(comparison.resolvedFindings?.length ?? 0) > 0 && (
                   <div className="space-y-1.5">
                     <span className="font-semibold text-ok text-xs block">
                       Threats Resolved:
                     </span>
-                    {comparison.resolvedFindings.map((f) => (
+                    {(comparison.resolvedFindings || []).map((f) => (
                       <div
                         key={f.id}
                         className="p-2 rounded bg-ok/5 border border-ok/15 flex items-center justify-between"
@@ -241,7 +241,7 @@ export const ReportsView: React.FC = () => {
                               : 'ok'
                           }
                         >
-                          {scan.verdict.toUpperCase()}
+                          {(scan.verdict || 'clean').toUpperCase()}
                         </Badge>
                       </div>
                       <div className="flex items-center gap-2 text-[11px] text-text-secondary">

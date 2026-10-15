@@ -79,10 +79,11 @@ func TestParseDevices(t *testing.T) {
 07982241C0006769       device product:X698-GL model:Infinix_X698 device:Infinix-X698 transport_id:1
 emulator-5554          unauthorized transport_id:2
 192.168.1.50:5555      offline transport_id:3
+08123456789            authorizing transport_id:4
 `
 	devs := ParseDevices(fixture)
-	if len(devs) != 3 {
-		t.Fatalf("expected 3 devices, got %d", len(devs))
+	if len(devs) != 4 {
+		t.Fatalf("expected 4 devices, got %d", len(devs))
 	}
 
 	if devs[0].Serial != "07982241C0006769" || devs[0].State != StateReady || devs[0].Model != "Infinix_X698" {
@@ -93,6 +94,9 @@ emulator-5554          unauthorized transport_id:2
 	}
 	if devs[2].Serial != "192.168.1.50:5555" || devs[2].State != StateOffline {
 		t.Errorf("unexpected dev 2: %+v", devs[2])
+	}
+	if devs[3].Serial != "08123456789" || devs[3].State != StateUnauthorized {
+		t.Errorf("unexpected dev 3 for authorizing state: %+v", devs[3])
 	}
 }
 

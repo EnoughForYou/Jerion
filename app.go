@@ -370,7 +370,19 @@ func (a *App) convertPreflightCheck(c preflight.PreflightCheck) contract.Preflig
 // --- 2. Device Service ---
 
 func (a *App) DeviceGetConnected() (*contract.Device, error) {
+	ctx := a.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
 	active := a.tracker.ActiveDevice()
+	if active == nil || active.State != adb.StateReady {
+		pollCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		_, _ = a.tracker.PollOnce(pollCtx)
+		cancel()
+		active = a.tracker.ActiveDevice()
+	}
+
 	if active == nil {
 		return nil, nil
 	}
@@ -378,6 +390,15 @@ func (a *App) DeviceGetConnected() (*contract.Device, error) {
 }
 
 func (a *App) DeviceList() ([]contract.Device, error) {
+	ctx := a.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	pollCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	_, _ = a.tracker.PollOnce(pollCtx)
+	cancel()
+
 	devs := a.tracker.Devices()
 	res := make([]contract.Device, 0, len(devs))
 	for _, d := range devs {
@@ -415,10 +436,9 @@ func (a *App) convertDevice(d adb.DeviceInfo) *contract.Device {
 	}
 
 	if d.State == adb.StateReady {
-		cmdCtx, cancel := context.WithTimeout(ctx, 4*time.Second)
-		defer cancel()
-
-		stdout, _, err := a.runner.Run(cmdCtx, d.Serial, "shell", "getprop")
+		getpropCtx, cancel1 := context.WithTimeout(ctx, 3*time.Second)
+		stdout, _, err := a.runner.Run(getpropCtx, d.Serial, "shell", "getprop")
+		cancel1()
 		if err == nil {
 			props := adb.ParseGetprop(string(stdout))
 			if m, ok := props["ro.product.model"]; ok && strings.TrimSpace(m) != "" {
@@ -441,7 +461,9 @@ func (a *App) convertDevice(d adb.DeviceInfo) *contract.Device {
 			}
 		}
 
-		batOut, _, err := a.runner.Run(cmdCtx, d.Serial, "shell", "dumpsys", "battery")
+		batCtx, cancel2 := context.WithTimeout(ctx, 3*time.Second)
+		batOut, _, err := a.runner.Run(batCtx, d.Serial, "shell", "dumpsys", "battery")
+		cancel2()
 		if err == nil {
 			bat := adb.ParseBattery(string(batOut))
 			batteryLevel = bat.Percent
@@ -452,6 +474,12 @@ func (a *App) convertDevice(d adb.DeviceInfo) *contract.Device {
 		androidVer = "Pending Authorization"
 		if model == "" {
 			model = "Unauthorized Android Device"
+		}
+	} else if d.State == adb.StateOffline {
+		manufacturer = "Offline"
+		androidVer = "Offline"
+		if model == "" {
+			model = "Offline Android Device"
 		}
 	}
 

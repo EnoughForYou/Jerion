@@ -6,22 +6,22 @@
 - Terakhir selesai: Runner ADB Path Sync & Mock Audit (merge commit 5006d78)
 
 ## Fase Device Detection & Screen Resilience Hardening — checklist
-- [x] Sub-tugas RESIL.1: Penanganan status `unauthorized` yang jelas dan edukatif di backend (`convertDevice`) dan frontend (`HomeView.tsx`, `DeviceHeader.tsx`) memandu pengguna mengaktifkan dialog otorisasi RSA dan beralih ke mode USB MTP/File Transfer saat ponsel hanya terdeteksi mengisi daya (charging)
-- [x] Sub-tugas RESIL.2: Perbaikan crash routing `TypeError: Cannot read properties of null (reading 'length')` pada data scan/array null lewat implementasi defensive null-guards di seluruh modul tampilan dan penambahan `ErrorBoundary` serta `RouteErrorBoundary` di seluruh rute React Router
+- [x] Sub-tugas RESIL.1: Penanganan status `unauthorized`, `authorizing` (Android 11+ handshake), dan `offline` yang jelas dan edukatif di backend (`convertDevice`, `ParseDevices`) dan frontend (`HomeView.tsx`, `DeviceHeader.tsx`) memandu pengguna mengaktifkan dialog otorisasi RSA, beralih ke mode USB MTP/File Transfer saat ponsel hanya terdeteksi mengisi daya (charging), dan memeriksa opsi pengembang
+- [x] Sub-tugas RESIL.2: Perbaikan crash routing `TypeError: Cannot read properties of null (reading 'length')` pada data scan/array null lewat implementasi defensive null-guards di seluruh modul tampilan (`HomeView`, `ReportsView`, `AppDetailDrawer`, `EvidenceDrawer`, `MonitorView`, `RemediateView`, `AuditView`, `AppsView`), serta penambahan `ErrorBoundary` dan `RouteErrorBoundary` di seluruh rute React Router
 - [x] Sub-tugas RESIL.3: Pemformatan nama perangkat cerdas dari `ro.product.model`, `ro.product.marketname`, dan fallback `ro.product.brand`, menggantikan nama kode perangkat mentah
-- [x] Sub-tugas RESIL.4: Enforcing non-nil slice returns di backend (`DeviceList`, `InventoryList`, `AuditRun`, `AllowlistList`) guna mencegah serialisasi JSON `null` ke antarmuka React
-- [x] Sub-tugas RESIL.5: Ergonomi layout & ketahanan resolusi tinggi (HiDPI) dengan batas minimum window Wails (1024x680, default 1200x780) sesuai PRD NFR-08 dan container scroll responsif `min-h-0 flex-1`
-- [x] Sub-tugas RESIL.6: Sinkronisasi perangkat global realtime di `AppLayout.tsx` lewat event `device:changed` dan tombol refresh header
+- [x] Sub-tugas RESIL.4: Enforcing non-nil slice returns di backend (`DeviceList`, `InventoryList`, `AuditRun`, `AllowlistList`) serta polling langsung pada `DeviceGetConnected()` dan `DeviceList()` guna mencegah pembacaan data usang saat perangkat baru saja diizinkan
+- [x] Sub-tugas RESIL.5: Ergonomi layout & ketahanan resolusi tinggi (HiDPI) dengan batas minimum window Wails (1024x680, default 1200x780) sesuai PRD NFR-08 dan container scroll responsif `w-full min-w-0 min-h-0` tanpa pemotongan kaku
+- [x] Sub-tugas RESIL.6: Sinkronisasi perangkat global realtime di `AppLayout.tsx` lewat event `device:changed`, banner status "Zero-Footprint Mode (ADB Shell Connected)", serta tombol pintas cepat menuju aplikasi dan audit
 - [x] Sub-tugas RESIL.7: Analisis arsitektur perbandingan mekanisme daemon/aplikasi pendamping 3uTools vs filosofi zero-footprint Jerion via ADB user shell (PRD §1.4 & §6.8)
-- [x] Sub-tugas RESIL.8: Unit test komprehensif pada backend (`TestConvertDevice_UnauthorizedAndModelBrandParsing` di `app_test.go`) dan frontend (`ErrorBoundary.test.tsx` & `placeholders.test.tsx`)
+- [x] Sub-tugas RESIL.8: Unit test komprehensif pada backend (`TestConvertDevice_UnauthorizedAndModelBrandParsing` di `app_test.go`, `TestParseDevices` di `adb_test.go`) dan frontend (`ErrorBoundary.test.tsx` & `placeholders.test.tsx`)
 
 ## Pengukuran & Kualitas (Device Detection & Screen Resilience Hardening)
 - **Backend Go Test Suite**: 100% test lulus di seluruh 16 paket backend Go (`go test -count=1 ./...`).
 - **Go Vet**: Lulus bersih tanpa peringatan (`go vet ./...`).
-- **Frontend Vitest Suite**: 134 pengujian lolos di 21 file tes (`npm run test`).
+- **Frontend Vitest Suite**: 136 pengujian lolos di 21 file tes (`npm run test`).
 - **ESLint & TypeScript**: 0 error, 0 warning pada `npm run lint` & `npm run typecheck`.
 - **Mock Elimination (`npm run check:no-mock`)**: 0 marker mock di seluruh bundle produksi.
-- **Production Compilation (`wails build`)**: Standalone binary Windows x64 `build/bin/Jerion.exe` terkompilasi bersih dalam 21.81 detik.
+- **Production Compilation (`wails build`)**: Standalone binary Windows x64 `build/bin/Jerion.exe` terkompilasi bersih dalam 18.62 detik.
 
 ## Fase Runner ADB Path Sync & Mock Audit — riwayat selesai
 - [x] Sub-tugas SYNC.1: Sinkronisasi aktif path biner ADB dari `adb.Manager` ke `adb.Runner` (`RealRunner.SetADBPath`) pada `ResolveADBPath()`, `SetCustomPath()`, `CheckVersion()`, dan `StartServer()`, mengeliminasi kegagalan `exec: "adb": executable file not found in %PATH%`

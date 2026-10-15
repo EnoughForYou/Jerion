@@ -1396,6 +1396,28 @@ func TestConvertDevice_UnauthorizedAndModelBrandParsing(t *testing.T) {
 	if resReady2.Manufacturer != "Transsion" {
 		t.Errorf("expected ro.product.manufacturer 'Transsion' to take precedence over brand, got '%s'", resReady2.Manufacturer)
 	}
+
+	// Case 4: Offline device
+	offlineDev := adb.DeviceInfo{
+		Serial: "OFFLINE-789",
+		State:  adb.StateOffline,
+	}
+	resOffline := app.convertDevice(offlineDev)
+	if resOffline == nil {
+		t.Fatalf("expected non-nil device for offline state")
+	}
+	if resOffline.ConnectionState != "offline" {
+		t.Errorf("expected ConnectionState 'offline', got '%s'", resOffline.ConnectionState)
+	}
+	if resOffline.Manufacturer != "Offline" {
+		t.Errorf("expected Manufacturer 'Offline', got '%s'", resOffline.Manufacturer)
+	}
+	if resOffline.AndroidVersion != "Offline" {
+		t.Errorf("expected AndroidVersion 'Offline', got '%s'", resOffline.AndroidVersion)
+	}
+	if resOffline.Model != "Offline Android Device" {
+		t.Errorf("expected default Model 'Offline Android Device', got '%s'", resOffline.Model)
+	}
 }
 
 

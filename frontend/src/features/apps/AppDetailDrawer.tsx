@@ -138,13 +138,13 @@ export const AppDetailDrawer: React.FC<AppDetailDrawerProps> = ({
               <span className="text-text-secondary block font-medium">
                 {t('apps.detail.firstInstall')}:
               </span>
-              <span className="text-text-primary">{app.installedAt.slice(0, 10)}</span>
+              <span className="text-text-primary">{(app.installedAt || '').slice(0, 10) || 'Unknown'}</span>
             </div>
             <div>
               <span className="text-text-secondary block font-medium">
                 {t('apps.detail.lastUpdate')}:
               </span>
-              <span className="text-text-primary">{app.updatedAt.slice(0, 10)}</span>
+              <span className="text-text-primary">{(app.updatedAt || '').slice(0, 10) || 'Unknown'}</span>
             </div>
           </div>
 

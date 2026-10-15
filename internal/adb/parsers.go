@@ -83,7 +83,7 @@ func ParseDevices(output string) []DeviceInfo {
 		switch rawState {
 		case "device":
 			state = StateReady
-		case "unauthorized":
+		case "unauthorized", "authorizing":
 			state = StateUnauthorized
 		case "offline":
 			state = StateOffline

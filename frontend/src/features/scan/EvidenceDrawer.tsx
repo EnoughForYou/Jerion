@@ -45,7 +45,7 @@ export const EvidenceDrawer: React.FC<EvidenceDrawerProps> = ({
               {finding.ruleId}
             </span>
             <span className="text-xs text-text-secondary">
-              {t('scan.confidenceLabel', { confidence: finding.confidence.toUpperCase() })}
+              {t('scan.confidenceLabel', { confidence: (finding.confidence || 'medium').toUpperCase() })}
             </span>
           </div>
           <DialogTitle className="text-base font-semibold text-text-primary">

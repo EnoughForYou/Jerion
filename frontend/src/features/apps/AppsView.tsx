@@ -72,8 +72,8 @@ export const AppsView: React.FC = () => {
         // Search filtering
         if (!query) return true;
         return (
-          app.package.toLowerCase().includes(query) ||
-          app.label.toLowerCase().includes(query)
+          (app.package || '').toLowerCase().includes(query) ||
+          (app.label || '').toLowerCase().includes(query)
         );
       })
       .sort((a, b) => {

@@ -150,7 +150,7 @@ export const RemediateView: React.FC = () => {
         type: 'error',
         message:
           (err as Error)?.message ||
-          t('cleanup.executionFailed', { count: plan.actions.length }),
+          t('cleanup.executionFailed', { count: plan.actions?.length ?? 0 }),
       });
       setTimeout(() => setFeedback(null), 5000);
     } finally {
