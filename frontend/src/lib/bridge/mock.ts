@@ -485,7 +485,7 @@ export class MockBridge implements Bridge {
         this.preflightChecks[idx] = {
           ...this.preflightChecks[idx],
           status: 'ok',
-          detail: `Configured at ${path}`,
+          detail: `Configured at ${path || 'C:\\platform-tools\\adb.exe'}`,
         };
         this.emit('preflight:update', this.preflightChecks[idx]);
       }

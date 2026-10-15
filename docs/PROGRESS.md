@@ -1,18 +1,22 @@
 # PROGRESS
 
 ## Status sekarang
-- Fase aktif: Fidelity Hardening Round 5 — Selesai Penuh
-- Branch: phase/fidelity-hardening-5
-- Terakhir selesai: Fidelity Hardening Round 4 (merge commit 9975f2e)
+- Fase aktif: Preflight Resolution Fix — Selesai Penuh
+- Branch: phase/preflight-actions-fix
+- Terakhir selesai: Fidelity Hardening Round 5 (merge commit 5eefb87)
 
-## Fase Fidelity Hardening Round 5 (Atomic Reservation, Strict DeviceID, Audit Accuracy, Partial Scan Truth & AppOps Parser) — checklist
-- [x] Sub-tugas H5.1: Penegakan filter ketat DeviceID pada cache hasil scan di `RemediateCreatePlan` (`res.DeviceID != expectedDevID`), menolak cache dengan DeviceID kosong atau tidak cocok
-- [x] Sub-tugas H5.2: Pra-validasi batch atomik, penolakan duplicate action ID dalam satu eksekusi, serta reservasi dan penghapusan atomik seluruh action ID dari cache backend di bawah exclusive mutex `a.mu.Lock()` sebelum eksekusi dimulai
-- [x] Sub-tugas H5.3: Pemisahan tampilan status eksekusi aksi perangkat dari status persistensi audit log (`auditSaved`, `auditError`) pada UI `RemediateView.tsx`, perhitungan jumlah sukses berbasis `status === "success"`, dan visualisasi peringatan audit
-- [x] Sub-tugas H5.4: Kejujuran verdict scan parsial tanpa temuan (`status === "partial"` menghasilkan `Summary.Verdict = "review"` di backend) dengan notice visual bahwa inspeksi komponen belum lengkap, serta status "No findings match this filter" saat filter severity aktif tidak memiliki kecocokan
-- [x] Sub-tugas H5.5: Penegakan ketepatan parser AppOps overlay (`internal/inventory/parser.go`) dengan signature `(allowed bool, recognized bool)`, membedakan respons valid ditolak (`No operations.`, `deny`, `ignore`) dari respons shell tidak dikenal/rusak (`overlay_status_unknown`)
+## Fase Preflight Resolution Fix (Download Action, Live Progress & Native File Dialog) — checklist
+- [x] Sub-tugas PF.1: Populasi `SourceURL` otomatis pada DTO Preflight (`app.go:convertPreflightCheck`) saat biner ADB missing, mengaktifkan tombol Download resmi Google di UI
+- [x] Sub-tugas PF.2: Integrasi native Windows Open File Dialog (`wailsRuntime.OpenFileDialog`) pada `PreflightSelectAdbPath`, memungkinkan pengguna memilih file `adb.exe` melalui Windows Explorer saat klik "Choose existing..."
+- [x] Sub-tugas PF.3: Pengiriman live download progress events (`preflight:update`) selama `PreflightDownloadAdb` dan auto-retry/transition setelah biner terpasang
+- [x] Sub-tugas PF.4: Penambahan pengujian unit Vitest dan Go backend untuk alur resolusi download, path picker, dan validasi URL Google
 
-## Pengukuran & Kualitas (Fidelity Hardening Round 5)
+## Pengukuran & Kualitas (Preflight Resolution Fix)
+- **Backend Go Test Suite**: 100% test lulus di seluruh 16 paket backend Go (`go test -count=1 ./...`).
+- **Go Vet**: Lulus bersih tanpa peringatan (`go vet ./...`).
+- **Frontend Vitest Suite**: 127 pengujian lolos di 20 file tes (`npm run test`).
+- **ESLint & TypeScript**: 0 error, 0 warning pada `npm run lint` & `npm run typecheck`.
+- **Production Compilation (`wails build`)**: Standalone binary Windows x64 `build/bin/Jerion.exe` terkompilasi bersih dalam 18.96 detik.
 - **Backend Go Test Suite**: 100% test lulus di seluruh 16 paket backend Go (`internal/logx`, `internal/secrets`, `internal/store`, `internal/adb`, `internal/preflight`, `internal/inventory`, `internal/apk`, `internal/rules`, `internal/engine`, `internal/intel`, `internal/audit`, `internal/monitor`, `internal/remediate`, `internal/report`, `internal/contract`, dan root `main`) dengan `go test -count=1 ./...`.
 - **Go Vet**: Lulus bersih tanpa peringatan (`go vet ./...`).
 - **Strict DeviceID Binding**: Cache scan result tanpa DeviceID atau dengan serial berbeda tertolak langsung di `RemediateCreatePlan`, dengan nil-guard aman pada cache iteration.
