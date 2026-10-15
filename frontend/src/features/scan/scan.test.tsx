@@ -195,4 +195,50 @@ describe('ScanView and Interactive Scan Components', () => {
     // It must NOT show the clean security message
     expect(screen.queryByText('No threats or suspicious behaviors detected on this device.')).not.toBeInTheDocument();
   });
+
+  it('prioritizes partial scan incomplete warning over filter empty state when scan is partial with 0 findings', async () => {
+    const bridge = getBridge() as MockBridge;
+    render(
+      <MemoryRouter>
+        <ScanView />
+      </MemoryRouter>
+    );
+
+    // Wait until initial report is loaded
+    await screen.findByText(/POP-001/i);
+
+    // User clicks CRITICAL button
+    const critButton = await screen.findByRole('button', { name: /critical/i });
+    fireEvent.click(critButton);
+
+    // Now emit scan:done with partial status and 0 findings
+    act(() => {
+      bridge.emit('scan:done', {
+        id: 'scan-partial-filtered',
+        deviceId: 'dev-test',
+        mode: 'deep',
+        startedAt: '2026-10-15T12:00:00Z',
+        completedAt: '2026-10-15T12:00:15Z',
+        status: 'partial',
+        findings: [],
+        summary: {
+          counts: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
+          totalApps: 10,
+          verdict: 'review',
+        },
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Scan Incomplete (Partial)')).toBeInTheDocument();
+      expect(
+        screen.getByText('No findings detected in the examined components, but the overall scan was incomplete.')
+      ).toBeInTheDocument();
+    });
+
+    // It must NOT show filter empty state or clean checkmark
+    expect(screen.queryByText('No findings match this filter')).not.toBeInTheDocument();
+    expect(screen.queryByText('No threats or suspicious behaviors detected on this device.')).not.toBeInTheDocument();
+  });
 });
+

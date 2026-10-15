@@ -282,17 +282,7 @@ export const ScanView: React.FC = () => {
         </CardHeader>
         <CardContent>
           {filteredFindings.length === 0 ? (
-            selectedSeverity !== 'all' ? (
-              <div className="py-8 text-center text-xs text-text-secondary space-y-2">
-                <Filter className="w-8 h-8 text-text-secondary mx-auto mb-2 opacity-60" />
-                <p className="font-medium text-text-primary">
-                  {t('scan.noFindingsMatchFilter')}
-                </p>
-                <p className="text-[11px] text-text-secondary max-w-sm mx-auto">
-                  {t('scan.noFindingsMatchFilterDesc')}
-                </p>
-              </div>
-            ) : scanResult && (scanResult.status === 'failed' || scanResult.status === 'cancelled') ? (
+            scanResult && (scanResult.status === 'failed' || scanResult.status === 'cancelled') ? (
               <div className="py-8 text-center text-xs text-text-secondary space-y-2">
                 <AlertTriangle className="w-8 h-8 text-warning mx-auto mb-2 opacity-80" />
                 <p className="font-medium text-text-primary">
@@ -302,7 +292,7 @@ export const ScanView: React.FC = () => {
                   {t('scan.incompleteNotice')}
                 </p>
               </div>
-            ) : scanResult && scanResult.status === 'partial' ? (
+            ) : scanResult && scanResult.status === 'partial' && findings.length === 0 ? (
               <div className="py-8 text-center text-xs text-text-secondary space-y-2">
                 <AlertTriangle className="w-8 h-8 text-warning mx-auto mb-2 opacity-80" />
                 <p className="font-medium text-text-primary">
@@ -310,6 +300,16 @@ export const ScanView: React.FC = () => {
                 </p>
                 <p className="text-[11px] text-text-secondary max-w-sm mx-auto">
                   {t('scan.partialNoFindingsNotice')}
+                </p>
+              </div>
+            ) : selectedSeverity !== 'all' ? (
+              <div className="py-8 text-center text-xs text-text-secondary space-y-2">
+                <Filter className="w-8 h-8 text-text-secondary mx-auto mb-2 opacity-60" />
+                <p className="font-medium text-text-primary">
+                  {t('scan.noFindingsMatchFilter')}
+                </p>
+                <p className="text-[11px] text-text-secondary max-w-sm mx-auto">
+                  {t('scan.noFindingsMatchFilterDesc')}
                 </p>
               </div>
             ) : (

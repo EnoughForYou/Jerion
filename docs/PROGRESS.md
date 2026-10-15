@@ -15,14 +15,14 @@
 ## Pengukuran & Kualitas (Fidelity Hardening Round 5)
 - **Backend Go Test Suite**: 100% test lulus di seluruh 16 paket backend Go (`internal/logx`, `internal/secrets`, `internal/store`, `internal/adb`, `internal/preflight`, `internal/inventory`, `internal/apk`, `internal/rules`, `internal/engine`, `internal/intel`, `internal/audit`, `internal/monitor`, `internal/remediate`, `internal/report`, `internal/contract`, dan root `main`) dengan `go test -count=1 ./...`.
 - **Go Vet**: Lulus bersih tanpa peringatan (`go vet ./...`).
-- **Strict DeviceID Binding**: Cache scan result tanpa DeviceID atau dengan serial berbeda tertolak langsung di `RemediateCreatePlan`.
-- **Atomic Batch Reservation**: Mutex eksklusif mencegah eksekusi duplikat atau concurrency race pada seluruh action ID dalam satu batch plan.
-- **Audit Persistence Fidelity**: Status `auditSaved` dan `auditError` ditampilkan independen dari status eksekusi perangkat di UI history dan feedback banner.
-- **Partial Scan Honesty**: Scan parsial dengan 0 temuan tidak pernah menampilkan checkmark clean atau verdict "CLEAN"; verdict backend diset "review" dan UI menampilkan warning scan tidak lengkap.
-- **AppOps Parser Accuracy**: Parser `ParseAppOpsOverlay` dan `ParseSingleAppOpOverlay` membedakan output recognized dan unparseable dengan tepat.
-- **Frontend Vitest Suite**: 123 pengujian lolos di 20 file tes (`npm run test`).
+- **Strict DeviceID Binding**: Cache scan result tanpa DeviceID atau dengan serial berbeda tertolak langsung di `RemediateCreatePlan`, dengan nil-guard aman pada cache iteration.
+- **Atomic Batch Reservation**: Mutex eksklusif mencegah eksekusi duplikat atau concurrency race pada seluruh action ID dalam satu batch plan; slice hasil diinisialisasi non-nil mencegah null serialization.
+- **Audit Persistence Fidelity**: Status `auditSaved` dan `auditError` dilaporkan secara eksplisit bahkan saat database store unconfigured/nil; UI `RemediateView.tsx` menutup modal dan menampilkan banner error saat eksekusi ditolak backend.
+- **Partial Scan Honesty**: Scan parsial dengan 0 temuan menghasilkan verdict "review" baik saat live maupun saat dimuat dari database store (`convertStoreScanRecord`); UI memprioritaskan peringatan parsial dan terminal scan di atas status filter kosong.
+- **AppOps Parser Accuracy**: Parser `ParseAppOpsOverlay` dan `ParseSingleAppOpOverlay` membedakan output recognized dan unparseable dengan case-insensitivity dan pemisahan token UID/brackets; `InventoryGet` menerapkan fallback tangguh dari `cmd appops` ke `appops`.
+- **Frontend Vitest Suite**: 125 pengujian lolos di 20 file tes (`npm run test`).
 - **ESLint & TypeScript**: 0 error, 0 warning pada `npm run lint` & `npm run typecheck`.
-- **Production Compilation (`wails build`)**: Standalone binary Windows x64 `build/bin/Jerion.exe` terkompilasi bersih dalam 18.53 detik.
+- **Production Compilation (`wails build`)**: Standalone binary Windows x64 `build/bin/Jerion.exe` terkompilasi bersih dalam 17.82 detik.
 
 ## Fase Fidelity Hardening Round 4 (Fail-Closed Device Binding, Pre-validation, Scan Verdict Honesty & Downloader Regression Test) — riwayat selesai
 - [x] Sub-tugas H4.1: Pengikatan rencana remediasi fail-closed ke serial perangkat (`wireError("DeviceOffline")` saat perangkat kosong/offline di `RemediateCreatePlan` dan `RemediateExecute`), serta penyaringan finding store SQLite hanya untuk serial perangkat aktif

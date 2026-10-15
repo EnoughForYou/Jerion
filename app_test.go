@@ -1188,3 +1188,94 @@ func TestConvertEngineScanResult_PartialVerdictReview(t *testing.T) {
 		t.Errorf("expected verdict 'review' for partial scan without findings, got '%s'", contractRes.Summary.Verdict)
 	}
 }
+
+func TestConvertStoreScanRecord_PartialVerdictReview(t *testing.T) {
+	app, _ := setupTestApp(t)
+	defer app.store.Close()
+
+	now := time.Now().UTC()
+	storeRecord := store.ScanRecord{
+		ID:           "scan-store-partial-001",
+		DeviceSerial: "MOCK-0001",
+		Mode:         "deep",
+		StartedAt:    now.Add(-10 * time.Second),
+		FinishedAt:   now,
+		Findings:     []store.FindingRecord{}, // 0 findings!
+		Partial:      true,
+		TotalApps:    10,
+	}
+
+	if err := app.store.SaveScanResult(storeRecord); err != nil {
+		t.Fatalf("SaveScanResult failed: %v", err)
+	}
+
+	contractRes, err := app.ScanGet("scan-store-partial-001")
+	if err != nil || contractRes == nil {
+		t.Fatalf("ScanGet failed: %v", err)
+	}
+	if contractRes.Status != "partial" {
+		t.Errorf("expected status 'partial', got '%s'", contractRes.Status)
+	}
+	if contractRes.Summary.Verdict != "review" {
+		t.Errorf("expected verdict 'review' for stored partial scan without findings, got '%s'", contractRes.Summary.Verdict)
+	}
+}
+
+func TestInventoryGet_AppOpsFallback(t *testing.T) {
+	app, fake := setupTestApp(t)
+	defer app.store.Close()
+
+	fake.SetResponse("devices -l", "MOCK-0001 device product:mock model:MockPhone device:mock_dev\n", "", nil)
+	_, _ = app.tracker.PollOnce(context.Background())
+	app.activeSerial = "MOCK-0001"
+
+	pkg := "com.test.fallbackops"
+	fake.SetResponse(fmt.Sprintf("dumpsys package %s", pkg), fmt.Sprintf(`Package [%s]
+userId=10200
+versionName=1.0.0
+versionCode=10
+targetSdk=31
+requested permissions:
+  android.permission.SYSTEM_ALERT_WINDOW
+`, pkg), "", nil)
+
+	// cmd appops returns exit 0 but unrecognized output (e.g. unknown service error banner)
+	fake.SetResponse(fmt.Sprintf("cmd appops get %s SYSTEM_ALERT_WINDOW", pkg), "cmd: Can't find service: appops\n", "", nil)
+	// fallback appops get returns valid recognized allow
+	fake.SetResponse(fmt.Sprintf("appops get %s SYSTEM_ALERT_WINDOW", pkg), "SYSTEM_ALERT_WINDOW: allow\n", "", nil)
+
+	appInfo, err := app.InventoryGet(pkg)
+	if err != nil || appInfo == nil {
+		t.Fatalf("InventoryGet failed: %v", err)
+	}
+
+	if !appInfo.HasOverlayPermission {
+		t.Errorf("expected HasOverlayPermission=true via appops fallback")
+	}
+	if !containsString(appInfo.SuspiciousFlags, "overlay_granted") {
+		t.Errorf("expected overlay_granted in SuspiciousFlags, got: %v", appInfo.SuspiciousFlags)
+	}
+}
+
+func TestRemediateCreatePlan_NilCachedResult(t *testing.T) {
+	app, fake := setupTestApp(t)
+	defer app.store.Close()
+
+	fake.SetResponse("devices -l", "MOCK-0001 device product:mock model:MockPhone device:mock_dev\n", "", nil)
+	_, _ = app.tracker.PollOnce(context.Background())
+	app.activeSerial = "MOCK-0001"
+
+	app.mu.Lock()
+	// Insert nil entry in cachedResults to ensure defensive iteration
+	app.cachedResults["scan-nil"] = nil
+	app.mu.Unlock()
+
+	plan, err := app.RemediateCreatePlan([]string{"find-nonexistent"})
+	if err != nil {
+		t.Fatalf("RemediateCreatePlan failed: %v", err)
+	}
+	if len(plan.Actions) != 0 {
+		t.Fatalf("expected 0 actions, got %d", len(plan.Actions))
+	}
+}
+

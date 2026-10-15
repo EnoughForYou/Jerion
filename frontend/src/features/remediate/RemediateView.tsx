@@ -43,20 +43,22 @@ export const RemediateView: React.FC = () => {
 
       // Load action history
       const history = await bridge.remediate.getHistory();
-      setLogs(history);
+      setLogs(history || []);
 
       // Load actionable findings from latest report to generate staged remediation plan
       const reports = await bridge.report.list();
-      if (reports.length > 0) {
+      if (reports && reports.length > 0) {
         const latestScan = await bridge.report.get(reports[0].id);
-        if (latestScan) {
+        if (latestScan && latestScan.findings) {
           const findingIds = latestScan.findings.map((f) => f.id);
           const plan = await bridge.remediate.createPlan(findingIds);
-          setStagedActions(plan.actions);
-          // Select all non-blocked actions by default
-          setSelectedActionIds(
-            new Set(plan.actions.filter((a) => !a.isBlocked).map((a) => a.id))
-          );
+          if (plan && plan.actions) {
+            setStagedActions(plan.actions);
+            // Select all non-blocked actions by default
+            setSelectedActionIds(
+              new Set(plan.actions.filter((a) => !a.isBlocked).map((a) => a.id))
+            );
+          }
         }
       }
     } catch (err) {
@@ -97,6 +99,7 @@ export const RemediateView: React.FC = () => {
     try {
       setIsExecuting(true);
       const newLogs = await bridge.remediate.execute(plan);
+      const logsList = newLogs || [];
 
       // Remove executed actions from staged list
       const executedIds = new Set(plan.actions.map((a) => a.id));
@@ -104,12 +107,16 @@ export const RemediateView: React.FC = () => {
       setSelectedActionIds(new Set());
 
       // Update history log
-      setLogs((prev) => [...newLogs, ...prev]);
+      setLogs((prev) => [...logsList, ...prev]);
       setShowConfirmDialog(false);
 
-      const successCount = newLogs.filter((l) => l.status === 'success').length;
-      const failedCount = newLogs.filter((l) => l.status === 'failed').length;
-      const auditFailures = newLogs.filter((l) => l.auditSaved === false).length;
+      if (logsList.length === 0) {
+        return;
+      }
+
+      const successCount = logsList.filter((l) => l.status === 'success').length;
+      const failedCount = logsList.filter((l) => l.status === 'failed').length;
+      const auditFailures = logsList.filter((l) => l.auditSaved === false).length;
 
       let type: 'ok' | 'warning' | 'error' = 'ok';
       let message = '';
@@ -121,7 +128,7 @@ export const RemediateView: React.FC = () => {
         type = 'warning';
         message = t('cleanup.executionPartial', {
           success: successCount,
-          total: newLogs.length,
+          total: logsList.length,
           failed: failedCount,
         });
       } else {
@@ -138,6 +145,14 @@ export const RemediateView: React.FC = () => {
       setTimeout(() => setFeedback(null), 5000);
     } catch (err) {
       console.error('Failed to execute remediation plan:', err);
+      setShowConfirmDialog(false);
+      setFeedback({
+        type: 'error',
+        message:
+          (err as Error)?.message ||
+          t('cleanup.executionFailed', { count: plan.actions.length }),
+      });
+      setTimeout(() => setFeedback(null), 5000);
     } finally {
       setIsExecuting(false);
     }
@@ -156,6 +171,11 @@ export const RemediateView: React.FC = () => {
       setTimeout(() => setFeedback(null), 4000);
     } catch (err) {
       console.error('Failed to undo action:', err);
+      setFeedback({
+        type: 'error',
+        message: (err as Error)?.message || 'Failed to undo action',
+      });
+      setTimeout(() => setFeedback(null), 5000);
     }
   };
 
