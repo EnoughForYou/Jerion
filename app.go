@@ -142,6 +142,13 @@ func NewAppWithDeps(runner adb.Runner, st *store.Store, logger *logx.Logger, wor
 
 	secMgr := secrets.NewManager(secrets.NewOSKeyring())
 	adbMgr := adb.NewManager(runner, "", logger)
+	if savedPath, err := st.GetSetting("adbPath"); err == nil && savedPath != "" {
+		adbMgr.SetCustomPath(savedPath)
+	} else if resolvedPath, err := adbMgr.ResolveADBPath(); err == nil && resolvedPath != "" {
+		if psr, ok := runner.(interface{ SetADBPath(string) }); ok {
+			psr.SetADBPath(resolvedPath)
+		}
+	}
 	tracker := adb.NewTracker(runner, logger)
 	prefEngine := preflight.NewEngine(adbMgr, secMgr, st, workDir)
 
@@ -287,6 +294,9 @@ func (a *App) PreflightDownloadAdb() error {
 
 	a.adbMgr.SetCustomPath(destPath)
 	_ = a.store.SetSetting("adbPath", destPath)
+	if psr, ok := a.runner.(interface{ SetADBPath(string) }); ok {
+		psr.SetADBPath(destPath)
+	}
 
 	return nil
 }
@@ -317,6 +327,9 @@ func (a *App) PreflightSelectAdbPath(path string) error {
 	}
 	a.adbMgr.SetCustomPath(path)
 	_ = a.store.SetSetting("adbPath", path)
+	if psr, ok := a.runner.(interface{ SetADBPath(string) }); ok {
+		psr.SetADBPath(path)
+	}
 	return nil
 }
 
@@ -1826,6 +1839,10 @@ func (a *App) SettingsUpdate(partial contract.Settings) (contract.Settings, erro
 	}
 	if partial.AdbPath != nil {
 		_ = a.store.SetSetting("adbPath", *partial.AdbPath)
+		a.adbMgr.SetCustomPath(*partial.AdbPath)
+		if psr, ok := a.runner.(interface{ SetADBPath(string) }); ok {
+			psr.SetADBPath(*partial.AdbPath)
+		}
 	}
 	if partial.CustomAdbPort != nil {
 		_ = a.store.SetSetting("customAdbPort", fmt.Sprintf("%d", *partial.CustomAdbPort))

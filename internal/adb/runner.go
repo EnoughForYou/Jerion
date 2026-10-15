@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -85,7 +86,18 @@ func (r *RealRunner) getDeviceLock(serial string) *sync.Mutex {
 
 // Run executes the command using the configured ADB binary.
 func (r *RealRunner) Run(ctx context.Context, serial string, args ...string) ([]byte, []byte, error) {
-	if r.adbPath == "" {
+	activePath := r.ADBPath()
+	if activePath == "" || activePath == "adb" {
+		if _, err := exec.LookPath(activePath); err != nil {
+			if appTool, err := DefaultAppToolsPath(); err == nil {
+				if fi, err := os.Stat(appTool); err == nil && !fi.IsDir() {
+					r.SetADBPath(appTool)
+					activePath = appTool
+				}
+			}
+		}
+	}
+	if activePath == "" {
 		return nil, nil, NewADBError(ErrCodeAdbMissing, "adb binary path is not configured", nil)
 	}
 
@@ -102,7 +114,7 @@ func (r *RealRunner) Run(ctx context.Context, serial string, args ...string) ([]
 	defer devLock.Unlock()
 
 	startTime := time.Now()
-	cmd := exec.CommandContext(ctx, r.adbPath, fullArgs...)
+	cmd := exec.CommandContext(ctx, activePath, fullArgs...)
 	setHideWindow(cmd)
 
 	var stdoutBuf, stderrBuf bytes.Buffer

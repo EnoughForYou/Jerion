@@ -61,6 +61,7 @@ func TestPreflightEngineAllPass(t *testing.T) {
 }
 
 func TestPreflightEngineMissingADB(t *testing.T) {
+	t.Setenv("LOCALAPPDATA", t.TempDir())
 	fake := adb.NewFakeRunner()
 	// Manager with non-existent path and no system adb
 	adbMgr := adb.NewManager(fake, "/non/existent/path/to/adb", nil)

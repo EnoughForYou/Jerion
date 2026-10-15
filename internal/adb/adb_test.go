@@ -222,3 +222,15 @@ func TestTrackerPollAndEvents(t *testing.T) {
 		t.Fatalf("expected no notification for identical devices state, got %d", changeCount)
 	}
 }
+
+func TestManager_SyncRunnerPath(t *testing.T) {
+	fake := NewFakeRunner()
+	mgr := NewManager(fake, "", nil)
+
+	customPath := "C:\\custom\\platform-tools\\adb.exe"
+	mgr.SetCustomPath(customPath)
+
+	if fake.ADBPath() != customPath {
+		t.Fatalf("expected fake.ADBPath() to be %q, got %q", customPath, fake.ADBPath())
+	}
+}

@@ -66,18 +66,21 @@ func (m *Manager) ResolveADBPath() (string, error) {
 	// 1. Custom path
 	if custom != "" {
 		if fi, err := os.Stat(custom); err == nil && !fi.IsDir() {
+			m.syncRunnerPath(custom)
 			return custom, nil
 		}
 	}
 
 	// 2. System PATH
 	if p, err := exec.LookPath("adb"); err == nil {
+		m.syncRunnerPath(p)
 		return p, nil
 	}
 
 	// 3. Application tools directory
 	if appTool, err := DefaultAppToolsPath(); err == nil {
 		if fi, err := os.Stat(appTool); err == nil && !fi.IsDir() {
+			m.syncRunnerPath(appTool)
 			return appTool, nil
 		}
 	}
@@ -90,10 +93,21 @@ func (m *Manager) SetCustomPath(path string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.customPath = path
+	m.syncRunnerPath(path)
+}
+
+func (m *Manager) syncRunnerPath(path string) {
+	if r, ok := m.runner.(interface{ SetADBPath(string) }); ok {
+		r.SetADBPath(path)
+	}
 }
 
 // CheckVersion executes `adb version` and extracts the semantic version.
 func (m *Manager) CheckVersion(ctx context.Context) (string, error) {
+	if path, err := m.ResolveADBPath(); err == nil {
+		m.syncRunnerPath(path)
+	}
+
 	ctxTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
@@ -117,6 +131,10 @@ func (m *Manager) CheckVersion(ctx context.Context) (string, error) {
 
 // StartServer starts the ADB server daemon.
 func (m *Manager) StartServer(ctx context.Context) error {
+	if path, err := m.ResolveADBPath(); err == nil {
+		m.syncRunnerPath(path)
+	}
+
 	ctxTimeout, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
