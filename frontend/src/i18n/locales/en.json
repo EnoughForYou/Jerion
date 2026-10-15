@@ -27,7 +27,13 @@
     "api": "API",
     "serial": "Serial",
     "refresh": "Refresh Devices",
-    "select": "Select Device"
+    "select": "Select Device",
+    "unauthorizedTitle": "Authorization Required (RSA Key)",
+    "unauthorizedPrompt": "Unlock your phone screen and look for the 'Allow USB debugging?' prompt.",
+    "unauthorizedAction": "Check 'Always allow from this computer' and tap 'Allow'.",
+    "unauthorizedTip": "Prompt not showing? Swipe down your Android notification shade, switch USB mode from 'Charging only' to 'File Transfer (MTP)', or toggle USB Debugging in Developer Options.",
+    "pendingAuth": "Pending Authorization",
+    "checkAgain": "Check Device Again"
   },
   "statusBar": {
     "idle": "System Idle",
@@ -60,7 +66,10 @@
     "start": "Start",
     "stop": "Stop",
     "export": "Export",
-    "undo": "Undo"
+    "undo": "Undo",
+    "error": "Error",
+    "errorRemedy": "An unexpected error occurred.",
+    "routeErrorTitle": "Failed to Load View"
   },
   "preflight": {
     "title": "System Preflight",

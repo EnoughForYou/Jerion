@@ -86,11 +86,11 @@ export const EvidenceDrawer: React.FC<EvidenceDrawerProps> = ({
             <h4 className="text-xs font-semibold text-text-primary flex items-center gap-1.5">
               <FileText className="w-3.5 h-3.5 text-accent" />
               <span>
-                {t('scan.evidenceDrawer.evidenceList', { count: finding.evidence.length })}
+                {t('scan.evidenceDrawer.evidenceList', { count: finding.evidence?.length ?? 0 })}
               </span>
             </h4>
 
-            {finding.evidence.map((item, idx) => (
+            {(finding.evidence || []).map((item, idx) => (
               <div
                 key={idx}
                 className="p-3 rounded-md bg-raised/20 border border-separator/20 space-y-2"

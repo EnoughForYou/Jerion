@@ -56,7 +56,7 @@ export const ScanView: React.FC = () => {
 
     const unsubDone = bridge.on('scan:done', (result) => {
       setScanResult(result);
-      setFindings(result.findings);
+      setFindings(result?.findings || []);
       setIsScanning(false);
       setActiveScanId(null);
       setActiveJob(null);
@@ -65,11 +65,11 @@ export const ScanView: React.FC = () => {
     async function loadInitial() {
       try {
         const list = await bridge.report.list();
-        if (list.length > 0) {
+        if (list && list.length > 0) {
           const res = await bridge.report.get(list[0].id);
           if (res) {
             setScanResult(res);
-            setFindings(res.findings);
+            setFindings(res.findings || []);
           }
         }
       } catch (err) {
@@ -234,12 +234,14 @@ export const ScanView: React.FC = () => {
             <div>
               <CardTitle>{t('scan.results')}</CardTitle>
               <CardDescription>
-                {t('scan.findingsCount', { count: filteredFindings.length })}
+                {t('scan.findingsCount', { count: filteredFindings?.length ?? 0 })}
                 {scanResult?.completedAt &&
                   scanResult.status === 'completed' &&
+                  scanResult.summary?.verdict &&
                   ` · Verdict: ${scanResult.summary.verdict.toUpperCase()}`}
                 {scanResult?.completedAt &&
                   scanResult.status === 'partial' &&
+                  scanResult.summary?.verdict &&
                   ` · Verdict: ${scanResult.summary.verdict.toUpperCase()} (PARTIAL)`}
               </CardDescription>
             </div>
@@ -256,11 +258,11 @@ export const ScanView: React.FC = () => {
                     : 'bg-raised text-text-secondary border-separator/30 hover:text-text-primary'
                 }`}
               >
-                {t('scan.allSeverities')} ({findings.length})
+                {t('scan.allSeverities')} ({(findings || []).length})
               </button>
 
               {(['critical', 'high', 'medium', 'low', 'info'] as Severity[]).map((sev) => {
-                const count = findings.filter((f) => f.severity === sev).length;
+                const count = (findings || []).filter((f) => f.severity === sev).length;
 
                 return (
                   <button
@@ -281,7 +283,7 @@ export const ScanView: React.FC = () => {
           </div>
         </CardHeader>
         <CardContent>
-          {filteredFindings.length === 0 ? (
+          {(filteredFindings?.length ?? 0) === 0 ? (
             scanResult && (scanResult.status === 'failed' || scanResult.status === 'cancelled') ? (
               <div className="py-8 text-center text-xs text-text-secondary space-y-2">
                 <AlertTriangle className="w-8 h-8 text-warning mx-auto mb-2 opacity-80" />
@@ -292,7 +294,7 @@ export const ScanView: React.FC = () => {
                   {t('scan.incompleteNotice')}
                 </p>
               </div>
-            ) : scanResult && scanResult.status === 'partial' && findings.length === 0 ? (
+            ) : scanResult && scanResult.status === 'partial' && (findings?.length ?? 0) === 0 ? (
               <div className="py-8 text-center text-xs text-text-secondary space-y-2">
                 <AlertTriangle className="w-8 h-8 text-warning mx-auto mb-2 opacity-80" />
                 <p className="font-medium text-text-primary">

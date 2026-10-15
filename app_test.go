@@ -1327,3 +1327,75 @@ func TestPreflightSelectAdbPath_EmptyContextError(t *testing.T) {
 	}
 }
 
+func TestConvertDevice_UnauthorizedAndModelBrandParsing(t *testing.T) {
+	app, fake := setupTestApp(t)
+	defer app.store.Close()
+
+	// Case 1: Unauthorized device
+	unauthDev := adb.DeviceInfo{
+		Serial: "UNAUTH-123",
+		State:  adb.StateUnauthorized,
+	}
+	resUnauth := app.convertDevice(unauthDev)
+	if resUnauth == nil {
+		t.Fatalf("expected non-nil device for unauthorized state")
+	}
+	if resUnauth.ConnectionState != "unauthorized" {
+		t.Errorf("expected ConnectionState 'unauthorized', got '%s'", resUnauth.ConnectionState)
+	}
+	if resUnauth.Manufacturer != "Pending Authorization" {
+		t.Errorf("expected Manufacturer 'Pending Authorization', got '%s'", resUnauth.Manufacturer)
+	}
+	if resUnauth.AndroidVersion != "Pending Authorization" {
+		t.Errorf("expected AndroidVersion 'Pending Authorization', got '%s'", resUnauth.AndroidVersion)
+	}
+	if resUnauth.Model != "Unauthorized Android Device" {
+		t.Errorf("expected default Model 'Unauthorized Android Device', got '%s'", resUnauth.Model)
+	}
+	if resUnauth.BatteryLevel != 0 || resUnauth.IsCharging {
+		t.Errorf("expected 0%% battery and not charging for unauthorized, got %d%% charging=%v", resUnauth.BatteryLevel, resUnauth.IsCharging)
+	}
+
+	// Case 2: Ready device with brand & marketname fallback
+	fake.SetResponse("getprop", "[ro.product.brand]: [Infinix]\n[ro.product.marketname]: [NOTE 11S]\n[ro.build.version.release]: [12]\n[ro.build.version.sdk]: [31]\n", "", nil)
+	fake.SetResponse("dumpsys battery", "Current Battery Service state:\n  level: 95\n  scale: 100\n  status: 2\n", "", nil)
+
+	readyDev := adb.DeviceInfo{
+		Serial: "READY-456",
+		State:  adb.StateReady,
+	}
+	resReady := app.convertDevice(readyDev)
+	if resReady == nil {
+		t.Fatalf("expected non-nil device for ready state")
+	}
+	if resReady.ConnectionState != "ready" {
+		t.Errorf("expected ConnectionState 'ready', got '%s'", resReady.ConnectionState)
+	}
+	if resReady.Manufacturer != "Infinix" {
+		t.Errorf("expected Manufacturer 'Infinix' from ro.product.brand fallback, got '%s'", resReady.Manufacturer)
+	}
+	if resReady.Model != "NOTE 11S" {
+		t.Errorf("expected Model 'NOTE 11S' from ro.product.marketname, got '%s'", resReady.Model)
+	}
+	if resReady.AndroidVersion != "12" {
+		t.Errorf("expected AndroidVersion '12', got '%s'", resReady.AndroidVersion)
+	}
+	if resReady.SDKInt != 31 {
+		t.Errorf("expected SDKInt 31, got %d", resReady.SDKInt)
+	}
+	if resReady.BatteryLevel != 95 || !resReady.IsCharging {
+		t.Errorf("expected 95%% battery charging=true, got %d%% charging=%v", resReady.BatteryLevel, resReady.IsCharging)
+	}
+
+	// Case 3: Ready device with ro.product.model taking precedence over marketname
+	fake.SetResponse("getprop", "[ro.product.manufacturer]: [Transsion]\n[ro.product.brand]: [Infinix]\n[ro.product.model]: [Infinix X698]\n[ro.product.marketname]: [NOTE 11S]\n", "", nil)
+	resReady2 := app.convertDevice(readyDev)
+	if resReady2.Model != "Infinix X698" {
+		t.Errorf("expected ro.product.model to take precedence, got '%s'", resReady2.Model)
+	}
+	if resReady2.Manufacturer != "Transsion" {
+		t.Errorf("expected ro.product.manufacturer 'Transsion' to take precedence over brand, got '%s'", resReady2.Manufacturer)
+	}
+}
+
+

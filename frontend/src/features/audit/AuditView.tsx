@@ -28,7 +28,7 @@ export const AuditView: React.FC = () => {
       setIsLoading(true);
       setError(null);
       const results = await bridge.audit.run();
-      setItems(results);
+      setItems(results || []);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Audit check execution failed');
     } finally {
@@ -44,7 +44,7 @@ export const AuditView: React.FC = () => {
         setError(null);
         const results = await bridge.audit.run();
         if (isMounted) {
-          setItems(results);
+          setItems(results || []);
         }
       } catch (err: unknown) {
         if (isMounted) {
@@ -67,7 +67,7 @@ export const AuditView: React.FC = () => {
   const filteredItems = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
 
-    return items.filter((item) => {
+    return (items || []).filter((item) => {
       if (selectedCategory !== 'all' && item.category !== selectedCategory) return false;
       if (selectedStatus !== 'all' && item.status !== selectedStatus) return false;
       if (!q) return true;
@@ -81,7 +81,7 @@ export const AuditView: React.FC = () => {
 
   const categories = useMemo(() => {
     const set = new Set<string>();
-    items.forEach((item) => set.add(item.category));
+    (items || []).forEach((item) => set.add(item.category));
     return ['all', ...Array.from(set)];
   }, [items]);
 
@@ -198,7 +198,7 @@ export const AuditView: React.FC = () => {
             <div>
               <CardTitle>System Security Checklist</CardTitle>
               <CardDescription>
-                {filteredItems.length} configuration policies verified
+                {filteredItems?.length ?? 0} configuration policies verified
               </CardDescription>
             </div>
 
@@ -228,7 +228,7 @@ export const AuditView: React.FC = () => {
               <Skeleton className="h-20 w-full" />
               <Skeleton className="h-20 w-full" />
             </div>
-          ) : filteredItems.length === 0 ? (
+          ) : (filteredItems?.length ?? 0) === 0 ? (
             <div className="py-12">
               <EmptyState
                 title="No Checklist Items"
@@ -252,7 +252,7 @@ export const AuditView: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-3.5">
-              {filteredItems.map((item) => (
+              {(filteredItems || []).map((item) => (
                 <div
                   key={item.id}
                   className="p-3.5 rounded-md bg-raised/30 border border-separator/25 space-y-2 text-xs transition-colors hover:border-separator/40"
