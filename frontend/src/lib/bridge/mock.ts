@@ -784,6 +784,7 @@ export class MockBridge implements Bridge {
           action,
           status: 'success',
           backupPath: `backups/${action.package}.apk`,
+          auditSaved: true,
         };
         entries.push(entry);
         this.actionHistory.unshift(entry);

@@ -457,7 +457,9 @@ func (a *App) InventoryList(filter contract.InventoryFilter) ([]contract.AppInfo
 	if out, _, runErr := a.runner.Run(ctx, serial, "shell", "dumpsys", "appops"); runErr == nil {
 		raw := string(out)
 		if strings.TrimSpace(raw) != "" && !strings.Contains(strings.ToLower(raw), "could not find") {
-			overlayMap = inventory.ParseAppOpsOverlay(raw)
+			if parsed, ok := inventory.ParseAppOpsOverlay(raw); ok {
+				overlayMap = parsed
+			}
 		}
 	}
 
@@ -549,9 +551,13 @@ func (a *App) InventoryGet(packageName string) (*contract.AppInfo, error) {
 
 	var overlayMap map[string]bool
 	if out, _, runErr := a.runner.Run(ctx, serial, "shell", "cmd", "appops", "get", packageName, "SYSTEM_ALERT_WINDOW"); runErr == nil {
-		overlayMap = map[string]bool{packageName: inventory.ParseSingleAppOpOverlay(string(out))}
+		if allowed, ok := inventory.ParseSingleAppOpOverlay(string(out)); ok {
+			overlayMap = map[string]bool{packageName: allowed}
+		}
 	} else if out2, _, runErr2 := a.runner.Run(ctx, serial, "shell", "appops", "get", packageName, "SYSTEM_ALERT_WINDOW"); runErr2 == nil {
-		overlayMap = map[string]bool{packageName: inventory.ParseSingleAppOpOverlay(string(out2))}
+		if allowed, ok := inventory.ParseSingleAppOpOverlay(string(out2)); ok {
+			overlayMap = map[string]bool{packageName: allowed}
+		}
 	}
 
 	accessMap := make(map[string]bool)
@@ -962,6 +968,8 @@ func (a *App) convertEngineScanResult(res *engine.ScanResult) contract.ScanResul
 		verdict = "high_risk"
 	} else if counts["medium"] > 0 {
 		verdict = "review"
+	} else if res.Partial {
+		verdict = "review"
 	}
 
 	compAt := res.FinishedAt.UTC().Format(time.RFC3339)
@@ -1273,7 +1281,7 @@ func (a *App) RemediateCreatePlan(findingIds []string) (contract.RemediationPlan
 		// 1. Look in cached scan results
 		var foundFinding *contract.Finding
 		for _, res := range a.cachedResults {
-			if res.DeviceID != "" && res.DeviceID != expectedDevID {
+			if res.DeviceID != expectedDevID {
 				continue
 			}
 			for _, f := range res.Findings {
@@ -1398,38 +1406,49 @@ func (a *App) RemediateExecute(plan contract.RemediationPlan) ([]contract.Action
 		ctx = context.Background()
 	}
 
-	// Phase 1: Pre-validation of all actions in plan before executing any device command
-	a.mu.RLock()
+	// Atomic validation and reservation of all actions under exclusive lock
+	a.mu.Lock()
+
+	// 1. Check for duplicate action IDs in plan
+	seenIDs := make(map[string]struct{}, len(plan.Actions))
+	for _, actDto := range plan.Actions {
+		if _, seen := seenIDs[actDto.ID]; seen {
+			a.mu.Unlock()
+			a.logger.Warn("remediate: duplicate action ID in execution plan", "actionId", actDto.ID, "package", actDto.Package)
+			return nil, wireError("InvalidAction", fmt.Sprintf("Duplicate action ID '%s' in plan.", actDto.ID), "Ensure each remediation action is submitted only once.")
+		}
+		seenIDs[actDto.ID] = struct{}{}
+	}
+
+	// 2. Validate all actions against cachedActions and device serial
+	reservedActions := make([]remediate.Action, 0, len(plan.Actions))
 	for _, actDto := range plan.Actions {
 		cachedAct, exists := a.cachedActions[actDto.ID]
 		if !exists {
-			a.mu.RUnlock()
+			a.mu.Unlock()
 			a.logger.Warn("remediate: unrecognized or expired action ID in plan", "actionId", actDto.ID, "package", actDto.Package)
 			return nil, wireError("InvalidAction", fmt.Sprintf("Action ID '%s' is unrecognized or expired. Actions must originate from a verified backend plan.", actDto.ID), "Re-generate the remediation plan before executing.")
 		}
 
 		if cachedAct.DeviceSerial == "" || cachedAct.DeviceSerial != serial {
-			a.mu.RUnlock()
+			a.mu.Unlock()
 			a.logger.Warn("remediate: plan device mismatch", "actionId", actDto.ID, "planDevice", cachedAct.DeviceSerial, "activeDevice", serial)
 			return nil, wireError("DeviceMismatch", fmt.Sprintf("Action ID '%s' was planned for device '%s', but active device is '%s'.", actDto.ID, cachedAct.DeviceSerial, serial), "Re-generate the remediation plan for the active device before executing.")
 		}
+
+		reservedActions = append(reservedActions, cachedAct)
 	}
-	a.mu.RUnlock()
+
+	// 3. Atomically consume / delete all action IDs from cachedActions
+	for _, act := range reservedActions {
+		delete(a.cachedActions, act.ID)
+	}
+
+	a.mu.Unlock()
 
 	// Phase 2: Execution using verified canonical backend actions
 	var results []contract.ActionLogEntry
-	for _, actDto := range plan.Actions {
-		a.mu.Lock()
-		cachedAct, exists := a.cachedActions[actDto.ID]
-		if exists {
-			delete(a.cachedActions, actDto.ID)
-		}
-		a.mu.Unlock()
-
-		if !exists {
-			continue
-		}
-
+	for _, cachedAct := range reservedActions {
 		canonicalActDto := contract.RemediationAction{
 			ID:            cachedAct.ID,
 			Type:          cachedAct.Type,
@@ -1497,7 +1516,11 @@ func (a *App) RemediateGetHistory() ([]contract.ActionLogEntry, error) {
 				Undoable:  h.Action.Undoable,
 				IsBlocked: h.Action.IsBlocked,
 			},
-			Status: h.Status,
+			Status:     h.Status,
+			Error:      h.Error,
+			BackupPath: h.BackupPath,
+			AuditSaved: h.AuditSaved,
+			AuditError: h.AuditError,
 		})
 	}
 
@@ -1530,7 +1553,11 @@ func (a *App) RemediateUndo(logEntryId string) (contract.ActionLogEntry, error) 
 			Title:    entry.Action.Title,
 			Undoable: false,
 		},
-		Status: "undone",
+		Status:     "undone",
+		Error:      entry.Error,
+		BackupPath: entry.BackupPath,
+		AuditSaved: entry.AuditSaved,
+		AuditError: entry.AuditError,
 	}, nil
 }
 

@@ -288,46 +288,107 @@ func ParseDeviceAdmins(output string) map[string]bool {
 }
 
 // ParseAppOpsOverlay parses dumpsys appops output to identify packages with SYSTEM_ALERT_WINDOW actively allowed.
-func ParseAppOpsOverlay(output string) map[string]bool {
+// It returns the parsed map and a boolean indicating whether the output was recognized as valid AppOps output.
+func ParseAppOpsOverlay(output string) (map[string]bool, bool) {
+	trimmed := strings.TrimSpace(output)
+	if trimmed == "" {
+		return nil, false
+	}
+
+	lower := strings.ToLower(trimmed)
+	if strings.Contains(lower, "could not find") ||
+		strings.Contains(lower, "not found") ||
+		strings.Contains(lower, "permission denial") ||
+		strings.Contains(lower, "can't find service") ||
+		strings.Contains(lower, "error") ||
+		strings.Contains(lower, "unknown command") {
+		return nil, false
+	}
+
+	// Must contain recognizable AppOps signatures
+	isRecognized := strings.Contains(lower, "appops service state") ||
+		strings.Contains(output, "Package ") ||
+		strings.Contains(output, "No operations") ||
+		strings.Contains(output, "SYSTEM_ALERT_WINDOW") ||
+		strings.Contains(lower, "op system_alert_window")
+
+	if !isRecognized {
+		return nil, false
+	}
+
 	overlayMap := make(map[string]bool)
 	lines := strings.Split(output, "\n")
 	currentPkg := ""
 
 	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "" {
+		l := strings.TrimSpace(line)
+		if l == "" {
 			continue
 		}
 
-		if strings.HasPrefix(trimmed, "Package ") {
-			pkgPart := strings.TrimPrefix(trimmed, "Package ")
+		if strings.HasPrefix(l, "Package ") {
+			pkgPart := strings.TrimPrefix(l, "Package ")
 			pkgPart = strings.Trim(pkgPart, "[]:")
 			currentPkg = strings.TrimSpace(pkgPart)
 			continue
 		}
 
-		if currentPkg != "" && strings.Contains(trimmed, "SYSTEM_ALERT_WINDOW") {
-			lower := strings.ToLower(trimmed)
+		if currentPkg != "" && strings.Contains(l, "SYSTEM_ALERT_WINDOW") {
+			lineLower := strings.ToLower(l)
 			// Check for negative modes
-			if strings.Contains(lower, "ignore") || strings.Contains(lower, "deny") || strings.Contains(lower, "default") || strings.Contains(lower, "mode=1") || strings.Contains(lower, "mode=2") || strings.Contains(lower, "mode=3") {
+			if strings.Contains(lineLower, "ignore") || strings.Contains(lineLower, "deny") || strings.Contains(lineLower, "default") || strings.Contains(lineLower, "mode=1") || strings.Contains(lineLower, "mode=2") || strings.Contains(lineLower, "mode=3") {
 				continue
 			}
-			if strings.Contains(lower, "allow") || strings.Contains(lower, "mode=0") || strings.Contains(lower, "mode=allow") {
+			if strings.Contains(lineLower, "allow") || strings.Contains(lineLower, "mode=0") || strings.Contains(lineLower, "mode=allow") {
 				if err := adb.ValidatePackageName(currentPkg); err == nil {
 					overlayMap[currentPkg] = true
 				}
 			}
 		}
 	}
-	return overlayMap
+	return overlayMap, true
 }
 
 // ParseSingleAppOpOverlay parses the output of `appops get <pkg> SYSTEM_ALERT_WINDOW` or `cmd appops get <pkg> SYSTEM_ALERT_WINDOW`.
-func ParseSingleAppOpOverlay(output string) bool {
+// It returns (isAllowed, isRecognized).
+func ParseSingleAppOpOverlay(output string) (bool, bool) {
 	lower := strings.ToLower(strings.TrimSpace(output))
-	if lower == "" || strings.Contains(lower, "no operations") || strings.Contains(lower, "ignore") || strings.Contains(lower, "deny") || strings.Contains(lower, "default") || strings.Contains(lower, "mode=1") || strings.Contains(lower, "mode=2") || strings.Contains(lower, "mode=3") {
-		return false
+	if lower == "" {
+		return false, false
 	}
-	return strings.Contains(lower, "allow") || strings.Contains(lower, "mode=0") || strings.Contains(lower, "mode=allow")
+
+	if strings.Contains(lower, "could not find") ||
+		strings.Contains(lower, "not found") ||
+		strings.Contains(lower, "permission denial") ||
+		strings.Contains(lower, "can't find service") ||
+		strings.Contains(lower, "error") ||
+		strings.Contains(lower, "unknown command") ||
+		strings.Contains(lower, "bad component") {
+		return false, false
+	}
+
+	// Recognized negative responses (valid response indicating not allowed)
+	if strings.Contains(lower, "no operations") ||
+		strings.Contains(lower, "ignore") ||
+		strings.Contains(lower, "deny") ||
+		strings.Contains(lower, "default") ||
+		strings.Contains(lower, "mode=1") ||
+		strings.Contains(lower, "mode=2") ||
+		strings.Contains(lower, "mode=3") ||
+		strings.Contains(lower, "mode=ignore") ||
+		strings.Contains(lower, "mode=deny") ||
+		strings.Contains(lower, "mode=default") {
+		return false, true
+	}
+
+	// Recognized positive responses
+	if strings.Contains(lower, "allow") ||
+		strings.Contains(lower, "mode=0") ||
+		strings.Contains(lower, "mode=allow") {
+		return true, true
+	}
+
+	// Unrecognized format
+	return false, false
 }
 

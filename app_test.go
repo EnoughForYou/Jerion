@@ -6,11 +6,13 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/EnoughForYou/Jerion/internal/adb"
 	"github.com/EnoughForYou/Jerion/internal/contract"
+	"github.com/EnoughForYou/Jerion/internal/engine"
 	"github.com/EnoughForYou/Jerion/internal/logx"
 	"github.com/EnoughForYou/Jerion/internal/remediate"
 	"github.com/EnoughForYou/Jerion/internal/store"
@@ -188,7 +190,8 @@ func TestAppServicesIntegration(t *testing.T) {
 	pkgSample := "com.adware.sample"
 	app.mu.Lock()
 	app.cachedResults["scan-test"] = &contract.ScanResult{
-		ID: "scan-test",
+		ID:       "scan-test",
+		DeviceID: "dev-MOCK-0001",
 		Findings: []contract.Finding{
 			{
 				ID:      "find-1",
@@ -923,5 +926,265 @@ requested permissions:
 	}
 }
 
+func TestRemediateCreatePlan_RejectEmptyDeviceID(t *testing.T) {
+	app, fake := setupTestApp(t)
+	defer app.store.Close()
 
+	fake.SetResponse("devices -l", "MOCK-0001 device product:mock model:MockPhone device:mock_dev\n", "", nil)
+	_, _ = app.tracker.PollOnce(context.Background())
+	app.activeSerial = "MOCK-0001"
 
+	pkgTarget := "com.malware.emptydev"
+	app.mu.Lock()
+	// Scan result with empty DeviceID
+	app.cachedResults["scan-empty-dev"] = &contract.ScanResult{
+		ID:        "scan-empty-dev",
+		DeviceID:  "", // empty device ID
+		Mode:      "quick",
+		StartedAt: time.Now().UTC().Format(time.RFC3339),
+		Status:    "completed",
+		Findings: []contract.Finding{
+			{
+				ID:       "find-empty-dev",
+				RuleID:   "RULE-EMPTY-DEV",
+				Title:    "Malware from Unknown Device",
+				Severity: "high",
+				Package:  &pkgTarget,
+				RecommendedAction: &contract.RemediationAction{
+					ID:      "rec-empty-dev",
+					Type:    "disable",
+					Package: pkgTarget,
+					Title:   "Disable App",
+				},
+			},
+		},
+	}
+	app.mu.Unlock()
+
+	// Finding from unknown/empty device ID must be rejected, yielding 0 actions
+	plan, err := app.RemediateCreatePlan([]string{"find-empty-dev"})
+	if err != nil {
+		t.Fatalf("RemediateCreatePlan returned unexpected error: %v", err)
+	}
+	if len(plan.Actions) != 0 {
+		t.Fatalf("expected 0 actions from finding with empty DeviceID, got %d", len(plan.Actions))
+	}
+}
+
+func TestRemediateExecute_DuplicateActionID(t *testing.T) {
+	app, fake := setupTestApp(t)
+	defer app.store.Close()
+
+	fake.SetResponse("devices -l", "MOCK-0001 device product:mock model:MockPhone device:mock_dev\n", "", nil)
+	_, _ = app.tracker.PollOnce(context.Background())
+	app.activeSerial = "MOCK-0001"
+
+	actID := "act-dup-1"
+	app.mu.Lock()
+	app.cachedActions[actID] = remediate.Action{
+		ID:           actID,
+		Type:         remediate.ActionDisable,
+		Package:      "com.test.duplicate",
+		DeviceSerial: "MOCK-0001",
+		Title:        "Disable duplicate test",
+	}
+	app.mu.Unlock()
+
+	plan := contract.RemediationPlan{
+		Actions: []contract.RemediationAction{
+			{ID: actID, Type: "disable", Package: "com.test.duplicate"},
+			{ID: actID, Type: "disable", Package: "com.test.duplicate"}, // duplicate!
+		},
+	}
+
+	_, err := app.RemediateExecute(plan)
+	if err == nil {
+		t.Fatalf("expected error for duplicate action IDs, got nil")
+	}
+	if !strings.Contains(err.Error(), "Duplicate action ID") {
+		t.Fatalf("expected 'Duplicate action ID' in error message, got: %v", err)
+	}
+
+	// Action should NOT have been consumed from cache since validation failed before reservation
+	app.mu.Lock()
+	_, exists := app.cachedActions[actID]
+	app.mu.Unlock()
+	if !exists {
+		t.Fatalf("expected action to remain in cache when plan is rejected for duplicate IDs")
+	}
+}
+
+func TestRemediateExecute_AtomicReservationConcurrency(t *testing.T) {
+	app, fake := setupTestApp(t)
+	defer app.store.Close()
+
+	fake.SetResponse("devices -l", "MOCK-0001 device product:mock model:MockPhone device:mock_dev\n", "", nil)
+	_, _ = app.tracker.PollOnce(context.Background())
+	app.activeSerial = "MOCK-0001"
+
+	fake.SetResponse("pm disable-user --user 0 com.test.concurrent", "Package com.test.concurrent new state: disabled-user\n", "", nil)
+
+	actID := "act-concurrent-1"
+	app.mu.Lock()
+	app.cachedActions[actID] = remediate.Action{
+		ID:           actID,
+		Type:         remediate.ActionDisable,
+		Package:      "com.test.concurrent",
+		DeviceSerial: "MOCK-0001",
+		Title:        "Disable concurrent test",
+	}
+	app.mu.Unlock()
+
+	plan := contract.RemediationPlan{
+		Actions: []contract.RemediationAction{
+			{ID: actID, Type: "disable", Package: "com.test.concurrent"},
+		},
+	}
+
+	var wg sync.WaitGroup
+	var successCount int
+	var failCount int
+	var mu sync.Mutex
+
+	for i := 0; i < 2; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			results, err := app.RemediateExecute(plan)
+			mu.Lock()
+			defer mu.Unlock()
+			if err == nil && len(results) == 1 && results[0].Status == "success" {
+				successCount++
+			} else if err != nil && strings.Contains(err.Error(), "InvalidAction") {
+				failCount++
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	if successCount != 1 || failCount != 1 {
+		t.Fatalf("expected exactly 1 success and 1 fail with InvalidAction, got successes=%d, fails=%d", successCount, failCount)
+	}
+}
+
+func TestAppsListUnparseableAppOps(t *testing.T) {
+	app, fake := setupTestApp(t)
+	defer app.store.Close()
+
+	fake.SetResponse("devices -l", "MOCK-0001 device product:mock model:MockPhone device:mock_dev\n", "", nil)
+	_, _ = app.tracker.PollOnce(context.Background())
+	app.activeSerial = "MOCK-0001"
+
+	pkg := "com.test.unparseableops"
+	fake.SetResponse("pm list packages", fmt.Sprintf("package:/data/app/test/base.apk=%s\n", pkg), "", nil)
+	fake.SetResponse(fmt.Sprintf("dumpsys package %s", pkg), fmt.Sprintf(`Package [%s]
+userId=10199
+versionName=1.0.0
+versionCode=10
+targetSdk=31
+requested permissions:
+  android.permission.SYSTEM_ALERT_WINDOW
+`, pkg), "", nil)
+
+	fake.SetResponse("dumpsys device_policy", "No active admins\n", "", nil)
+	fake.SetResponse("dumpsys deviceidle whitelist", "com.android.systemui\n", "", nil)
+
+	// 1. Unparseable stdout with exit 0 (e.g. error banner or unexpected format)
+	fake.SetResponse(fmt.Sprintf("cmd appops get %s SYSTEM_ALERT_WINDOW", pkg), "Segmentation fault (core dumped)\n", "", nil)
+	fake.SetResponse(fmt.Sprintf("appops get %s SYSTEM_ALERT_WINDOW", pkg), "Segmentation fault (core dumped)\n", "", nil)
+
+	appInfo, err := app.InventoryGet(pkg)
+	if err != nil || appInfo == nil {
+		t.Fatalf("InventoryGet failed: %v", err)
+	}
+
+	if !containsString(appInfo.SuspiciousFlags, "overlay_status_unknown") {
+		t.Errorf("expected overlay_status_unknown when AppOps output is unparseable, got: %v", appInfo.SuspiciousFlags)
+	}
+
+	// 2. Valid recognized AppOps output stating permission is not granted
+	fake.SetResponse(fmt.Sprintf("cmd appops get %s SYSTEM_ALERT_WINDOW", pkg), "No operations.\n", "", nil)
+	fake.SetResponse(fmt.Sprintf("appops get %s SYSTEM_ALERT_WINDOW", pkg), "No operations.\n", "", nil)
+	appInfo2, err2 := app.InventoryGet(pkg)
+	if err2 != nil || appInfo2 == nil {
+		t.Fatalf("InventoryGet second call failed: %v", err2)
+	}
+	if containsString(appInfo2.SuspiciousFlags, "overlay_status_unknown") {
+		t.Errorf("overlay_status_unknown should NOT be present when AppOps recognized 'No operations.'")
+	}
+	if containsString(appInfo2.SuspiciousFlags, "overlay_granted") {
+		t.Errorf("overlay_granted should NOT be present")
+	}
+}
+
+func TestRemediateHistory_AuditPersistenceFields(t *testing.T) {
+	app, fake := setupTestApp(t)
+	defer app.store.Close()
+
+	fake.SetResponse("devices -l", "MOCK-0001 device product:mock model:MockPhone device:mock_dev\n", "", nil)
+	_, _ = app.tracker.PollOnce(context.Background())
+	app.activeSerial = "MOCK-0001"
+
+	fake.SetResponse("pm disable-user --user 0 com.test.hist", "Package com.test.hist new state: disabled-user\n", "", nil)
+
+	actID := "act-hist-1"
+	app.mu.Lock()
+	app.cachedActions[actID] = remediate.Action{
+		ID:           actID,
+		Type:         remediate.ActionDisable,
+		Package:      "com.test.hist",
+		DeviceSerial: "MOCK-0001",
+		Title:        "Disable History App",
+	}
+	app.mu.Unlock()
+
+	plan := contract.RemediationPlan{
+		Actions: []contract.RemediationAction{
+			{ID: actID, Type: "disable", Package: "com.test.hist"},
+		},
+	}
+
+	results, err := app.RemediateExecute(plan)
+	if err != nil || len(results) != 1 {
+		t.Fatalf("RemediateExecute failed: %v", err)
+	}
+
+	history, err := app.RemediateGetHistory()
+	if err != nil || len(history) != 1 {
+		t.Fatalf("RemediateGetHistory failed: %v", err)
+	}
+
+	entry := history[0]
+	if entry.AuditSaved == nil || !*entry.AuditSaved {
+		t.Errorf("expected AuditSaved to be true in history entry")
+	}
+	if entry.Status != "success" {
+		t.Errorf("expected status 'success', got '%s'", entry.Status)
+	}
+}
+
+func TestConvertEngineScanResult_PartialVerdictReview(t *testing.T) {
+	app, _ := setupTestApp(t)
+	defer app.store.Close()
+
+	now := time.Now().UTC()
+	partialResult := &engine.ScanResult{
+		ID:           "scan-partial-001",
+		DeviceSerial: "MOCK-0001",
+		Mode:         "deep",
+		StartedAt:    now.Add(-10 * time.Second),
+		FinishedAt:   now,
+		Findings:     []engine.Finding{}, // 0 findings!
+		Partial:      true,
+		TotalApps:    5,
+	}
+
+	contractRes := app.convertEngineScanResult(partialResult)
+	if contractRes.Status != "partial" {
+		t.Errorf("expected status 'partial', got '%s'", contractRes.Status)
+	}
+	if contractRes.Summary.Verdict != "review" {
+		t.Errorf("expected verdict 'review' for partial scan without findings, got '%s'", contractRes.Summary.Verdict)
+	}
+}

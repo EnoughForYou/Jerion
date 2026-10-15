@@ -199,7 +199,10 @@ func TestParseAppOpsOverlay(t *testing.T) {
   Package com.overlay.mode0:
     SYSTEM_ALERT_WINDOW (allow): mode=0
 `
-	overlays := ParseAppOpsOverlay(fixture)
+	overlays, ok := ParseAppOpsOverlay(fixture)
+	if !ok {
+		t.Fatalf("expected valid fixture to be recognized as valid AppOps output")
+	}
 	if !overlays["com.overlay.active"] {
 		t.Errorf("expected com.overlay.active to be detected as active overlay")
 	}
@@ -213,18 +216,63 @@ func TestParseAppOpsOverlay(t *testing.T) {
 		t.Errorf("com.overlay.default should NOT be detected as active overlay")
 	}
 
-	// Single check
-	if !ParseSingleAppOpOverlay("SYSTEM_ALERT_WINDOW: allow") {
-		t.Errorf("expected single allow to be parsed as true")
+	// Recognized AppOps with no active overlays
+	emptyValidFixture := `Current AppOps Service state:
+  No operations.
+`
+	emptyOverlays, emptyOk := ParseAppOpsOverlay(emptyValidFixture)
+	if !emptyOk {
+		t.Errorf("expected empty valid fixture to be recognized")
 	}
-	if !ParseSingleAppOpOverlay("allow") {
-		t.Errorf("expected single allow word to be parsed as true")
+	if len(emptyOverlays) != 0 {
+		t.Errorf("expected 0 active overlays, got %d", len(emptyOverlays))
 	}
-	if ParseSingleAppOpOverlay("SYSTEM_ALERT_WINDOW: ignore") {
-		t.Errorf("expected single ignore to be parsed as false")
+
+	// Unrecognized / Error outputs
+	if _, unrecOk := ParseAppOpsOverlay("Segmentation fault"); unrecOk {
+		t.Errorf("expected segmentation fault to be unrecognized")
 	}
-	if ParseSingleAppOpOverlay("No operations.") {
-		t.Errorf("expected No operations to be parsed as false")
+	if _, unrecOk := ParseAppOpsOverlay("Can't find service: appops"); unrecOk {
+		t.Errorf("expected service error to be unrecognized")
+	}
+	if _, unrecOk := ParseAppOpsOverlay("   \n  \t "); unrecOk {
+		t.Errorf("expected empty string to be unrecognized")
+	}
+	if _, unrecOk := ParseAppOpsOverlay("Some random unexpected text with no AppOps signatures"); unrecOk {
+		t.Errorf("expected random text to be unrecognized")
+	}
+
+	// Single check: positive (allowed, recognized)
+	if allowed, rec := ParseSingleAppOpOverlay("SYSTEM_ALERT_WINDOW: allow"); !allowed || !rec {
+		t.Errorf("expected single allow to be allowed=true, recognized=true; got allowed=%v, rec=%v", allowed, rec)
+	}
+	if allowed, rec := ParseSingleAppOpOverlay("allow"); !allowed || !rec {
+		t.Errorf("expected single allow word to be allowed=true, recognized=true; got allowed=%v, rec=%v", allowed, rec)
+	}
+	if allowed, rec := ParseSingleAppOpOverlay("mode=0"); !allowed || !rec {
+		t.Errorf("expected mode=0 to be allowed=true, recognized=true; got allowed=%v, rec=%v", allowed, rec)
+	}
+
+	// Single check: valid negative (not allowed, recognized)
+	if allowed, rec := ParseSingleAppOpOverlay("SYSTEM_ALERT_WINDOW: ignore"); allowed || !rec {
+		t.Errorf("expected single ignore to be allowed=false, recognized=true; got allowed=%v, rec=%v", allowed, rec)
+	}
+	if allowed, rec := ParseSingleAppOpOverlay("No operations."); allowed || !rec {
+		t.Errorf("expected No operations to be allowed=false, recognized=true; got allowed=%v, rec=%v", allowed, rec)
+	}
+	if allowed, rec := ParseSingleAppOpOverlay("mode=default"); allowed || !rec {
+		t.Errorf("expected mode=default to be allowed=false, recognized=true; got allowed=%v, rec=%v", allowed, rec)
+	}
+
+	// Single check: unparseable / error (not allowed, unrecognized)
+	if allowed, rec := ParseSingleAppOpOverlay("Error: could not contact AppOps"); allowed || rec {
+		t.Errorf("expected error message to be recognized=false; got allowed=%v, rec=%v", allowed, rec)
+	}
+	if allowed, rec := ParseSingleAppOpOverlay("unexpected random output"); allowed || rec {
+		t.Errorf("expected random text to be recognized=false; got allowed=%v, rec=%v", allowed, rec)
+	}
+	if allowed, rec := ParseSingleAppOpOverlay(""); allowed || rec {
+		t.Errorf("expected empty string to be recognized=false; got allowed=%v, rec=%v", allowed, rec)
 	}
 }
 

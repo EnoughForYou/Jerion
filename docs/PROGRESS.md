@@ -1,31 +1,36 @@
 # PROGRESS
 
 ## Status sekarang
-- Fase aktif: Fidelity Hardening Round 4 — Selesai Penuh
-- Branch: phase/fidelity-hardening-4
-- Terakhir selesai: Fidelity Hardening Round 3 (merge commit e958c69)
+- Fase aktif: Fidelity Hardening Round 5 — Selesai Penuh
+- Branch: phase/fidelity-hardening-5
+- Terakhir selesai: Fidelity Hardening Round 4 (merge commit 9975f2e)
 
-## Fase Fidelity Hardening Round 4 (Fail-Closed Device Binding, Pre-validation, Scan Verdict Honesty & Downloader Regression Test) — checklist
+## Fase Fidelity Hardening Round 5 (Atomic Reservation, Strict DeviceID, Audit Accuracy, Partial Scan Truth & AppOps Parser) — checklist
+- [x] Sub-tugas H5.1: Penegakan filter ketat DeviceID pada cache hasil scan di `RemediateCreatePlan` (`res.DeviceID != expectedDevID`), menolak cache dengan DeviceID kosong atau tidak cocok
+- [x] Sub-tugas H5.2: Pra-validasi batch atomik, penolakan duplicate action ID dalam satu eksekusi, serta reservasi dan penghapusan atomik seluruh action ID dari cache backend di bawah exclusive mutex `a.mu.Lock()` sebelum eksekusi dimulai
+- [x] Sub-tugas H5.3: Pemisahan tampilan status eksekusi aksi perangkat dari status persistensi audit log (`auditSaved`, `auditError`) pada UI `RemediateView.tsx`, perhitungan jumlah sukses berbasis `status === "success"`, dan visualisasi peringatan audit
+- [x] Sub-tugas H5.4: Kejujuran verdict scan parsial tanpa temuan (`status === "partial"` menghasilkan `Summary.Verdict = "review"` di backend) dengan notice visual bahwa inspeksi komponen belum lengkap, serta status "No findings match this filter" saat filter severity aktif tidak memiliki kecocokan
+- [x] Sub-tugas H5.5: Penegakan ketepatan parser AppOps overlay (`internal/inventory/parser.go`) dengan signature `(allowed bool, recognized bool)`, membedakan respons valid ditolak (`No operations.`, `deny`, `ignore`) dari respons shell tidak dikenal/rusak (`overlay_status_unknown`)
+
+## Pengukuran & Kualitas (Fidelity Hardening Round 5)
+- **Backend Go Test Suite**: 100% test lulus di seluruh 16 paket backend Go (`internal/logx`, `internal/secrets`, `internal/store`, `internal/adb`, `internal/preflight`, `internal/inventory`, `internal/apk`, `internal/rules`, `internal/engine`, `internal/intel`, `internal/audit`, `internal/monitor`, `internal/remediate`, `internal/report`, `internal/contract`, dan root `main`) dengan `go test -count=1 ./...`.
+- **Go Vet**: Lulus bersih tanpa peringatan (`go vet ./...`).
+- **Strict DeviceID Binding**: Cache scan result tanpa DeviceID atau dengan serial berbeda tertolak langsung di `RemediateCreatePlan`.
+- **Atomic Batch Reservation**: Mutex eksklusif mencegah eksekusi duplikat atau concurrency race pada seluruh action ID dalam satu batch plan.
+- **Audit Persistence Fidelity**: Status `auditSaved` dan `auditError` ditampilkan independen dari status eksekusi perangkat di UI history dan feedback banner.
+- **Partial Scan Honesty**: Scan parsial dengan 0 temuan tidak pernah menampilkan checkmark clean atau verdict "CLEAN"; verdict backend diset "review" dan UI menampilkan warning scan tidak lengkap.
+- **AppOps Parser Accuracy**: Parser `ParseAppOpsOverlay` dan `ParseSingleAppOpOverlay` membedakan output recognized dan unparseable dengan tepat.
+- **Frontend Vitest Suite**: 123 pengujian lolos di 20 file tes (`npm run test`).
+- **ESLint & TypeScript**: 0 error, 0 warning pada `npm run lint` & `npm run typecheck`.
+- **Production Compilation (`wails build`)**: Standalone binary Windows x64 `build/bin/Jerion.exe` terkompilasi bersih dalam 18.53 detik.
+
+## Fase Fidelity Hardening Round 4 (Fail-Closed Device Binding, Pre-validation, Scan Verdict Honesty & Downloader Regression Test) — riwayat selesai
 - [x] Sub-tugas H4.1: Pengikatan rencana remediasi fail-closed ke serial perangkat (`wireError("DeviceOffline")` saat perangkat kosong/offline di `RemediateCreatePlan` dan `RemediateExecute`), serta penyaringan finding store SQLite hanya untuk serial perangkat aktif
 - [x] Sub-tugas H4.2: Pra-validasi (pre-validation) seluruh action ID dan kecocokan serial sebelum mengeksekusi aksi pertama di perangkat, serta rekonstruksi hasil DTO kanonis dari cache backend terpercaya
 - [x] Sub-tugas H4.3: Kejujuran verdict scan (`Summary.Verdict = "review"` pada scan failed/cancelled) dan penyembunyian verdict semu pada UI frontend dengan alert notice yang jelas
 - [x] Sub-tugas H4.4: Ketepatan runtime three-state (flag `overlay_status_unknown` saat AppOps gagal, fallback `dpm list-owners` untuk Device Admin dengan flag `device_admin_unknown`, dan penanganan whitelist baterai kosong/gagal dengan `battery_status_unknown`)
 - [x] Sub-tugas H4.5: Pelaporan eksplisit status persistensi audit log (`auditSaved: *bool`, `auditError: *string`) pada `ActionLogEntry` di backend DTO, TS bridge schema, dan Wails models tanpa membatalkan aksi perangkat yang telah sukses
 - [x] Sub-tugas H4.6: Pengujian regresi end-to-end `httptest.Server` pada `DownloadAndExtract` yang memverifikasi penolakan langsung checksum SHA-256 yang tidak cocok dan penerimaan arsip sah
-
-## Pengukuran & Kualitas (Fidelity Hardening Round 4)
-- **Backend Go Test Suite**: 100% test lulus di seluruh 16 paket backend Go (`internal/logx`, `internal/secrets`, `internal/store`, `internal/adb`, `internal/preflight`, `internal/inventory`, `internal/apk`, `internal/rules`, `internal/engine`, `internal/intel`, `internal/audit`, `internal/monitor`, `internal/remediate`, `internal/report`, `internal/contract`, dan root `main`) dengan `go test -count=1 ./...`.
-- **Go Vet**: Lulus bersih tanpa peringatan (`go vet ./...`).
-- **Fail-Closed Device Remediation**: Pembuatan atau eksekusi rencana tanpa perangkat aktif langsung tertolak dengan `DeviceOffline`. Finding dari serial lain tidak dapat dibuatkan rencana untuk perangkat aktif.
-- **Pre-validation & Anti-Drift**: Rencana dengan ID aksi yang tidak dikenal atau serial yang tidak cocok langsung digagalkan sebelum aksi pertama dieksekusi di perangkat fisik. Hasil yang dikembalikan terikat ke DTO kanonis backend.
-- **Scan Verdict Honesty**: Scan yang gagal/dibatalkan tidak pernah menghasilkan verdict "clean". Frontend menyembunyikan verdict dan menampilkan warning alert transparan.
-- **Runtime Three-State Truth**: Flag `overlay_status_unknown`, `device_admin_unknown`, dan `battery_status_unknown` menjamin kejujuran kondisi sistem saat query ADB tidak berhasil.
-- **Audit Persistence Reporting**: Kegagalan penyimpanan SQLite audit log terdeteksi dan dilaporkan via `auditSaved: false` dan `auditError` tanpa merusak status eksekusi perangkat.
-- **Downloader Regression Test**: Uji live server HTTP `httptest.Server` membuktikan kegagalan checksum menolak ekstraksi dan membersihkan file sementara.
-- **Frontend Vitest Suite**: 119 pengujian lolos di 20 file tes (`npm run test`).
-- **ESLint & TypeScript**: 0 error, 0 warning pada `npm run lint` & `npm run typecheck`.
-- **Mock Elimination (`npm run check:no-mock`)**: 0 marker mock terdeteksi pada bundle produksi Vite.
-- **Production Compilation (`wails build`)**: Standalone binary Windows x64 `build/bin/Jerion.exe` terkompilasi bersih dalam 20.18 detik.
 
 ## Fase Fidelity Hardening Round 3 (Device Binding, Remediation Failure Reporting, AppOps & Runtime Truth) — riwayat selesai
 - [x] Sub-tugas H3.1: Pengikatan rencana remediasi ke serial perangkat (`DeviceSerial`), penolakan eksekusi lintas perangkat (`DeviceMismatch`), invalidasi aksi single-use dari cache backend, dan pembersihan cache saat perangkat berganti/terputus

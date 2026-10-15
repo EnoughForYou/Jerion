@@ -3,6 +3,7 @@ import {
   ShieldCheck,
   RotateCcw,
   AlertOctagon,
+  AlertTriangle,
   History,
   CheckCircle2,
   Undo2,
@@ -18,6 +19,12 @@ import { RemediateConfirmDialog } from './RemediateConfirmDialog';
 import { getBridge } from '../../lib/bridge';
 import type { ActionLogEntry, RemediationAction, RemediationPlan } from '../../lib/bridge/schema';
 
+interface ExecutionFeedback {
+  type: 'ok' | 'warning' | 'error';
+  message: string;
+  auditWarning?: string;
+}
+
 export const RemediateView: React.FC = () => {
   const { t } = useTranslation();
   const [logs, setLogs] = useState<ActionLogEntry[]>([]);
@@ -26,7 +33,7 @@ export const RemediateView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isExecuting, setIsExecuting] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<ExecutionFeedback | null>(null);
 
   const bridge = getBridge();
 
@@ -99,9 +106,36 @@ export const RemediateView: React.FC = () => {
       // Update history log
       setLogs((prev) => [...newLogs, ...prev]);
       setShowConfirmDialog(false);
-      setFeedback(`Successfully executed ${newLogs.length} remediation actions.`);
 
-      setTimeout(() => setFeedback(null), 4000);
+      const successCount = newLogs.filter((l) => l.status === 'success').length;
+      const failedCount = newLogs.filter((l) => l.status === 'failed').length;
+      const auditFailures = newLogs.filter((l) => l.auditSaved === false).length;
+
+      let type: 'ok' | 'warning' | 'error' = 'ok';
+      let message = '';
+
+      if (failedCount === 0) {
+        type = auditFailures > 0 ? 'warning' : 'ok';
+        message = t('cleanup.executionSuccess', { count: successCount });
+      } else if (successCount > 0) {
+        type = 'warning';
+        message = t('cleanup.executionPartial', {
+          success: successCount,
+          total: newLogs.length,
+          failed: failedCount,
+        });
+      } else {
+        type = 'error';
+        message = t('cleanup.executionFailed', { count: failedCount });
+      }
+
+      let auditWarning: string | undefined;
+      if (auditFailures > 0) {
+        auditWarning = t('cleanup.auditSaveWarning', { count: auditFailures });
+      }
+
+      setFeedback({ type, message, auditWarning });
+      setTimeout(() => setFeedback(null), 5000);
     } catch (err) {
       console.error('Failed to execute remediation plan:', err);
     } finally {
@@ -115,7 +149,10 @@ export const RemediateView: React.FC = () => {
       setLogs((prev) =>
         prev.map((log) => (log.id === updatedLog.id ? updatedLog : log))
       );
-      setFeedback(t('cleanup.undoSuccess'));
+      setFeedback({
+        type: 'ok',
+        message: t('cleanup.undoSuccess'),
+      });
       setTimeout(() => setFeedback(null), 4000);
     } catch (err) {
       console.error('Failed to undo action:', err);
@@ -151,14 +188,35 @@ export const RemediateView: React.FC = () => {
           disabled={isLoading}
         >
           <RotateCcw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-          <span>Refresh</span>
+          <span>{t('cleanup.refresh')}</span>
         </Button>
       </div>
 
       {feedback && (
-        <div className="flex items-center gap-2 p-3 rounded-md bg-ok/10 border border-ok/25 text-xs text-ok">
-          <CheckCircle2 className="w-4 h-4 shrink-0" />
-          <span>{feedback}</span>
+        <div
+          className={`flex flex-col gap-1.5 p-3 rounded-md text-xs border ${
+            feedback.type === 'ok'
+              ? 'bg-ok/10 border-ok/25 text-ok'
+              : feedback.type === 'warning'
+              ? 'bg-sev-medium/10 border-sev-medium/25 text-sev-medium'
+              : 'bg-sev-high/10 border-sev-high/25 text-sev-high'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {feedback.type === 'ok' ? (
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+            ) : feedback.type === 'warning' ? (
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+            ) : (
+              <AlertOctagon className="w-4 h-4 shrink-0" />
+            )}
+            <span className="font-medium">{feedback.message}</span>
+          </div>
+          {feedback.auditWarning && (
+            <div className="flex items-center gap-2 pl-6 text-[11px] opacity-90 font-mono">
+              <span>{feedback.auditWarning}</span>
+            </div>
+          )}
         </div>
       )}
 
@@ -291,7 +349,7 @@ export const RemediateView: React.FC = () => {
                       key={entry.id}
                       className="p-3 rounded-md bg-raised/20 border border-separator/20 text-xs space-y-1.5"
                     >
-                      <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
                         <div className="flex items-center gap-2 truncate">
                           <Badge
                             severity={
@@ -306,6 +364,18 @@ export const RemediateView: React.FC = () => {
                               ? t('cleanup.undone')
                               : entry.status.toUpperCase()}
                           </Badge>
+
+                          {entry.auditSaved !== undefined && entry.auditSaved !== null && (
+                            <Badge
+                              severity={entry.auditSaved ? 'info' : 'critical'}
+                              className="text-[10px]"
+                            >
+                              {entry.auditSaved
+                                ? t('cleanup.auditSavedBadge')
+                                : t('cleanup.auditFailedBadge')}
+                            </Badge>
+                          )}
+
                           <span className="font-semibold text-text-primary text-xs truncate">
                             {entry.action.title}
                           </span>
@@ -328,6 +398,26 @@ export const RemediateView: React.FC = () => {
                         <span className="truncate">{entry.action.package}</span>
                         <span>{entry.timestamp.slice(0, 19).replace('T', ' ')}</span>
                       </div>
+
+                      {entry.error && (
+                        <div className="flex items-start gap-1.5 text-[11px] text-sev-high bg-sev-high/10 p-2 rounded border border-sev-high/20">
+                          <AlertOctagon className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                          <div>
+                            <span className="font-semibold">{t('cleanup.actionErrorLabel')}: </span>
+                            <span>{entry.error}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {entry.auditSaved === false && (
+                        <div className="flex items-start gap-1.5 text-[11px] text-sev-medium bg-sev-medium/10 p-2 rounded border border-sev-medium/20">
+                          <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                          <div>
+                            <span className="font-semibold">{t('cleanup.auditErrorLabel')}: </span>
+                            <span>{entry.auditError || t('cleanup.auditFailedNotice')}</span>
+                          </div>
+                        </div>
+                      )}
 
                       {entry.backupPath && (
                         <div className="text-[10px] text-text-secondary/80 font-mono truncate">
