@@ -12,6 +12,7 @@ import (
 	"github.com/EnoughForYou/Jerion/internal/adb"
 	"github.com/EnoughForYou/Jerion/internal/contract"
 	"github.com/EnoughForYou/Jerion/internal/logx"
+	"github.com/EnoughForYou/Jerion/internal/remediate"
 	"github.com/EnoughForYou/Jerion/internal/store"
 )
 
@@ -745,6 +746,180 @@ func TestScanEvidenceTypeMapping(t *testing.T) {
 	}
 	if mapEvidenceType("manifest_node") != "manifest" {
 		t.Errorf("expected manifest evidence type")
+	}
+}
+
+func TestRemediateFailClosedDeviceBinding(t *testing.T) {
+	app, fake := setupTestApp(t)
+	defer app.store.Close()
+
+	// 1. Without active device, RemediateCreatePlan must fail closed
+	app.activeSerial = ""
+	_, err := app.RemediateCreatePlan([]string{"find-001"})
+	if err == nil || !strings.Contains(err.Error(), "DeviceOffline") {
+		t.Fatalf("expected DeviceOffline error when no device is connected, got: %v", err)
+	}
+
+	// 2. Without active device, RemediateExecute must fail closed
+	_, err = app.RemediateExecute(contract.RemediationPlan{
+		Actions: []contract.RemediationAction{
+			{ID: "act-1", Type: "disable", Package: "com.test.app"},
+		},
+	})
+	if err == nil || !strings.Contains(err.Error(), "DeviceOffline") {
+		t.Fatalf("expected DeviceOffline error in execute when no device is connected, got: %v", err)
+	}
+
+	// 3. Finding belonging to a different device must be ignored
+	// Insert scan result and finding for Device A
+	devAScanID := "scan-dev-a"
+	now := time.Now().UTC()
+	_ = app.store.SaveScanResult(store.ScanRecord{
+		ID:           devAScanID,
+		DeviceSerial: "DEV-A",
+		Mode:         "quick",
+		StartedAt:    now,
+		FinishedAt:   now,
+		Findings: []store.FindingRecord{
+			{
+				ID:       "find-dev-a",
+				ScanID:   devAScanID,
+				Package:  "com.other.device.app",
+				Severity: "high",
+				Actions:  []string{"disable"},
+			},
+		},
+	})
+
+	// Set active device to Device B in tracker
+	fake.SetResponse("devices -l", "DEV-B device product:mock model:MockPhone device:mock_dev\n", "", nil)
+	_, _ = app.tracker.PollOnce(context.Background())
+	app.activeSerial = "DEV-B"
+
+	plan, err := app.RemediateCreatePlan([]string{"find-dev-a"})
+	if err != nil {
+		t.Fatalf("unexpected error creating plan: %v", err)
+	}
+	if len(plan.Actions) != 0 {
+		t.Fatalf("expected 0 actions because finding belongs to DEV-A, not DEV-B, got: %d", len(plan.Actions))
+	}
+}
+
+func TestRemediatePrevalidationAndCanonicalDTOs(t *testing.T) {
+	app, fake := setupTestApp(t)
+	defer app.store.Close()
+
+	activeDev := "DEV-VALID"
+	fake.SetResponse("devices -l", "DEV-VALID device product:mock model:MockPhone device:mock_dev\n", "", nil)
+	_, _ = app.tracker.PollOnce(context.Background())
+	app.activeSerial = activeDev
+
+	// Prepopulate backend cache with a valid action
+	cachedAct := app.remediate.CreateAction(remediate.ActionDisable, "com.trusted.app", "", "", false)
+	cachedAct.DeviceSerial = activeDev
+	app.cachedActions[cachedAct.ID] = cachedAct
+
+	// Test 1: Plan with valid action + invalid/expired action
+	// Pre-validation must fail immediately before executing the valid action
+	fake.SetResponse("pm disable-user --user 0 com.trusted.app", "Package com.trusted.app new state: disabled-user", "", nil)
+
+	bogusAct := contract.RemediationAction{
+		ID:      "act-bogus-999",
+		Type:    "disable",
+		Package: "com.bogus.app",
+	}
+
+	_, err := app.RemediateExecute(contract.RemediationPlan{
+		Actions: []contract.RemediationAction{
+			{ID: cachedAct.ID, Type: cachedAct.Type, Package: cachedAct.Package},
+			bogusAct,
+		},
+	})
+	if err == nil || !strings.Contains(err.Error(), "InvalidAction") {
+		t.Fatalf("expected InvalidAction pre-validation failure, got: %v", err)
+	}
+
+	// Verify the valid action was NOT executed and remains intact in cache
+	if _, exists := app.cachedActions[cachedAct.ID]; !exists {
+		t.Fatalf("expected cached action to still exist because execution was aborted during pre-validation")
+	}
+
+	// Test 2: Canonical DTO verification: caller sends tampered title/package in actDto
+	tamperedActDto := contract.RemediationAction{
+		ID:      cachedAct.ID,
+		Type:    cachedAct.Type,
+		Package: "com.tampered.client.package", // Tampered by client
+		Title:   "Tampered Title",
+	}
+
+	results, err := app.RemediateExecute(contract.RemediationPlan{
+		Actions: []contract.RemediationAction{tamperedActDto},
+	})
+	if err != nil {
+		t.Fatalf("RemediateExecute failed: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+
+	// Result action must reflect canonical backend values, NOT tampered client DTO
+	if results[0].Action.Package != "com.trusted.app" {
+		t.Fatalf("expected canonical package %q, got: %q", "com.trusted.app", results[0].Action.Package)
+	}
+	if results[0].Action.Title != cachedAct.Title {
+		t.Fatalf("expected canonical title %q, got: %q", cachedAct.Title, results[0].Action.Title)
+	}
+}
+
+func TestAppsListThreeStateUnknowns(t *testing.T) {
+	app, fake := setupTestApp(t)
+	defer app.store.Close()
+
+	fake.SetResponse("devices -l", "MOCK-0001 device product:mock model:MockPhone device:mock_dev\n", "", nil)
+	_, _ = app.tracker.PollOnce(context.Background())
+	app.activeSerial = "MOCK-0001"
+
+	pkg := "com.test.overlayapp"
+	fake.SetResponse("pm list packages", fmt.Sprintf("package:/data/app/test/base.apk=%s\n", pkg), "", nil)
+	fake.SetResponse(fmt.Sprintf("dumpsys package %s", pkg), fmt.Sprintf(`Package [%s]
+userId=10199
+versionName=1.0.0
+versionCode=10
+targetSdk=31
+requested permissions:
+  android.permission.SYSTEM_ALERT_WINDOW
+`, pkg), "", nil)
+
+	// AppOps fails -> returns error
+	fake.SetResponse("dumpsys appops", "", "could not find service: appops", os.ErrNotExist)
+	fake.SetResponse(fmt.Sprintf("cmd appops get %s SYSTEM_ALERT_WINDOW", pkg), "", "could not find service: appops", os.ErrNotExist)
+	fake.SetResponse(fmt.Sprintf("appops get %s SYSTEM_ALERT_WINDOW", pkg), "", "could not find service: appops", os.ErrNotExist)
+
+	// Device policy fails -> returns error
+	fake.SetResponse("dumpsys device_policy", "", "could not find service: device_policy", os.ErrNotExist)
+	fake.SetResponse("dpm list-owners", "", "could not find command", os.ErrNotExist)
+
+	// Battery whitelist fails -> returns error
+	fake.SetResponse("dumpsys deviceidle whitelist", "", "could not find service: deviceidle", os.ErrNotExist)
+	fake.SetResponse(fmt.Sprintf("dumpsys deviceidle is-whitelisted %s", pkg), "", "could not find service: deviceidle", os.ErrNotExist)
+
+	// Test InventoryGet with detailed permissions
+	appInfo, err := app.InventoryGet(pkg)
+	if err != nil || appInfo == nil {
+		t.Fatalf("InventoryGet failed: %v", err)
+	}
+
+	if !containsString(appInfo.SuspiciousFlags, "overlay_status_unknown") {
+		t.Errorf("expected overlay_status_unknown when AppOps is unavailable, got: %v", appInfo.SuspiciousFlags)
+	}
+	if !containsString(appInfo.SuspiciousFlags, "device_admin_unknown") {
+		t.Errorf("expected device_admin_unknown when device policy is unavailable, got: %v", appInfo.SuspiciousFlags)
+	}
+	if !containsString(appInfo.SuspiciousFlags, "battery_status_unknown") {
+		t.Errorf("expected battery_status_unknown when battery whitelist is unavailable, got: %v", appInfo.SuspiciousFlags)
+	}
+	if appInfo.IsBatteryOptimized {
+		t.Errorf("expected IsBatteryOptimized=false when whitelist query failed")
 	}
 }
 

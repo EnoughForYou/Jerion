@@ -455,7 +455,10 @@ func (a *App) InventoryList(filter contract.InventoryFilter) ([]contract.AppInfo
 	// Fetch active system states once for batch accuracy
 	var overlayMap map[string]bool
 	if out, _, runErr := a.runner.Run(ctx, serial, "shell", "dumpsys", "appops"); runErr == nil {
-		overlayMap = inventory.ParseAppOpsOverlay(string(out))
+		raw := string(out)
+		if strings.TrimSpace(raw) != "" && !strings.Contains(strings.ToLower(raw), "could not find") {
+			overlayMap = inventory.ParseAppOpsOverlay(raw)
+		}
 	}
 
 	accessMap := make(map[string]bool)
@@ -472,23 +475,44 @@ func (a *App) InventoryList(filter contract.InventoryFilter) ([]contract.AppInfo
 	}
 
 	var adminMap map[string]bool
-	if out, _, runErr := a.runner.Run(ctx, serial, "shell", "dumpsys", "device_policy"); runErr == nil {
-		adminMap = inventory.ParseDeviceAdmins(string(out))
-	} else if out2, _, runErr2 := a.runner.Run(ctx, serial, "shell", "dpm", "list-owners"); runErr2 == nil {
-		adminMap = inventory.ParseDeviceAdmins(string(out2))
+	policyOut, _, err1 := a.runner.Run(ctx, serial, "shell", "dumpsys", "device_policy")
+	if err1 == nil && strings.TrimSpace(string(policyOut)) != "" && !strings.Contains(strings.ToLower(string(policyOut)), "could not find") {
+		parsed := inventory.ParseDeviceAdmins(string(policyOut))
+		if len(parsed) > 0 {
+			adminMap = parsed
+		} else {
+			// dumpsys device_policy produced 0 admins; fall back to dpm list-owners
+			if dpmOut, _, err2 := a.runner.Run(ctx, serial, "shell", "dpm", "list-owners"); err2 == nil && strings.TrimSpace(string(dpmOut)) != "" && !strings.Contains(strings.ToLower(string(dpmOut)), "could not find") {
+				adminMap = inventory.ParseDeviceAdmins(string(dpmOut))
+			} else {
+				adminMap = parsed // 0 admins confirmed from verified device_policy
+			}
+		}
+	} else {
+		// dumpsys failed; fall back to dpm list-owners
+		if dpmOut, _, err2 := a.runner.Run(ctx, serial, "shell", "dpm", "list-owners"); err2 == nil && strings.TrimSpace(string(dpmOut)) != "" && !strings.Contains(strings.ToLower(string(dpmOut)), "could not find") {
+			adminMap = inventory.ParseDeviceAdmins(string(dpmOut))
+		}
+		// If neither command succeeded/parsed, adminMap remains nil
 	}
 
 	var whitelistMap map[string]bool
 	if out, _, runErr := a.runner.Run(ctx, serial, "shell", "dumpsys", "deviceidle", "whitelist"); runErr == nil {
-		whitelistMap = make(map[string]bool)
-		for _, line := range strings.Split(string(out), "\n") {
-			line = strings.TrimSpace(line)
-			parts := strings.Split(line, ",")
-			for _, p := range parts {
-				p = strings.TrimSpace(p)
-				if p != "" {
-					whitelistMap[p] = true
+		raw := string(out)
+		if strings.TrimSpace(raw) != "" && !strings.Contains(strings.ToLower(raw), "could not find") {
+			tempMap := make(map[string]bool)
+			for _, line := range strings.Split(raw, "\n") {
+				line = strings.TrimSpace(line)
+				parts := strings.Split(line, ",")
+				for _, p := range parts {
+					p = strings.TrimSpace(p)
+					if p != "" && adb.ValidatePackageName(p) == nil {
+						tempMap[p] = true
+					}
 				}
+			}
+			if len(tempMap) > 0 {
+				whitelistMap = tempMap
 			}
 		}
 	}
@@ -538,10 +562,22 @@ func (a *App) InventoryGet(packageName string) (*contract.AppInfo, error) {
 	}
 
 	var adminMap map[string]bool
-	if out, _, runErr := a.runner.Run(ctx, serial, "shell", "dumpsys", "device_policy"); runErr == nil {
-		adminMap = inventory.ParseDeviceAdmins(string(out))
-	} else if out2, _, runErr2 := a.runner.Run(ctx, serial, "shell", "dpm", "list-owners"); runErr2 == nil {
-		adminMap = inventory.ParseDeviceAdmins(string(out2))
+	policyOut, _, err1 := a.runner.Run(ctx, serial, "shell", "dumpsys", "device_policy")
+	if err1 == nil && strings.TrimSpace(string(policyOut)) != "" && !strings.Contains(strings.ToLower(string(policyOut)), "could not find") {
+		parsed := inventory.ParseDeviceAdmins(string(policyOut))
+		if len(parsed) > 0 {
+			adminMap = parsed
+		} else {
+			if dpmOut, _, err2 := a.runner.Run(ctx, serial, "shell", "dpm", "list-owners"); err2 == nil && strings.TrimSpace(string(dpmOut)) != "" && !strings.Contains(strings.ToLower(string(dpmOut)), "could not find") {
+				adminMap = inventory.ParseDeviceAdmins(string(dpmOut))
+			} else {
+				adminMap = parsed
+			}
+		}
+	} else {
+		if dpmOut, _, err2 := a.runner.Run(ctx, serial, "shell", "dpm", "list-owners"); err2 == nil && strings.TrimSpace(string(dpmOut)) != "" && !strings.Contains(strings.ToLower(string(dpmOut)), "could not find") {
+			adminMap = inventory.ParseDeviceAdmins(string(dpmOut))
+		}
 	}
 
 	var whitelistMap map[string]bool
@@ -644,12 +680,25 @@ func (a *App) convertAppInfo(app inventory.AppInfo, activeOverlayMap map[string]
 	}
 	if hasOverlay {
 		flags = append(flags, "overlay_granted")
+	} else if activeOverlayMap == nil {
+		hasOverlayRequested := false
+		for _, p := range perms {
+			if strings.Contains(p, "SYSTEM_ALERT_WINDOW") {
+				hasOverlayRequested = true
+				break
+			}
+		}
+		if hasOverlayRequested {
+			flags = append(flags, "overlay_status_unknown")
+		}
 	}
 	if hasAccess {
 		flags = append(flags, "accessibility_active")
 	}
 	if isDevAdmin {
 		flags = append(flags, "device_admin_active")
+	} else if activeAdminMap == nil {
+		flags = append(flags, "device_admin_unknown")
 	}
 	if batteryWhitelistMap != nil {
 		if batteryWhitelistMap[app.Package] {
@@ -747,7 +796,7 @@ func (a *App) ScanStart(options contract.ScanOptions) (string, error) {
 					},
 					TotalApps:  0,
 					LastScanAt: &now,
-					Verdict:    "clean",
+					Verdict:    "review",
 				},
 			}
 			a.mu.Lock()
@@ -1197,7 +1246,11 @@ func (a *App) AuditGetLatest() ([]contract.AuditItem, error) {
 // --- 7. Remediate Service ---
 
 func (a *App) RemediateCreatePlan(findingIds []string) (contract.RemediationPlan, error) {
-	serial, _ := a.getTargetSerial()
+	serial, err := a.getTargetSerial()
+	if err != nil || serial == "" {
+		return contract.RemediationPlan{}, wireError("DeviceOffline", "No active trusted device connected", "Connect a device via USB and verify ADB authorization")
+	}
+
 	ctx := a.ctx
 	if ctx == nil {
 		ctx = context.Background()
@@ -1209,6 +1262,8 @@ func (a *App) RemediateCreatePlan(findingIds []string) (contract.RemediationPlan
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
+	expectedDevID := fmt.Sprintf("dev-%s", serial)
+
 	for _, fid := range findingIds {
 		var pkg string
 		actionType := remediate.ActionDisable
@@ -1218,6 +1273,9 @@ func (a *App) RemediateCreatePlan(findingIds []string) (contract.RemediationPlan
 		// 1. Look in cached scan results
 		var foundFinding *contract.Finding
 		for _, res := range a.cachedResults {
+			if res.DeviceID != "" && res.DeviceID != expectedDevID {
+				continue
+			}
 			for _, f := range res.Findings {
 				if f.ID == fid {
 					fCopy := f
@@ -1249,6 +1307,16 @@ func (a *App) RemediateCreatePlan(findingIds []string) (contract.RemediationPlan
 			// 2. Look in database store
 			record, err := a.store.GetFinding(fid)
 			if err == nil && record != nil {
+				scanRec, scanErr := a.store.GetScanResult(record.ScanID)
+				if scanErr != nil || scanRec == nil || scanRec.DeviceSerial != serial {
+					scanDev := ""
+					if scanRec != nil {
+						scanDev = scanRec.DeviceSerial
+					}
+					a.logger.Warn("remediate: finding does not belong to active device", "findingId", fid, "scanDevice", scanDev, "activeDevice", serial)
+					continue
+				}
+
 				pkg = record.Package
 				if len(record.Actions) > 0 {
 					actionType = record.Actions[0]
@@ -1321,8 +1389,8 @@ func (a *App) RemediateCreatePlan(findingIds []string) (contract.RemediationPlan
 
 func (a *App) RemediateExecute(plan contract.RemediationPlan) ([]contract.ActionLogEntry, error) {
 	serial, err := a.getTargetSerial()
-	if err != nil {
-		return nil, err
+	if err != nil || serial == "" {
+		return nil, wireError("DeviceOffline", "No active trusted device connected", "Connect a device via USB and verify ADB authorization")
 	}
 
 	ctx := a.ctx
@@ -1330,51 +1398,73 @@ func (a *App) RemediateExecute(plan contract.RemediationPlan) ([]contract.Action
 		ctx = context.Background()
 	}
 
-	var results []contract.ActionLogEntry
+	// Phase 1: Pre-validation of all actions in plan before executing any device command
+	a.mu.RLock()
 	for _, actDto := range plan.Actions {
-		a.mu.RLock()
 		cachedAct, exists := a.cachedActions[actDto.ID]
-		a.mu.RUnlock()
-
 		if !exists {
+			a.mu.RUnlock()
 			a.logger.Warn("remediate: unrecognized or expired action ID in plan", "actionId", actDto.ID, "package", actDto.Package)
 			return nil, wireError("InvalidAction", fmt.Sprintf("Action ID '%s' is unrecognized or expired. Actions must originate from a verified backend plan.", actDto.ID), "Re-generate the remediation plan before executing.")
 		}
 
-		if cachedAct.DeviceSerial != "" && cachedAct.DeviceSerial != serial {
+		if cachedAct.DeviceSerial == "" || cachedAct.DeviceSerial != serial {
+			a.mu.RUnlock()
 			a.logger.Warn("remediate: plan device mismatch", "actionId", actDto.ID, "planDevice", cachedAct.DeviceSerial, "activeDevice", serial)
 			return nil, wireError("DeviceMismatch", fmt.Sprintf("Action ID '%s' was planned for device '%s', but active device is '%s'.", actDto.ID, cachedAct.DeviceSerial, serial), "Re-generate the remediation plan for the active device before executing.")
 		}
+	}
+	a.mu.RUnlock()
 
-		// Invalidate action from cache so it cannot be re-executed
+	// Phase 2: Execution using verified canonical backend actions
+	var results []contract.ActionLogEntry
+	for _, actDto := range plan.Actions {
 		a.mu.Lock()
-		delete(a.cachedActions, actDto.ID)
+		cachedAct, exists := a.cachedActions[actDto.ID]
+		if exists {
+			delete(a.cachedActions, actDto.ID)
+		}
 		a.mu.Unlock()
 
-		action := cachedAct
+		if !exists {
+			continue
+		}
 
-		logEntry, execErr := a.remediate.Execute(ctx, serial, action)
+		canonicalActDto := contract.RemediationAction{
+			ID:            cachedAct.ID,
+			Type:          cachedAct.Type,
+			Package:       cachedAct.Package,
+			Title:         cachedAct.Title,
+			Impact:        cachedAct.Impact,
+			Undoable:      cachedAct.Undoable,
+			IsBlocked:     cachedAct.IsBlocked,
+			BlockedReason: cachedAct.BlockedReason,
+		}
+
+		logEntry, execErr := a.remediate.Execute(ctx, serial, cachedAct)
 		if logEntry != nil {
 			results = append(results, contract.ActionLogEntry{
 				ID:         logEntry.ID,
 				Timestamp:  logEntry.Timestamp,
-				Action:     actDto,
+				Action:     canonicalActDto,
 				Status:     logEntry.Status,
 				Error:      logEntry.Error,
 				BackupPath: logEntry.BackupPath,
+				AuditSaved: logEntry.AuditSaved,
+				AuditError: logEntry.AuditError,
 			})
 		} else if execErr != nil {
 			errStr := execErr.Error()
 			results = append(results, contract.ActionLogEntry{
 				ID:        fmt.Sprintf("log-%d", time.Now().UnixNano()),
 				Timestamp: time.Now().UTC().Format(time.RFC3339),
-				Action:    actDto,
+				Action:    canonicalActDto,
 				Status:    "failed",
 				Error:     &errStr,
 			})
 		}
 		if execErr != nil {
-			a.logger.Error("action execution failed", "action", actDto.ID, "err", execErr)
+			a.logger.Error("action execution failed", "action", cachedAct.ID, "err", execErr)
 		}
 	}
 

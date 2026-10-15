@@ -4,6 +4,10 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -156,4 +160,86 @@ func TestStrictChecksumMatching(t *testing.T) {
 		t.Fatalf("expected r35.0.2 hash to differ from pinned r37.0.1")
 	}
 }
+
+func TestDownloaderChecksumVerification(t *testing.T) {
+	// Build a valid synthetic platform-tools zip archive in memory
+	var zipBuf bytes.Buffer
+	zw := zip.NewWriter(&zipBuf)
+
+	execName := "adb"
+	if os.PathSeparator == '\\' {
+		execName = "adb.exe"
+	}
+	fHeader := &zip.FileHeader{
+		Name: "platform-tools/" + execName,
+	}
+	w, err := zw.CreateHeader(fHeader)
+	if err != nil {
+		t.Fatalf("failed to create zip file header: %v", err)
+	}
+	sampleContent := []byte("synthetic-adb-binary-v37.0.1")
+	if _, err := w.Write(sampleContent); err != nil {
+		t.Fatalf("failed to write file to zip: %v", err)
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatalf("failed to finalize zip: %v", err)
+	}
+
+	zipBytes := zipBuf.Bytes()
+	hasher := sha256.New()
+	hasher.Write(zipBytes)
+	realSHA := hex.EncodeToString(hasher.Sum(nil))
+
+	// Start test HTTP server serving the synthetic archive
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/zip")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(zipBytes)
+	}))
+	defer ts.Close()
+
+	// Case 1: Mismatched checksum must be rejected and must not extract
+	tempToolsDir1 := t.TempDir()
+	d1 := NewDownloaderWithURL(ts.URL, tempToolsDir1)
+	bogusSHA := "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+
+	_, err = d1.DownloadAndExtract(context.Background(), bogusSHA, nil)
+	if err == nil {
+		t.Fatalf("expected DownloadAndExtract to fail with mismatched checksum, got nil error")
+	}
+	if !strings.Contains(err.Error(), "checksum verification failed") {
+		t.Fatalf("expected checksum verification failed error, got: %v", err)
+	}
+
+	// Verify target executable was NOT created and temp zip was cleaned up
+	extractedExec1 := filepath.Join(tempToolsDir1, "platform-tools", execName)
+	if _, statErr := os.Stat(extractedExec1); !os.IsNotExist(statErr) {
+		t.Fatalf("executable should not exist after checksum failure: %s", extractedExec1)
+	}
+	tempZip1 := filepath.Join(tempToolsDir1, "platform-tools.zip.tmp")
+	if _, statErr := os.Stat(tempZip1); !os.IsNotExist(statErr) {
+		t.Fatalf("temporary zip should have been cleaned up after checksum failure: %s", tempZip1)
+	}
+
+	// Case 2: Matching checksum must succeed and extract the binary
+	tempToolsDir2 := t.TempDir()
+	d2 := NewDownloaderWithURL(ts.URL, tempToolsDir2)
+
+	extractedPath, err := d2.DownloadAndExtract(context.Background(), realSHA, nil)
+	if err != nil {
+		t.Fatalf("expected DownloadAndExtract with matching checksum to succeed, got: %v", err)
+	}
+	if extractedPath == "" {
+		t.Fatalf("expected non-empty extracted executable path")
+	}
+
+	extractedContent, err := os.ReadFile(extractedPath)
+	if err != nil {
+		t.Fatalf("failed to read extracted binary: %v", err)
+	}
+	if string(extractedContent) != string(sampleContent) {
+		t.Fatalf("extracted binary content mismatch: expected %q, got %q", sampleContent, extractedContent)
+	}
+}
+
 

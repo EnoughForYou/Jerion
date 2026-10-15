@@ -51,6 +51,8 @@ type ActionLogEntry struct {
 	Status     string  `json:"status"` // "success" | "failed" | "undone"
 	Error      *string `json:"error,omitempty"`
 	BackupPath *string `json:"backupPath,omitempty"`
+	AuditSaved *bool   `json:"auditSaved,omitempty"`
+	AuditError *string `json:"auditError,omitempty"`
 }
 
 // Manager coordinates guarded remediation execution, backup, and reversal.
@@ -162,8 +164,10 @@ func (m *Manager) logFailedAction(serial string, action Action, err error) *Acti
 		Error:     &errStr,
 	}
 
+	var auditSaved *bool
+	var auditError *string
 	if m.store != nil {
-		_ = m.store.LogAction(store.ActionLogRecord{
+		if storeErr := m.store.LogAction(store.ActionLogRecord{
 			ID:           entryID,
 			DeviceSerial: serial,
 			Timestamp:    now,
@@ -174,9 +178,20 @@ func (m *Manager) logFailedAction(serial string, action Action, err error) *Acti
 				"error":  errStr,
 			},
 			Reversible: false,
-		})
+		}); storeErr != nil {
+			m.logger.Error("failed to record failed action log in store", "entryID", entryID, "err", storeErr)
+			saved := false
+			auditSaved = &saved
+			serr := storeErr.Error()
+			auditError = &serr
+		} else {
+			saved := true
+			auditSaved = &saved
+		}
 	}
 
+	entry.AuditSaved = auditSaved
+	entry.AuditError = auditError
 	return entry
 }
 
@@ -287,8 +302,10 @@ func (m *Manager) Execute(ctx context.Context, serial string, action Action) (*A
 		"isSystemApp":      action.IsSystemApp,
 	}
 
+	var auditSaved *bool
+	var auditError *string
 	if m.store != nil {
-		_ = m.store.LogAction(store.ActionLogRecord{
+		if storeErr := m.store.LogAction(store.ActionLogRecord{
 			ID:           entryID,
 			DeviceSerial: serial,
 			Timestamp:    now,
@@ -297,7 +314,16 @@ func (m *Manager) Execute(ctx context.Context, serial string, action Action) (*A
 			Details:      details,
 			Reversible:   action.Undoable,
 			Undone:       false,
-		})
+		}); storeErr != nil {
+			m.logger.Error("failed to record action log in store", "entryID", entryID, "err", storeErr)
+			saved := false
+			auditSaved = &saved
+			serr := storeErr.Error()
+			auditError = &serr
+		} else {
+			saved := true
+			auditSaved = &saved
+		}
 	}
 
 	logEntry := &ActionLogEntry{
@@ -307,6 +333,8 @@ func (m *Manager) Execute(ctx context.Context, serial string, action Action) (*A
 		Status:     status,
 		Error:      errStr,
 		BackupPath: backupPath,
+		AuditSaved: auditSaved,
+		AuditError: auditError,
 	}
 
 	if execErr != nil {

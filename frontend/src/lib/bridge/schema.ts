@@ -302,6 +302,8 @@ export const ActionLogEntrySchema = z
     status: ActionLogStatusSchema,
     error: z.string().optional(),
     backupPath: z.string().optional(),
+    auditSaved: z.boolean().optional(),
+    auditError: z.string().optional(),
   })
   .strict();
 export type ActionLogEntry = z.infer<typeof ActionLogEntrySchema>;
