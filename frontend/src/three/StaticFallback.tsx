@@ -12,6 +12,8 @@ export const StaticFallback: React.FC<StaticFallbackProps> = ({
   findingsCount = 0,
   className = '',
 }) => {
+  const safeCount = Math.max(0, Number(findingsCount) || 0);
+
   return (
     <div
       data-testid="static-fallback"
@@ -56,10 +58,10 @@ export const StaticFallback: React.FC<StaticFallbackProps> = ({
           {status === 'scanning' ? 'Scanner Active' : 'Device Protected'}
         </span>
         <div className="flex items-center gap-1.5 mt-1 text-[10px] text-text-secondary">
-          {findingsCount > 0 ? (
+          {safeCount > 0 ? (
             <>
               <ShieldAlert className="w-3 h-3 text-sev-high" />
-              <span>{findingsCount} threats identified</span>
+              <span>{safeCount} threats identified</span>
             </>
           ) : (
             <>

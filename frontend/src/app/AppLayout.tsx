@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate, Outlet } from 'react-router-dom';
 import {
   Shield,
@@ -20,11 +20,57 @@ import {
 } from '../components/aceternity/Sidebar';
 import { DeviceHeader } from './DeviceHeader';
 import { StatusBar } from './StatusBar';
+import { getBridge } from '../lib/bridge';
+import { useDeviceStore } from './deviceStore';
 
 export const AppLayout: React.FC = () => {
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
+  const { setActiveDevice } = useDeviceStore();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const bridge = getBridge();
+
+  const handleRefreshDevice = useCallback(async () => {
+    try {
+      setIsRefreshing(true);
+      const dev = await bridge.device.getConnected();
+      setActiveDevice(dev);
+    } catch (err) {
+      console.error('Failed to refresh device state:', err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [bridge, setActiveDevice]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function initDevice() {
+      try {
+        const dev = await bridge.device.getConnected();
+        if (isMounted) {
+          setActiveDevice(dev);
+        }
+      } catch (err) {
+        console.error('Initial device load failed:', err);
+      }
+    }
+
+    initDevice();
+
+    const unsub = bridge.on('device:changed', (device) => {
+      if (isMounted) {
+        setActiveDevice(device);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsub();
+    };
+  }, [bridge, setActiveDevice]);
 
   const navItems = [
     { path: '/', label: t('nav.home'), icon: <Shield className="w-4 h-4" /> },
@@ -39,7 +85,7 @@ export const AppLayout: React.FC = () => {
 
   return (
     <SidebarProvider defaultOpen={true}>
-      <div className="flex h-screen w-screen overflow-hidden bg-base text-text-primary">
+      <div className="flex h-screen w-screen min-w-[900px] min-h-[600px] overflow-hidden bg-base text-text-primary">
         {/* Left Sidebar Navigation */}
         <Sidebar>
           <SidebarBody>
@@ -80,10 +126,10 @@ export const AppLayout: React.FC = () => {
 
         {/* Main Content Area */}
         <div className="flex flex-col flex-1 h-full min-w-0 overflow-hidden">
-          <DeviceHeader />
+          <DeviceHeader onRefresh={handleRefreshDevice} isRefreshing={isRefreshing} />
 
-          <main className="flex-1 overflow-y-auto p-5">
-            <div className="max-w-[1200px] mx-auto w-full h-full">
+          <main className="flex-1 overflow-y-auto p-3 sm:p-5 md:p-6">
+            <div className="max-w-[1200px] mx-auto w-full min-h-0 flex-1 flex flex-col">
               <Outlet />
             </div>
           </main>

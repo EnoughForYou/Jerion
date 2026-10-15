@@ -43,9 +43,9 @@ export const MonitorView: React.FC = () => {
         const snap = await bridge.monitor.snapshot();
         if (isMounted) {
           setSnapshot(snap);
-          setIsMonitoring(snap.status.isActive);
-          setCandidates(snap.candidates);
-          setEvents(snap.events);
+          setIsMonitoring(Boolean(snap?.status?.isActive));
+          setCandidates(snap?.candidates || []);
+          setEvents(snap?.events || []);
         }
       } catch (err) {
         console.error('Failed to load monitor snapshot:', err);
@@ -95,8 +95,8 @@ export const MonitorView: React.FC = () => {
 
       const snap = await bridge.monitor.snapshot();
       setSnapshot(snap);
-      setCandidates(snap.candidates);
-      setEvents(snap.events);
+      setCandidates(snap?.candidates || []);
+      setEvents(snap?.events || []);
 
       setTimeout(() => {
         setMarkerFeedback(null);
@@ -211,13 +211,13 @@ export const MonitorView: React.FC = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {candidates.length === 0 ? (
+            {(candidates?.length ?? 0) === 0 ? (
               <div className="py-12 text-center text-xs text-text-secondary">
                 {isMonitoring ? t('monitor.noEventsMonitoring') : t('monitor.noEvents')}
               </div>
             ) : (
               <div className="space-y-3">
-                {candidates.map((cand) => (
+                {(candidates || []).map((cand) => (
                   <div
                     key={cand.package}
                     className="p-3.5 rounded-md bg-raised/30 border border-separator/25 space-y-2 text-xs transition-colors hover:border-separator/40"
@@ -281,13 +281,13 @@ export const MonitorView: React.FC = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {events.length === 0 ? (
+            {(events?.length ?? 0) === 0 ? (
               <div className="py-12 text-center text-xs text-text-secondary">
                 {t('monitor.noEvents')}
               </div>
             ) : (
               <div className="space-y-2 max-h-[460px] overflow-y-auto pr-1">
-                {events.map((evt) => {
+                {(events || []).map((evt) => {
                   const isExpanded = expandedEventId === evt.id;
 
                   return (

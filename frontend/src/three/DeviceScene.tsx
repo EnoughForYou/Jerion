@@ -15,6 +15,7 @@ export const DeviceScene: React.FC<DeviceSceneProps> = ({
   findingsCount = 0,
   className = '',
 }) => {
+  const safeCount = Math.max(0, Number(findingsCount) || 0);
   const [canRender3D] = useState(() => isWebGLAvailable() && !prefersReducedMotion());
   const [isPaused, setIsPaused] = useState(false);
 
@@ -40,7 +41,7 @@ export const DeviceScene: React.FC<DeviceSceneProps> = ({
   }, [canRender3D]);
 
   if (!canRender3D) {
-    return <StaticFallback status={status} findingsCount={findingsCount} className={className} />;
+    return <StaticFallback status={status} findingsCount={safeCount} className={className} />;
   }
 
   return (
@@ -57,7 +58,7 @@ export const DeviceScene: React.FC<DeviceSceneProps> = ({
         <directionalLight position={[4, 5, 3]} intensity={1.2} />
         <DeviceModel
           status={status}
-          findingsCount={findingsCount}
+          findingsCount={safeCount}
           isPaused={isPaused}
         />
       </Canvas>

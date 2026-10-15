@@ -7,6 +7,8 @@ import {
   CheckCircle2,
   Calendar,
   HelpCircle,
+  AlertTriangle,
+  RotateCcw,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -50,7 +52,7 @@ export const HomeView: React.FC = () => {
       setActiveDevice(device);
 
       const scanList = await bridge.report.list();
-      if (scanList.length > 0) {
+      if (scanList && scanList.length > 0) {
         const latest = await bridge.report.get(scanList[0].id);
         setScanResult(latest);
       }
@@ -68,7 +70,6 @@ export const HomeView: React.FC = () => {
 
     async function init() {
       await loadData();
-      // Guard against state update after unmount
       if (!isMounted) return;
     }
 
@@ -147,22 +148,41 @@ export const HomeView: React.FC = () => {
         </div>
       </div>
 
-      {/* Unauthorized device notice */}
+      {/* Prominent Actionable Notice when Device is Connected but Unauthorized */}
       {isDeviceUnauthorized && (
-        <div className="flex items-center gap-3 p-3.5 rounded-md bg-sev-high/10 border border-sev-high/25 text-xs text-text-primary">
-          <Shield className="w-4 h-4 text-sev-high shrink-0" />
-          <div>
-            <span className="font-semibold">{t('device.status.unauthorized')}: </span>
-            {t('onboarding.step2Desc')}
+        <div className="p-4 rounded-lg bg-sev-high/10 border border-sev-high/30 text-xs text-text-primary space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sev-high font-semibold text-sm">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span>{t('device.unauthorizedTitle', 'Authorization Required (RSA Key)')}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={loadData}
+                disabled={isLoading}
+              >
+                <RotateCcw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+                <span>{t('device.checkAgain', 'Check Device Again')}</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowOnboarding(true)}
+              >
+                {t('onboarding.title')}
+              </Button>
+            </div>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="ml-auto shrink-0"
-            onClick={() => setShowOnboarding(true)}
-          >
-            {t('onboarding.title')}
-          </Button>
+          <p className="text-xs text-text-primary font-medium leading-relaxed">
+            {t('device.unauthorizedPrompt', "Unlock your phone screen and look for the 'Allow USB debugging?' prompt.")}{' '}
+            <span className="text-sev-high font-semibold">{t('device.unauthorizedAction', "Check 'Always allow from this computer' and tap 'Allow'.")}</span>
+          </p>
+          <div className="flex items-start gap-2 p-2.5 rounded bg-surface/60 border border-separator/20 text-[11px] text-text-secondary leading-relaxed">
+            <HelpCircle className="w-3.5 h-3.5 text-accent shrink-0 mt-0.5" />
+            <span>{t('device.unauthorizedTip', "Prompt not showing? Swipe down your Android notification shade, switch USB mode from 'Charging only' to 'File Transfer (MTP)', or toggle USB Debugging in Developer Options.")}</span>
+          </div>
         </div>
       )}
 
@@ -193,23 +213,31 @@ export const HomeView: React.FC = () => {
                   <dt className="text-text-secondary font-medium">
                     {t('home.deviceLabels.model')}
                   </dt>
-                  <dd className="text-text-primary font-semibold">{device.model}</dd>
+                  <dd className="text-text-primary font-semibold">
+                    {device.model || t('device.status.unauthorized')}
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-text-secondary font-medium">
                     {t('home.deviceLabels.manufacturer')}
                   </dt>
-                  <dd className="text-text-primary">{device.manufacturer}</dd>
+                  <dd className="text-text-primary">
+                    {isDeviceReady
+                      ? device.manufacturer
+                      : t('device.pendingAuth', 'Pending Authorization')}
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-text-secondary font-medium">
                     {t('home.deviceLabels.androidVersion')}
                   </dt>
                   <dd className="text-text-primary">
-                    {t('home.deviceLabels.androidVersionValue', {
-                      version: device.androidVersion,
-                      sdk: device.sdkInt,
-                    })}
+                    {isDeviceReady
+                      ? t('home.deviceLabels.androidVersionValue', {
+                          version: device.androidVersion,
+                          sdk: device.sdkInt,
+                        })
+                      : t('device.pendingAuth', 'Pending Authorization')}
                   </dd>
                 </div>
                 <div>
@@ -225,13 +253,17 @@ export const HomeView: React.FC = () => {
                     {t('home.deviceLabels.battery')}
                   </dt>
                   <dd className="text-text-primary">
-                    {device.isCharging
-                      ? t('home.deviceLabels.batteryCharging', {
-                          level: device.batteryLevel,
-                        })
-                      : t('home.deviceLabels.batteryValue', {
-                          level: device.batteryLevel,
-                        })}
+                    {isDeviceReady
+                      ? device.isCharging
+                        ? t('home.deviceLabels.batteryCharging', {
+                            level: device.batteryLevel,
+                          })
+                        : t('home.deviceLabels.batteryValue', {
+                            level: device.batteryLevel,
+                          })
+                      : device.isCharging
+                      ? 'Charging (' + t('device.pendingAuth', 'Pending Authorization') + ')'
+                      : t('device.pendingAuth', 'Pending Authorization')}
                   </dd>
                 </div>
                 <div>
@@ -285,11 +317,11 @@ export const HomeView: React.FC = () => {
             ) : scanResult ? (
               <div className="space-y-3.5">
                 <div className="flex flex-wrap gap-2">
-                  <Badge severity="critical" count={scanResult.summary.counts.critical} />
-                  <Badge severity="high" count={scanResult.summary.counts.high} />
-                  <Badge severity="medium" count={scanResult.summary.counts.medium} />
-                  <Badge severity="low" count={scanResult.summary.counts.low} />
-                  <Badge severity="info" count={scanResult.summary.counts.info} />
+                  <Badge severity="critical" count={scanResult.summary?.counts?.critical ?? 0} />
+                  <Badge severity="high" count={scanResult.summary?.counts?.high ?? 0} />
+                  <Badge severity="medium" count={scanResult.summary?.counts?.medium ?? 0} />
+                  <Badge severity="low" count={scanResult.summary?.counts?.low ?? 0} />
+                  <Badge severity="info" count={scanResult.summary?.counts?.info ?? 0} />
                 </div>
 
                 <div className="pt-2 border-t border-separator/20 grid grid-cols-2 gap-2 text-xs text-text-secondary">
@@ -297,7 +329,7 @@ export const HomeView: React.FC = () => {
                     <Calendar className="w-3.5 h-3.5" />
                     <span>
                       {t('home.scanMode', {
-                        mode: scanResult.mode.toUpperCase(),
+                        mode: (scanResult.mode || 'quick').toUpperCase(),
                       })}
                     </span>
                   </div>
@@ -305,7 +337,7 @@ export const HomeView: React.FC = () => {
                     <CheckCircle2 className="w-3.5 h-3.5 text-ok" />
                     <span>
                       {t('home.findingsDetected', {
-                        count: scanResult.findings.length,
+                        count: scanResult.findings?.length ?? 0,
                       })}
                     </span>
                   </div>
@@ -325,13 +357,13 @@ export const HomeView: React.FC = () => {
         <React.Suspense
           fallback={
             <StaticFallback
-              findingsCount={scanResult?.findings.length || 0}
+              findingsCount={scanResult?.findings?.length ?? 0}
             />
           }
         >
           <DeviceScene
             status={scanResult ? 'completed' : 'idle'}
-            findingsCount={scanResult?.findings.length || 0}
+            findingsCount={scanResult?.findings?.length ?? 0}
           />
         </React.Suspense>
       </Card>

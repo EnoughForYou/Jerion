@@ -9,20 +9,90 @@ import { AuditView } from '../features/audit/AuditView';
 import { RemediateView } from '../features/remediate/RemediateView';
 import { ReportsView } from '../features/reports/ReportsView';
 import { SettingsView } from '../features/settings/SettingsView';
+import { ErrorBoundary, RouteErrorBoundary } from '../components/ui/ErrorBoundary';
 
 export const router = createHashRouter([
   {
     path: '/',
-    element: <AppLayout />,
+    element: (
+      <ErrorBoundary>
+        <AppLayout />
+      </ErrorBoundary>
+    ),
+    errorElement: <RouteErrorBoundary />,
     children: [
-      { index: true, element: <HomeView /> },
-      { path: 'apps', element: <AppsView /> },
-      { path: 'scan', element: <ScanView /> },
-      { path: 'monitor', element: <MonitorView /> },
-      { path: 'audit', element: <AuditView /> },
-      { path: 'remediate', element: <RemediateView /> },
-      { path: 'reports', element: <ReportsView /> },
-      { path: 'settings', element: <SettingsView /> },
+      {
+        index: true,
+        element: (
+          <ErrorBoundary>
+            <HomeView />
+          </ErrorBoundary>
+        ),
+        errorElement: <RouteErrorBoundary />,
+      },
+      {
+        path: 'apps',
+        element: (
+          <ErrorBoundary>
+            <AppsView />
+          </ErrorBoundary>
+        ),
+        errorElement: <RouteErrorBoundary />,
+      },
+      {
+        path: 'scan',
+        element: (
+          <ErrorBoundary>
+            <ScanView />
+          </ErrorBoundary>
+        ),
+        errorElement: <RouteErrorBoundary />,
+      },
+      {
+        path: 'monitor',
+        element: (
+          <ErrorBoundary>
+            <MonitorView />
+          </ErrorBoundary>
+        ),
+        errorElement: <RouteErrorBoundary />,
+      },
+      {
+        path: 'audit',
+        element: (
+          <ErrorBoundary>
+            <AuditView />
+          </ErrorBoundary>
+        ),
+        errorElement: <RouteErrorBoundary />,
+      },
+      {
+        path: 'remediate',
+        element: (
+          <ErrorBoundary>
+            <RemediateView />
+          </ErrorBoundary>
+        ),
+        errorElement: <RouteErrorBoundary />,
+      },
+      {
+        path: 'reports',
+        element: (
+          <ErrorBoundary>
+            <ReportsView />
+          </ErrorBoundary>
+        ),
+        errorElement: <RouteErrorBoundary />,
+      },
+      {
+        path: 'settings',
+        element: (
+          <ErrorBoundary>
+            <SettingsView />
+          </ErrorBoundary>
+        ),
+        errorElement: <RouteErrorBoundary />,
+      },
       { path: '*', element: <Navigate to="/" replace /> },
     ],
   },

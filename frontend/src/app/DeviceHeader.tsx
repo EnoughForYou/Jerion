@@ -26,7 +26,11 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
       case 'ready':
         return <Badge severity="ok">{t('device.status.online')}</Badge>;
       case 'unauthorized':
-        return <Badge severity="high">{t('device.status.unauthorized')}</Badge>;
+        return (
+          <SimpleTooltip content={t('device.unauthorizedPrompt')}>
+            <Badge severity="high">{t('device.status.unauthorized')}</Badge>
+          </SimpleTooltip>
+        );
       case 'offline':
       case 'no_device':
       default:
@@ -49,7 +53,9 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
                 {activeDevice.model}
               </span>
               <span className="text-[11px] text-text-secondary">
-                {t('device.android')} {activeDevice.androidVersion} ({t('device.api')} {activeDevice.sdkInt}) · {activeDevice.serial}
+                {activeDevice.connectionState === 'ready'
+                  ? `${t('device.android')} ${activeDevice.androidVersion} (${t('device.api')} ${activeDevice.sdkInt}) · ${activeDevice.serial}`
+                  : `${t('device.pendingAuth', 'Pending Authorization')} · ${activeDevice.serial}`}
               </span>
             </div>
 

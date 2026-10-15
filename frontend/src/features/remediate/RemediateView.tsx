@@ -102,7 +102,7 @@ export const RemediateView: React.FC = () => {
       const logsList = newLogs || [];
 
       // Remove executed actions from staged list
-      const executedIds = new Set(plan.actions.map((a) => a.id));
+      const executedIds = new Set((plan.actions || []).map((a) => a.id));
       setStagedActions((prev) => prev.filter((a) => !executedIds.has(a.id)));
       setSelectedActionIds(new Set());
 
@@ -282,13 +282,13 @@ export const RemediateView: React.FC = () => {
                 <Skeleton className="h-16 w-full" />
                 <Skeleton className="h-16 w-full" />
               </div>
-            ) : stagedActions.length === 0 ? (
+            ) : (stagedActions?.length ?? 0) === 0 ? (
               <div className="py-12 text-center text-xs text-text-secondary">
                 {t('cleanup.noActions')}
               </div>
             ) : (
               <div className="space-y-3">
-                {stagedActions.map((action) => {
+                {(stagedActions || []).map((action) => {
                   const isSelected = selectedActionIds.has(action.id);
 
                   return (
@@ -355,13 +355,13 @@ export const RemediateView: React.FC = () => {
             <CardDescription>{t('cleanup.actionLogDesc')}</CardDescription>
           </CardHeader>
           <CardContent>
-            {logs.length === 0 ? (
+            {(logs?.length ?? 0) === 0 ? (
               <div className="py-12 text-center text-xs text-text-secondary">
                 {t('cleanup.noHistory')}
               </div>
             ) : (
               <div className="space-y-2.5 max-h-[460px] overflow-y-auto pr-1">
-                {logs.map((entry) => {
+                {(logs || []).map((entry) => {
                   const isUndone = entry.status === 'undone';
 
                   return (

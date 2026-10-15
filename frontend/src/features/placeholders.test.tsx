@@ -27,6 +27,56 @@ describe('Feature Placeholder Views with Mock Bridge Fixtures', () => {
     });
   });
 
+  it('renders HomeView safely when device is unauthorized and displays guidance without crash', async () => {
+    const bridge = (await import('../lib/bridge')).getBridge();
+    const originalGetConnected = bridge.device.getConnected;
+    bridge.device.getConnected = async () => ({
+      id: 'dev-unauth',
+      serial: 'UNAUTH1234',
+      model: 'Infinix Note 11S',
+      manufacturer: 'Pending Authorization',
+      androidVersion: 'Pending Authorization',
+      sdkInt: 0,
+      batteryLevel: 0,
+      isCharging: false,
+      connectionState: 'unauthorized' as const,
+      isEmulator: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <HomeView />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Authorization Required/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Pending Authorization/i).length).toBeGreaterThan(0);
+    });
+
+    bridge.device.getConnected = originalGetConnected;
+  });
+
+  it('renders HomeView defensively when report list is null or returns null findings', async () => {
+    const bridge = (await import('../lib/bridge')).getBridge();
+    const originalList = bridge.report.list;
+    // Simulate backend returning null for empty slice
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    bridge.report.list = async () => null as any;
+
+    render(
+      <MemoryRouter>
+        <HomeView />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Device Overview')).toBeInTheDocument();
+    });
+
+    bridge.report.list = originalList;
+  });
+
   it('renders AppsView with realistic inventory package table', async () => {
     render(
       <MemoryRouter>

@@ -8,3 +8,4 @@ export * from './Table';
 export * from './Dialog';
 export * from './Tooltip';
 export * from './Tabs';
+export * from './ErrorBoundary';

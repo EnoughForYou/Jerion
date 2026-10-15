@@ -379,7 +379,7 @@ func (a *App) DeviceGetConnected() (*contract.Device, error) {
 
 func (a *App) DeviceList() ([]contract.Device, error) {
 	devs := a.tracker.Devices()
-	var res []contract.Device
+	res := make([]contract.Device, 0, len(devs))
 	for _, d := range devs {
 		devDto := a.convertDevice(d)
 		if devDto != nil {
@@ -409,28 +409,49 @@ func (a *App) convertDevice(d adb.DeviceInfo) *contract.Device {
 	batteryLevel := 0
 	isCharging := false
 
+	model := d.Model
+	if model == "" {
+		model = d.Product
+	}
+
 	if d.State == adb.StateReady {
-		stdout, _, err := a.runner.Run(ctx, d.Serial, "shell", "getprop")
+		cmdCtx, cancel := context.WithTimeout(ctx, 4*time.Second)
+		defer cancel()
+
+		stdout, _, err := a.runner.Run(cmdCtx, d.Serial, "shell", "getprop")
 		if err == nil {
 			props := adb.ParseGetprop(string(stdout))
-			if m, ok := props["ro.product.manufacturer"]; ok && m != "" {
-				manufacturer = m
+			if m, ok := props["ro.product.model"]; ok && strings.TrimSpace(m) != "" {
+				model = strings.TrimSpace(m)
+			} else if m, ok := props["ro.product.marketname"]; ok && strings.TrimSpace(m) != "" {
+				model = strings.TrimSpace(m)
 			}
-			if v, ok := props["ro.build.version.release"]; ok && v != "" {
-				androidVer = v
+			if m, ok := props["ro.product.manufacturer"]; ok && strings.TrimSpace(m) != "" {
+				manufacturer = strings.TrimSpace(m)
+			} else if b, ok := props["ro.product.brand"]; ok && strings.TrimSpace(b) != "" {
+				manufacturer = strings.TrimSpace(b)
+			}
+			if v, ok := props["ro.build.version.release"]; ok && strings.TrimSpace(v) != "" {
+				androidVer = strings.TrimSpace(v)
 			}
 			if s, ok := props["ro.build.version.sdk"]; ok {
-				if num, parseErr := strconv.Atoi(s); parseErr == nil {
+				if num, parseErr := strconv.Atoi(strings.TrimSpace(s)); parseErr == nil {
 					sdkInt = num
 				}
 			}
 		}
 
-		batOut, _, err := a.runner.Run(ctx, d.Serial, "shell", "dumpsys", "battery")
+		batOut, _, err := a.runner.Run(cmdCtx, d.Serial, "shell", "dumpsys", "battery")
 		if err == nil {
 			bat := adb.ParseBattery(string(batOut))
 			batteryLevel = bat.Percent
 			isCharging = bat.IsCharging
+		}
+	} else if d.State == adb.StateUnauthorized {
+		manufacturer = "Pending Authorization"
+		androidVer = "Pending Authorization"
+		if model == "" {
+			model = "Unauthorized Android Device"
 		}
 	}
 
@@ -439,10 +460,6 @@ func (a *App) convertDevice(d adb.DeviceInfo) *contract.Device {
 		connState = "offline"
 	}
 
-	model := d.Model
-	if model == "" {
-		model = d.Product
-	}
 	if model == "" {
 		model = "Unknown Device"
 	}
@@ -572,7 +589,7 @@ func (a *App) InventoryList(filter contract.InventoryFilter) ([]contract.AppInfo
 		}
 	}
 
-	var res []contract.AppInfo
+	res := make([]contract.AppInfo, 0, len(apps))
 	for _, app := range apps {
 		if filter.Search != "" {
 			if !strings.Contains(strings.ToLower(app.Package), strings.ToLower(filter.Search)) &&
@@ -1268,7 +1285,7 @@ func (a *App) AuditRun() ([]contract.AuditItem, error) {
 		return nil, wireError("InternalError", err.Error(), "Ensure device is responsive")
 	}
 
-	var dtos []contract.AuditItem
+	dtos := make([]contract.AuditItem, 0, len(items))
 	for _, it := range items {
 		statusStr := string(it.Status)
 		if statusStr == "critical" {
@@ -1863,7 +1880,7 @@ func (a *App) AllowlistList() ([]contract.AllowlistEntry, error) {
 		return nil, err
 	}
 
-	var dtos []contract.AllowlistEntry
+	dtos := make([]contract.AllowlistEntry, 0, len(entries))
 	for _, e := range entries {
 		var reason *string
 		if e.Reason != "" {

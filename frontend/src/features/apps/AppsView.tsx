@@ -37,7 +37,7 @@ export const AppsView: React.FC = () => {
         setError(null);
         const list = await bridge.inventory.list();
         if (isMounted) {
-          setApps(list);
+          setApps(list || []);
         }
       } catch (err: unknown) {
         if (isMounted) {
@@ -60,12 +60,12 @@ export const AppsView: React.FC = () => {
   const filteredApps = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
-    return apps
+    return (apps || [])
       .filter((app) => {
         // Category filtering
         if (category === 'user' && app.isSystem) return false;
         if (category === 'system' && !app.isSystem) return false;
-        if (category === 'risky' && app.suspiciousFlags.length === 0 && !app.hasOverlayPermission) {
+        if (category === 'risky' && (app.suspiciousFlags?.length ?? 0) === 0 && !app.hasOverlayPermission) {
           return false;
         }
 
@@ -81,11 +81,11 @@ export const AppsView: React.FC = () => {
         if (sortField === 'name') {
           cmp = (a.label || a.package).localeCompare(b.label || b.package);
         } else if (sortField === 'installedAt') {
-          cmp = a.installedAt.localeCompare(b.installedAt);
+          cmp = (a.installedAt || '').localeCompare(b.installedAt || '');
         } else if (sortField === 'updatedAt') {
-          cmp = a.updatedAt.localeCompare(b.updatedAt);
+          cmp = (a.updatedAt || '').localeCompare(b.updatedAt || '');
         } else if (sortField === 'targetSdk') {
-          cmp = a.targetSdk - b.targetSdk;
+          cmp = (a.targetSdk || 0) - (b.targetSdk || 0);
         }
         return sortAsc ? cmp : -cmp;
       });
@@ -310,7 +310,7 @@ export const AppsView: React.FC = () => {
                           </span>
                         )}
 
-                        {app.suspiciousFlags.length > 0 && (
+                        {(app.suspiciousFlags?.length ?? 0) > 0 && (
                           <span className="p-0.5 text-sev-medium" title="Suspicious Flags Detected">
                             <ShieldAlert className="w-3.5 h-3.5" />
                           </span>

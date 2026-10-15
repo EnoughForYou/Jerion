@@ -49,7 +49,7 @@ export const SettingsView: React.FC = () => {
         ]);
         setSettings(loadedSettings);
         setAdbPathInput(loadedSettings.adbPath || '');
-        setAllowlist(list);
+        setAllowlist(list || []);
 
         const goApp = (window as unknown as { go?: { main?: { App?: { ClamAVGetConfig?: () => Promise<{ enabled: boolean; host: string }> } } } })?.go?.main?.App;
         if (goApp?.ClamAVGetConfig) {
@@ -424,13 +424,13 @@ export const SettingsView: React.FC = () => {
           </form>
 
           {/* List of Entries */}
-          {allowlist.length === 0 ? (
+          {(allowlist?.length ?? 0) === 0 ? (
             <p className="text-xs text-text-secondary py-4 text-center">
               {t('settings.noAllowlist')}
             </p>
           ) : (
             <div className="space-y-2">
-              {allowlist.map((item) => (
+              {(allowlist || []).map((item) => (
                 <div
                   key={item.id}
                   className="p-3 rounded-md bg-raised/20 border border-separator/20 flex items-center justify-between gap-3 text-xs transition-colors hover:bg-raised/30"

@@ -27,10 +27,10 @@ export const ReportsView: React.FC = () => {
         setIsLoading(true);
         const list = await bridge.report.list();
         if (isMounted) {
-          setScans(list);
+          setScans(list || []);
         }
 
-        if (list.length >= 2) {
+        if (list && list.length >= 2) {
           const comp = await bridge.report.compare(list[0].id, list[1].id);
           if (isMounted) {
             setComparison(comp);
@@ -121,7 +121,7 @@ export const ReportsView: React.FC = () => {
             <div className="grid grid-cols-3 gap-4 text-center">
               <div className="p-3 bg-sev-critical/5 rounded-md border border-sev-critical/20">
                 <span className="text-md font-bold text-sev-critical block">
-                  +{comparison.newFindings.length}
+                  +{comparison.newFindings?.length ?? 0}
                 </span>
                 <span className="text-[11px] text-text-secondary font-medium">
                   {t('reports.newFindings')}
@@ -129,7 +129,7 @@ export const ReportsView: React.FC = () => {
               </div>
               <div className="p-3 bg-ok/5 rounded-md border border-ok/20">
                 <span className="text-md font-bold text-ok block">
-                  -{comparison.resolvedFindings.length}
+                  -{comparison.resolvedFindings?.length ?? 0}
                 </span>
                 <span className="text-[11px] text-text-secondary font-medium">
                   {t('reports.resolvedFindings')}
@@ -137,7 +137,7 @@ export const ReportsView: React.FC = () => {
               </div>
               <div className="p-3 bg-raised/30 rounded-md border border-separator/20">
                 <span className="text-md font-bold text-text-primary block">
-                  {comparison.unchangedFindings.length}
+                  {comparison.unchangedFindings?.length ?? 0}
                 </span>
                 <span className="text-[11px] text-text-secondary font-medium">
                   {t('reports.unchanged')}
@@ -207,7 +207,7 @@ export const ReportsView: React.FC = () => {
               <Skeleton className="h-16 w-full" />
               <Skeleton className="h-16 w-full" />
             </div>
-          ) : scans.length === 0 ? (
+          ) : (scans?.length ?? 0) === 0 ? (
             <div className="py-12">
               <EmptyState
                 title="No Reports Found"
@@ -216,8 +216,8 @@ export const ReportsView: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-3">
-              {scans.map((scan) => {
-                const totalCount = Object.values(scan.findingsCount).reduce((a, b) => a + b, 0);
+              {(scans || []).map((scan) => {
+                const totalCount = Object.values(scan.findingsCount || {}).reduce((a, b) => a + b, 0);
 
                 return (
                   <div
@@ -246,7 +246,7 @@ export const ReportsView: React.FC = () => {
                       </div>
                       <div className="flex items-center gap-2 text-[11px] text-text-secondary">
                         <Calendar className="w-3.5 h-3.5" />
-                        <span>{scan.startedAt.slice(0, 19).replace('T', ' ')}</span>
+                        <span>{(scan.startedAt || '').slice(0, 19).replace('T', ' ')}</span>
                         <span>·</span>
                         <span className="font-medium text-text-primary">{totalCount} findings</span>
                       </div>
