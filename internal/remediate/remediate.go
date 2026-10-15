@@ -435,6 +435,7 @@ func (m *Manager) Undo(ctx context.Context, serial string, logEntryID string) (*
 	now := time.Now().UTC()
 	record.UndoneAt = &now
 
+	auditSaved := true
 	// Construct returned ActionLogEntry
 	return &ActionLogEntry{
 		ID:        record.ID,
@@ -446,7 +447,8 @@ func (m *Manager) Undo(ctx context.Context, serial string, logEntryID string) (*
 			Title:    fmt.Sprintf("Undo %s on %s", record.ActionType, record.Package),
 			Undoable: false,
 		},
-		Status: "undone",
+		Status:     "undone",
+		AuditSaved: &auditSaved,
 	}, nil
 }
 
@@ -473,6 +475,16 @@ func (m *Manager) GetHistory(ctx context.Context, serial string) ([]ActionLogEnt
 			bPath = &bp
 		}
 
+		var errStr *string
+		if e, ok := r.Details["error"].(string); ok && e != "" {
+			errStr = &e
+			if !r.Undone {
+				status = "failed"
+			}
+		}
+
+		auditSaved := true
+
 		res = append(res, ActionLogEntry{
 			ID:        r.ID,
 			Timestamp: r.Timestamp.Format(time.RFC3339),
@@ -484,7 +496,9 @@ func (m *Manager) GetHistory(ctx context.Context, serial string) ([]ActionLogEnt
 				Undoable: r.Reversible && !r.Undone,
 			},
 			Status:     status,
+			Error:      errStr,
 			BackupPath: bPath,
+			AuditSaved: &auditSaved,
 		})
 	}
 

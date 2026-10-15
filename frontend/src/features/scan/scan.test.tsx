@@ -112,4 +112,87 @@ describe('ScanView and Interactive Scan Components', () => {
     expect(screen.queryByText(/· Verdict: CLEAN/i)).not.toBeInTheDocument();
     expect(screen.queryByText('No threats or suspicious behaviors detected on this device.')).not.toBeInTheDocument();
   });
+
+  it('displays partial scan notice and incomplete warning when scan is partial with 0 findings without clean checkmark', async () => {
+    const bridge = getBridge() as MockBridge;
+    render(
+      <MemoryRouter>
+        <ScanView />
+      </MemoryRouter>
+    );
+
+    // Simulate terminal scan:done event with partial status and 0 findings
+    act(() => {
+      bridge.emit('scan:done', {
+        id: 'scan-partial-1',
+        deviceId: 'dev-test',
+        mode: 'deep',
+        startedAt: '2026-10-15T12:00:00Z',
+        completedAt: '2026-10-15T12:00:15Z',
+        status: 'partial',
+        findings: [],
+        summary: {
+          counts: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
+          totalApps: 10,
+          verdict: 'review',
+        },
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Scan Incomplete (Partial)')).toBeInTheDocument();
+      expect(
+        screen.getByText('No findings detected in the examined components, but the overall scan was incomplete.')
+      ).toBeInTheDocument();
+      expect(screen.getByText(/Verdict: REVIEW \(PARTIAL\)/i)).toBeInTheDocument();
+    });
+
+    // Clean verdict or "no threats detected" must NOT be shown
+    expect(screen.queryByText(/· Verdict: CLEAN/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('No threats or suspicious behaviors detected on this device.')).not.toBeInTheDocument();
+  });
+
+  it('displays "No findings match this filter" when filter is active and has no matches', async () => {
+    const bridge = getBridge() as MockBridge;
+    render(
+      <MemoryRouter>
+        <ScanView />
+      </MemoryRouter>
+    );
+
+    // Wait until initial report is loaded
+    await screen.findByText(/POP-001/i);
+
+    // Now emit scan:done with only 1 critical finding so info has 0 findings
+    act(() => {
+      bridge.emit('scan:done', {
+        id: 'scan-filter-1',
+        deviceId: 'dev-test',
+        mode: 'quick',
+        startedAt: '2026-10-15T12:00:00Z',
+        completedAt: '2026-10-15T12:00:10Z',
+        status: 'completed',
+        findings: [MOCK_FINDINGS[1]],
+        summary: {
+          counts: { critical: 1, high: 0, medium: 0, low: 0, info: 0 },
+          totalApps: 1,
+          verdict: 'review',
+        },
+      });
+    });
+
+    // Wait for INFO (0) button and click it
+    const infoButton = await screen.findByRole('button', { name: /info \(0\)/i });
+    fireEvent.click(infoButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('No findings match this filter')).toBeInTheDocument();
+      expect(
+        screen.getByText('There are no detected threats matching the selected criteria.')
+      ).toBeInTheDocument();
+    });
+
+    // It must NOT show the clean security message
+    expect(screen.queryByText('No threats or suspicious behaviors detected on this device.')).not.toBeInTheDocument();
+  });
 });

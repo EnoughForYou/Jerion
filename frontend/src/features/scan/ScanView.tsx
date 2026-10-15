@@ -236,8 +236,11 @@ export const ScanView: React.FC = () => {
               <CardDescription>
                 {t('scan.findingsCount', { count: filteredFindings.length })}
                 {scanResult?.completedAt &&
-                  (scanResult.status === 'completed' || scanResult.status === 'partial') &&
+                  scanResult.status === 'completed' &&
                   ` · Verdict: ${scanResult.summary.verdict.toUpperCase()}`}
+                {scanResult?.completedAt &&
+                  scanResult.status === 'partial' &&
+                  ` · Verdict: ${scanResult.summary.verdict.toUpperCase()} (PARTIAL)`}
               </CardDescription>
             </div>
 
@@ -258,7 +261,6 @@ export const ScanView: React.FC = () => {
 
               {(['critical', 'high', 'medium', 'low', 'info'] as Severity[]).map((sev) => {
                 const count = findings.filter((f) => f.severity === sev).length;
-                if (count === 0 && selectedSeverity !== sev) return null;
 
                 return (
                   <button
@@ -280,7 +282,17 @@ export const ScanView: React.FC = () => {
         </CardHeader>
         <CardContent>
           {filteredFindings.length === 0 ? (
-            scanResult && (scanResult.status === 'failed' || scanResult.status === 'cancelled') ? (
+            selectedSeverity !== 'all' ? (
+              <div className="py-8 text-center text-xs text-text-secondary space-y-2">
+                <Filter className="w-8 h-8 text-text-secondary mx-auto mb-2 opacity-60" />
+                <p className="font-medium text-text-primary">
+                  {t('scan.noFindingsMatchFilter')}
+                </p>
+                <p className="text-[11px] text-text-secondary max-w-sm mx-auto">
+                  {t('scan.noFindingsMatchFilterDesc')}
+                </p>
+              </div>
+            ) : scanResult && (scanResult.status === 'failed' || scanResult.status === 'cancelled') ? (
               <div className="py-8 text-center text-xs text-text-secondary space-y-2">
                 <AlertTriangle className="w-8 h-8 text-warning mx-auto mb-2 opacity-80" />
                 <p className="font-medium text-text-primary">
@@ -288,6 +300,16 @@ export const ScanView: React.FC = () => {
                 </p>
                 <p className="text-[11px] text-text-secondary max-w-sm mx-auto">
                   {t('scan.incompleteNotice')}
+                </p>
+              </div>
+            ) : scanResult && scanResult.status === 'partial' ? (
+              <div className="py-8 text-center text-xs text-text-secondary space-y-2">
+                <AlertTriangle className="w-8 h-8 text-warning mx-auto mb-2 opacity-80" />
+                <p className="font-medium text-text-primary">
+                  {t('scan.scanPartial')}
+                </p>
+                <p className="text-[11px] text-text-secondary max-w-sm mx-auto">
+                  {t('scan.partialNoFindingsNotice')}
                 </p>
               </div>
             ) : (
