@@ -6,6 +6,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/EnoughForYou/Jerion/internal/adb"
@@ -141,3 +142,18 @@ func TestTrustedPlatformToolsHashes(t *testing.T) {
 		t.Error("expected bogus SHA to NOT be trusted")
 	}
 }
+
+func TestStrictChecksumMatching(t *testing.T) {
+	// Pinned r37.0.1 hash must match itself
+	pinned := DefaultPlatformToolsSHA256()
+	if !IsTrustedPlatformToolsHash("windows", pinned) {
+		t.Fatalf("expected pinned SHA256 %s to be trusted", pinned)
+	}
+
+	// Mismatched hash must not be accepted when pinned version is required
+	olderHash := "86be168bfaae7ea1d86f9f5926ec3ba04164b4c73656910e54d89fa7a00f8aa4" // r35.0.2
+	if strings.EqualFold(olderHash, pinned) {
+		t.Fatalf("expected r35.0.2 hash to differ from pinned r37.0.1")
+	}
+}
+

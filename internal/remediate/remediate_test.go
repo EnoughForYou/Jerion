@@ -93,9 +93,12 @@ func TestRemediationExecuteAndUndo(t *testing.T) {
 	if !blockedAct.IsBlocked {
 		t.Fatalf("expected action to be marked blocked")
 	}
-	_, err = mgr.Execute(ctx, serial, blockedAct)
+	blockedEntry, err := mgr.Execute(ctx, serial, blockedAct)
 	if err == nil || !strings.Contains(err.Error(), "ActionBlocked") {
 		t.Fatalf("expected ActionBlocked error, got: %v", err)
+	}
+	if blockedEntry == nil || blockedEntry.Status != "failed" {
+		t.Fatalf("expected blocked entry to have failed status, got %+v", blockedEntry)
 	}
 
 	// 2. Disable user package and Undo
@@ -111,13 +114,13 @@ func TestRemediationExecuteAndUndo(t *testing.T) {
 		t.Fatalf("expected status success, got %s", logEntry.Status)
 	}
 
-	// Verify history
+	// Verify history contains both the blocked failure and the success
 	history, err := mgr.GetHistory(ctx, serial)
 	if err != nil {
 		t.Fatalf("get history failed: %v", err)
 	}
-	if len(history) != 1 {
-		t.Fatalf("expected 1 history entry, got %d", len(history))
+	if len(history) != 2 {
+		t.Fatalf("expected 2 history entries, got %d", len(history))
 	}
 
 	// Undo disable

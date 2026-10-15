@@ -164,3 +164,67 @@ versionCode=10
 		t.Fatalf("GetPackageDetail failed: %+v, err=%v", detail, err)
 	}
 }
+
+func TestParseDeviceAdmins(t *testing.T) {
+	fixture := `Current Device Policy Manager state:
+  Enabled Device Admins (user 0):
+    com.cleaner.admin/.AdminReceiver:
+      uid=10185
+    admin=com.mdm.enterprise/.EnterpriseAdmin
+  User 0: admin=com.google.android.apps.work.clouddpc/.receivers.CloudDeviceAdminReceiver,name=Work Profile
+`
+	admins := ParseDeviceAdmins(fixture)
+	if !admins["com.cleaner.admin"] {
+		t.Errorf("expected com.cleaner.admin to be detected as device admin")
+	}
+	if !admins["com.mdm.enterprise"] {
+		t.Errorf("expected com.mdm.enterprise to be detected as device admin")
+	}
+	if !admins["com.google.android.apps.work.clouddpc"] {
+		t.Errorf("expected com.google.android.apps.work.clouddpc to be detected as device admin")
+	}
+	if admins["com.unrelated.package"] {
+		t.Errorf("unexpected package detected as admin")
+	}
+}
+
+func TestParseAppOpsOverlay(t *testing.T) {
+	fixture := `Current AppOps Service state:
+  Package com.overlay.active:
+    SYSTEM_ALERT_WINDOW: allow; time=+12s ago; duration=+5s
+  Package com.overlay.denied:
+    SYSTEM_ALERT_WINDOW: ignore; time=+2m ago
+  Package com.overlay.default:
+    SYSTEM_ALERT_WINDOW: default
+  Package com.overlay.mode0:
+    SYSTEM_ALERT_WINDOW (allow): mode=0
+`
+	overlays := ParseAppOpsOverlay(fixture)
+	if !overlays["com.overlay.active"] {
+		t.Errorf("expected com.overlay.active to be detected as active overlay")
+	}
+	if !overlays["com.overlay.mode0"] {
+		t.Errorf("expected com.overlay.mode0 to be detected as active overlay")
+	}
+	if overlays["com.overlay.denied"] {
+		t.Errorf("com.overlay.denied should NOT be detected as active overlay")
+	}
+	if overlays["com.overlay.default"] {
+		t.Errorf("com.overlay.default should NOT be detected as active overlay")
+	}
+
+	// Single check
+	if !ParseSingleAppOpOverlay("SYSTEM_ALERT_WINDOW: allow") {
+		t.Errorf("expected single allow to be parsed as true")
+	}
+	if !ParseSingleAppOpOverlay("allow") {
+		t.Errorf("expected single allow word to be parsed as true")
+	}
+	if ParseSingleAppOpOverlay("SYSTEM_ALERT_WINDOW: ignore") {
+		t.Errorf("expected single ignore to be parsed as false")
+	}
+	if ParseSingleAppOpOverlay("No operations.") {
+		t.Errorf("expected No operations to be parsed as false")
+	}
+}
+

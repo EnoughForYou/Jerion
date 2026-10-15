@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -546,5 +547,206 @@ func TestAppMonitorWorkflow(t *testing.T) {
 		t.Fatalf("expected monitor status inactive after stop")
 	}
 }
+
+func TestRemediationDeviceMismatchAndSingleUse(t *testing.T) {
+	app, fake := setupTestApp(t)
+	defer app.store.Close()
+
+	fake.SetResponse("devices -l", "MOCK-0001 device product:mock model:MockPhone device:mock_dev\n", "", nil)
+	_, _ = app.tracker.PollOnce(context.Background())
+	app.activeSerial = "MOCK-0001"
+
+	pkgTarget := "com.adware.locked"
+	nowStr := time.Now().UTC().Format(time.RFC3339)
+	app.cachedResults["scan-h3"] = &contract.ScanResult{
+		ID:        "scan-h3",
+		DeviceID:  "dev-MOCK-0001",
+		Mode:      "quick",
+		StartedAt: nowStr,
+		Status:    "completed",
+		Findings: []contract.Finding{
+			{
+				ID:       "find-h3",
+				RuleID:   "RULE-H3",
+				Title:    "Flagged Threat",
+				Severity: "high",
+				Package:  &pkgTarget,
+				RecommendedAction: &contract.RemediationAction{
+					ID:       "rec-h3",
+					Type:     "disable",
+					Package:  pkgTarget,
+					Title:    "Disable Threat",
+					Impact:   "Freeze package",
+					Undoable: true,
+				},
+			},
+		},
+	}
+
+	plan, err := app.RemediateCreatePlan([]string{"find-h3"})
+	if err != nil || len(plan.Actions) != 1 {
+		t.Fatalf("RemediateCreatePlan failed: %v, plan: %+v", err, plan)
+	}
+
+	// 1. Switch active device to MOCK-0002 -> execution must be rejected with DeviceMismatch
+	app.activeSerial = "MOCK-0002"
+	_, errMismatch := app.RemediateExecute(plan)
+	if errMismatch == nil || !strings.Contains(errMismatch.Error(), "DeviceMismatch") {
+		t.Fatalf("expected DeviceMismatch error, got: %v", errMismatch)
+	}
+
+	// 2. Switch back to original planned device MOCK-0001 -> execution succeeds
+	app.activeSerial = "MOCK-0001"
+	fake.SetResponse("pm disable-user --user 0 com.adware.locked", "Package com.adware.locked new state: disabled-user", "", nil)
+	logs, err := app.RemediateExecute(plan)
+	if err != nil || len(logs) != 1 || logs[0].Status != "success" {
+		t.Fatalf("RemediateExecute failed on matching device: %v, logs: %+v", err, logs)
+	}
+
+	// 3. Re-execution of the same executed plan must be rejected with InvalidAction (single-use)
+	_, errReplay := app.RemediateExecute(plan)
+	if errReplay == nil || !strings.Contains(errReplay.Error(), "InvalidAction") {
+		t.Fatalf("expected InvalidAction error on replaying already executed plan, got: %v", errReplay)
+	}
+}
+
+func TestRemediationStructuredFailureReporting(t *testing.T) {
+	app, fake := setupTestApp(t)
+	defer app.store.Close()
+
+	fake.SetResponse("devices -l", "MOCK-0001 device product:mock model:MockPhone device:mock_dev\n", "", nil)
+	_, _ = app.tracker.PollOnce(context.Background())
+	app.activeSerial = "MOCK-0001"
+
+	pkgTarget := "com.malware.uninstallfail"
+	nowStr := time.Now().UTC().Format(time.RFC3339)
+	app.cachedResults["scan-fail"] = &contract.ScanResult{
+		ID:        "scan-fail",
+		DeviceID:  "dev-MOCK-0001",
+		Mode:      "quick",
+		StartedAt: nowStr,
+		Status:    "completed",
+		Findings: []contract.Finding{
+			{
+				ID:       "find-fail",
+				RuleID:   "RULE-FAIL",
+				Title:    "Malware to Uninstall",
+				Severity: "critical",
+				Package:  &pkgTarget,
+				RecommendedAction: &contract.RemediationAction{
+					ID:       "rec-fail",
+					Type:     "uninstall",
+					Package:  pkgTarget,
+					Title:    "Uninstall Malware",
+					Impact:   "Remove malware",
+					Undoable: true,
+				},
+			},
+		},
+	}
+
+	plan, err := app.RemediateCreatePlan([]string{"find-fail"})
+	if err != nil || len(plan.Actions) != 1 {
+		t.Fatalf("RemediateCreatePlan failed: %v", err)
+	}
+
+	// pm path fails to simulate APK backup failure
+	fake.SetResponse("pm path com.malware.uninstallfail", "", "package not found", os.ErrNotExist)
+
+	// RemediateExecute should return structured failed log entry instead of hiding failure
+	results, execErr := app.RemediateExecute(plan)
+	if execErr != nil {
+		t.Fatalf("RemediateExecute should return structured results, got unexpected top-level error: %v", execErr)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 structured log entry for failed action, got %d", len(results))
+	}
+	if results[0].Status != "failed" {
+		t.Fatalf("expected status failed, got %s", results[0].Status)
+	}
+	if results[0].Error == nil || !strings.Contains(*results[0].Error, "BackupFailed") {
+		t.Fatalf("expected BackupFailed in error details, got: %v", results[0].Error)
+	}
+}
+
+func TestAppsListAppOpsAndAdminAccuracy(t *testing.T) {
+	app, fake := setupTestApp(t)
+	defer app.store.Close()
+
+	fake.SetResponse("devices -l", "MOCK-0001 device product:mock model:MockPhone device:mock_dev\n", "", nil)
+	_, _ = app.tracker.PollOnce(context.Background())
+	app.activeSerial = "MOCK-0001"
+
+	pkg := "com.test.threat"
+	fake.SetResponse("pm list packages", fmt.Sprintf("package:/data/app/test/base.apk=%s\n", pkg), "", nil)
+	fake.SetResponse(fmt.Sprintf("dumpsys package %s", pkg), fmt.Sprintf(`Package [%s]
+userId=10199
+versionName=1.0.0
+versionCode=10
+targetSdk=31
+`, pkg), "", nil)
+
+	// Mock AppOps overlay
+	fake.SetResponse("dumpsys appops", `Current AppOps Service state:
+  Package com.test.threat:
+    SYSTEM_ALERT_WINDOW: allow; time=+5s ago
+`, "", nil)
+
+	// Mock Device Admin via dumpsys device_policy
+	fake.SetResponse("dumpsys device_policy", `Current Device Policy Manager state:
+  Enabled Device Admins (user 0):
+    admin=com.test.threat/.AdminReceiver
+`, "", nil)
+
+	// Mock failure on battery whitelist
+	fake.SetResponse("dumpsys deviceidle whitelist", "", "command not supported", os.ErrInvalid)
+
+	apps, err := app.InventoryList(contract.InventoryFilter{Category: "all"})
+	if err != nil || len(apps) != 1 {
+		t.Fatalf("InventoryList failed: %v, len=%d", err, len(apps))
+	}
+
+	appInfo := apps[0]
+	if !appInfo.HasOverlayPermission {
+		t.Errorf("expected HasOverlayPermission=true from AppOps allow")
+	}
+	if !appInfo.IsDeviceAdmin {
+		t.Errorf("expected IsDeviceAdmin=true from dumpsys device_policy")
+	}
+	if appInfo.IsBatteryOptimized {
+		t.Errorf("expected IsBatteryOptimized=false when whitelist is unreadable")
+	}
+	if !containsString(appInfo.SuspiciousFlags, "battery_status_unknown") {
+		t.Errorf("expected battery_status_unknown in SuspiciousFlags when whitelist fails, got: %v", appInfo.SuspiciousFlags)
+	}
+	if !containsString(appInfo.SuspiciousFlags, "overlay_granted") {
+		t.Errorf("expected overlay_granted in SuspiciousFlags, got: %v", appInfo.SuspiciousFlags)
+	}
+	if !containsString(appInfo.SuspiciousFlags, "device_admin_active") {
+		t.Errorf("expected device_admin_active in SuspiciousFlags, got: %v", appInfo.SuspiciousFlags)
+	}
+}
+
+func TestScanEvidenceTypeMapping(t *testing.T) {
+	if mapEvidenceType("declared permission") != "permission" {
+		t.Errorf("expected permission evidence type")
+	}
+	if mapEvidenceType("intel_hash_match") != "hash" {
+		t.Errorf("expected hash evidence type")
+	}
+	if mapEvidenceType("dex_class_scan") != "class_prefix" {
+		t.Errorf("expected class_prefix evidence type")
+	}
+	if mapEvidenceType("logcat_stream") != "log" {
+		t.Errorf("expected log evidence type")
+	}
+	if mapEvidenceType("secure_setting") != "setting" {
+		t.Errorf("expected setting evidence type")
+	}
+	if mapEvidenceType("manifest_node") != "manifest" {
+		t.Errorf("expected manifest evidence type")
+	}
+}
+
 
 

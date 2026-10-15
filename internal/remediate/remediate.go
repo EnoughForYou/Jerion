@@ -34,6 +34,7 @@ type Action struct {
 	TargetPermission string  `json:"targetPermission,omitempty"`
 	TargetAppop      string  `json:"targetAppop,omitempty"`
 	IsSystemApp      bool    `json:"isSystemApp,omitempty"`
+	DeviceSerial     string  `json:"deviceSerial,omitempty"`
 }
 
 // RemediationPlan represents an actionable queue of remediation actions.
@@ -148,6 +149,37 @@ func (m *Manager) CreatePlan(actions ...Action) Plan {
 	}
 }
 
+func (m *Manager) logFailedAction(serial string, action Action, err error) *ActionLogEntry {
+	entryID := fmt.Sprintf("log-%d", time.Now().UnixNano())
+	now := time.Now().UTC()
+	errStr := err.Error()
+
+	entry := &ActionLogEntry{
+		ID:        entryID,
+		Timestamp: now.Format(time.RFC3339),
+		Action:    action,
+		Status:    "failed",
+		Error:     &errStr,
+	}
+
+	if m.store != nil {
+		_ = m.store.LogAction(store.ActionLogRecord{
+			ID:           entryID,
+			DeviceSerial: serial,
+			Timestamp:    now,
+			ActionType:   action.Type,
+			Package:      action.Package,
+			Details: map[string]any{
+				"action": action,
+				"error":  errStr,
+			},
+			Reversible: false,
+		})
+	}
+
+	return entry
+}
+
 // Execute performs the remediation action with safety guardrails and audit logging.
 func (m *Manager) Execute(ctx context.Context, serial string, action Action) (*ActionLogEntry, error) {
 	if action.IsBlocked {
@@ -155,11 +187,13 @@ func (m *Manager) Execute(ctx context.Context, serial string, action Action) (*A
 		if action.BlockedReason != nil {
 			reason = *action.BlockedReason
 		}
-		return nil, fmt.Errorf(`JERION_ERR:{"code":"ActionBlocked","message":"%s","remedy":"Protected critical system packages cannot be removed or disabled."}`, reason)
+		err := fmt.Errorf(`JERION_ERR:{"code":"ActionBlocked","message":"%s","remedy":"Protected critical system packages cannot be removed or disabled."}`, reason)
+		return m.logFailedAction(serial, action, err), err
 	}
 
 	if err := ValidatePackageName(action.Package); err != nil {
-		return nil, fmt.Errorf(`JERION_ERR:{"code":"ParseFailure","message":"%s","remedy":"Ensure valid package name format"}`, err.Error())
+		wErr := fmt.Errorf(`JERION_ERR:{"code":"ParseFailure","message":"%s","remedy":"Ensure valid package name format"}`, err.Error())
+		return m.logFailedAction(serial, action, wErr), wErr
 	}
 
 	var backupPath *string
@@ -171,7 +205,8 @@ func (m *Manager) Execute(ctx context.Context, serial string, action Action) (*A
 		basePath, _, _, err := puller.Pull(ctx, serial, action.Package, m.backupDir)
 		if err != nil || basePath == "" {
 			m.logger.Error("remediate: APK backup failed before uninstall", "package", action.Package, "err", err)
-			return nil, fmt.Errorf(`JERION_ERR:{"code":"BackupFailed","message":"Failed to backup APK for %s before uninstall: %v","remedy":"Device refused APK extraction or storage error. Cannot uninstall safely without backup."}`, action.Package, err)
+			wErr := fmt.Errorf(`JERION_ERR:{"code":"BackupFailed","message":"Failed to backup APK for %s before uninstall: %v","remedy":"Device refused APK extraction or storage error. Cannot uninstall safely without backup."}`, action.Package, err)
+			return m.logFailedAction(serial, action, wErr), wErr
 		}
 		backupPath = &basePath
 		m.logger.Info("remediate: APK backed up before uninstall", "package", action.Package, "path", basePath)
@@ -199,10 +234,12 @@ func (m *Manager) Execute(ctx context.Context, serial string, action Action) (*A
 		}
 	case ActionRevokePermission:
 		if action.TargetPermission == "" {
-			return nil, fmt.Errorf(`JERION_ERR:{"code":"InvalidAction","message":"Target permission cannot be empty for revoke_permission action","remedy":"Specify a valid permission name"}`)
+			err := fmt.Errorf(`JERION_ERR:{"code":"InvalidAction","message":"Target permission cannot be empty for revoke_permission action","remedy":"Specify a valid permission name"}`)
+			return m.logFailedAction(serial, action, err), err
 		}
 		if err := ValidatePermissionName(action.TargetPermission); err != nil {
-			return nil, fmt.Errorf(`JERION_ERR:{"code":"ParseFailure","message":"%s","remedy":"Verify permission format"}`, err.Error())
+			wErr := fmt.Errorf(`JERION_ERR:{"code":"ParseFailure","message":"%s","remedy":"Verify permission format"}`, err.Error())
+			return m.logFailedAction(serial, action, wErr), wErr
 		}
 		_, stderr, err := m.runner.Run(ctx, serial, "shell", "pm", "revoke", action.Package, action.TargetPermission)
 		if err != nil {
@@ -210,7 +247,8 @@ func (m *Manager) Execute(ctx context.Context, serial string, action Action) (*A
 		}
 	case ActionClearAppop:
 		if action.TargetAppop == "" {
-			return nil, fmt.Errorf(`JERION_ERR:{"code":"InvalidAction","message":"Target appop cannot be empty for clear_appop action","remedy":"Specify a valid appop name"}`)
+			err := fmt.Errorf(`JERION_ERR:{"code":"InvalidAction","message":"Target appop cannot be empty for clear_appop action","remedy":"Specify a valid appop name"}`)
+			return m.logFailedAction(serial, action, err), err
 		}
 		_, stderr, err := m.runner.Run(ctx, serial, "shell", "cmd", "appops", "set", action.Package, action.TargetAppop, "default")
 		if err != nil {

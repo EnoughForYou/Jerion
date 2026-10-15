@@ -1,27 +1,38 @@
 # PROGRESS
 
 ## Status sekarang
-- Fase aktif: Fidelity Hardening Round 2 — Selesai Penuh
-- Branch: phase/fidelity-hardening-2
-- Terakhir selesai: Tahap 6 — Hardening, Installer & Rilis v1.0.0 (tag v1.0.0)
+- Fase aktif: Fidelity Hardening Round 3 — Selesai Penuh
+- Branch: phase/fidelity-hardening-3
+- Terakhir selesai: Fidelity Hardening Round 2 (merge commit 8e494f3)
 
-## Fase Fidelity Hardening Round 2 (Checksum, Remediation Safety, Runtime Fidelity & Persistence) — checklist
+## Fase Fidelity Hardening Round 3 (Device Binding, Remediation Failure Reporting, AppOps & Runtime Truth) — checklist
+- [x] Sub-tugas H3.1: Pengikatan rencana remediasi ke serial perangkat (`DeviceSerial`), penolakan eksekusi lintas perangkat (`DeviceMismatch`), invalidasi aksi single-use dari cache backend, dan pembersihan cache saat perangkat berganti/terputus
+- [x] Sub-tugas H3.2: Pelaporan terstruktur kegagalan remediasi (`Status: "failed"`, `Error: &errStr`) pada guardrail/backup failure di `remediate.Execute` dan `RemediateExecute`, tersimpan ke SQLite audit log tanpa kehilangan catatan
+- [x] Sub-tugas H3.3: Verifikasi status aktif izin overlay via AppOps (`SYSTEM_ALERT_WINDOW` mode allow) via `dumpsys appops` dan `appops get`, mengeliminasi kesalahan pembacaan dari install permissions
+- [x] Sub-tugas H3.4: Pendeteksian menyeluruh active Device Admin via `dumpsys device_policy` ("Enabled Device Admins") dan regex komponen lengkap (`(?:admin=)?([a-zA-Z0-9_.]+)/`)
+- [x] Sub-tugas H3.5: Penanganan status optimasi baterai secara jujur (unknown saat pembacaan whitelist gagal) tanpa kesimpulan semu aplikasi dioptimasi
+- [x] Sub-tugas H3.6: Unifikasi konversi tipe evidence kanonis (`mapEvidenceType`) pada scan langsung (`convertEngineScanResult`) dan scan persisten (`convertStoreFinding`)
+- [x] Sub-tugas H3.7: Emisi terminal failure event (`scan:done` dengan status failed/cancelled) saat scan gagal atau dibatalkan untuk mencegah UI macet
+- [x] Sub-tugas H3.8: Penegakan verifikasi checksum ketat (`expectedSHA`) pada unduhan resmi Google Platform-Tools r37.0.1 tanpa fallback ke hash versi lama
+
+## Pengukuran & Kualitas (Fidelity Hardening Round 3)
+- **Backend Go Test Suite**: 100% test lulus di seluruh 16 paket backend Go (`internal/logx`, `internal/secrets`, `internal/store`, `internal/adb`, `internal/preflight`, `internal/inventory`, `internal/apk`, `internal/rules`, `internal/engine`, `internal/intel`, `internal/audit`, `internal/monitor`, `internal/remediate`, `internal/report`, `internal/contract`, dan root `main`).
+- **Device Remediation Binding**: Rencana yang dibuat untuk Serial A tertolak saat dieksekusi di Serial B (`wireError("DeviceMismatch")`); aksi yang telah dieksekusi langsung dihapus dari cache backend (anti-replay).
+- **Remediation Failure Propagation**: Kegagalan backup APK atau guardrail dilaporkan secara terstruktur dengan `Status: "failed"` dan error detail, tercatat di `action_log`.
+- **Runtime Truth (AppOps & Device Admin)**: Overlay diverifikasi dari state aktif AppOps (`mode=allow`); Device Admin mencakup seluruh active administrator dari `dumpsys device_policy`.
+- **Battery Optimization Honesty**: Status whitelist gagal membaca menghasilkan flag `battery_status_unknown` dan `isBatteryOptimized: false` tanpa asumsi palsu.
+- **Terminal Scan Events**: Scanner error atau pembatalan memancarkan `scan:done` dengan status `failed`/`cancelled`, UI tidak pernah menggantung.
+- **Frontend Vitest Suite**: 118 pengujian lolos di 20 file tes (`npm run test`).
+- **ESLint & TypeScript**: 0 error, 0 warning pada `npm run lint` & `npm run typecheck`.
+- **Production Compilation (`wails build`)**: Standalone binary Windows x64 `build/bin/Jerion.exe` terkompilasi bersih dalam 20.35 detik.
+
+## Fase Fidelity Hardening Round 2 (Checksum, Remediation Safety, Runtime Fidelity & Persistence) — riwayat selesai
 - [x] Sub-tugas H2.1: Penguncian URL arsip unduhan ADB ke Google Platform-Tools r37.0.1 resmi (`platform-tools_r37.0.1-win.zip`) dan pembaruan katalog SHA-256 (`45f4d631...` Windows, `ee39ad59...` Darwin, `d230f138...` Linux)
 - [x] Sub-tugas H2.2: Ekstraksi permission bersih tanpa prefiks (`Declared/Requested:`) pada `RemediateCreatePlan` dan penolakan aksi target kosong pada `internal/remediate`
 - [x] Sub-tugas H2.3: Validasi ketat rencana aksi backend pada `RemediateExecute` dan penolakan action ID yang tidak dikenal (`InvalidAction`)
 - [x] Sub-tugas H2.4: Akurasi metadata runtime: overlay aktif dari `GrantedPermissions`, status live Accessibility & Device Admin, optimasi baterai dari `dumpsys deviceidle whitelist`, dan mitigasi visual baterai `--`
 - [x] Sub-tugas H2.5: Persistensi statistik scan (`TotalApps`) di SQLite schema v2 (`scan_results.total_apps`), pelaporan eksplisit error `SaveScanResult`, dan scoping unik finding ID per scan
 - [x] Sub-tugas H2.6: Penegakan strict YAML decoding dengan `KnownFields(true)` pada rule engine loader
-
-## Pengukuran & Kualitas (Fidelity Hardening Round 2)
-- **Backend Go Test Suite**: 100% test lulus di seluruh 16 paket backend Go (`internal/logx`, `internal/secrets`, `internal/store`, `internal/adb`, `internal/preflight`, `internal/inventory`, `internal/apk`, `internal/rules`, `internal/engine`, `internal/intel`, `internal/audit`, `internal/monitor`, `internal/remediate`, `internal/report`, `internal/contract`, dan root `main`).
-- **ADB Downloader Integrity**: Checksum SHA-256 r37.0.1 terverifikasi matematis terhadap arsip resmi Google (`45f4d631...` Windows, `ee39ad59...` Darwin, `d230f138...` Linux).
-- **Remediation Boundary Security**: Eksekusi aksi tanpa ID rencana backend tertolak (`wireError("InvalidAction")`); pencabutan permission dengan target kosong ditolak; prefiks permission disanitasi.
-- **Scan Persistence & Clean Scan Accuracy**: Kolom SQLite `total_apps` persisten di schema v2; riwayat scan bersih dengan 0 temuan tetap menampilkan jumlah aplikasi nyata tanpa hilang.
-- **Rule Engine Schema Strictness**: Seluruh rule YAML tervalidasi dengan `KnownFields(true)`, field asing/salah ketik otomatis ditolak saat startup.
-- **Frontend Vitest Suite**: 118 pengujian lolos di 20 file tes (`npm run test`).
-- **ESLint & TypeScript**: 0 error, 0 warning pada `npm run lint` & `npm run typecheck`.
-- **Production Compilation (`wails build`)**: Standalone binary Windows x64 `build/bin/Jerion.exe` terkompilasi bersih dalam 19.1 detik.
 
 ## Fase Fidelity Hardening (P1: Evidence Preservation & Canonical Scan ID) — riwayat selesai
 - [x] Sub-tugas P1.1: Penyelarasan ID Kanonis Scan (`ScanOptions.ScanID`) antara `app.go:ScanStart` dan `internal/engine/scanner.go:Scan`
