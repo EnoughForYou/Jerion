@@ -63,30 +63,55 @@ export const PreflightView: React.FC<PreflightViewProps> = ({ onComplete }) => {
 
   const handleDownload = async () => {
     try {
+      setIsLoading(true);
+      setChecks((prev) =>
+        prev.map((c) =>
+          c.id === 'adb_binary'
+            ? { ...c, status: 'downloading', downloadProgress: 0 }
+            : c
+        )
+      );
       const bridge = getBridge();
       await bridge.preflight.downloadAdb();
+      const results = await bridge.preflight.retry();
+      setChecks(results);
+      checkCompletion(results);
     } catch (err) {
       console.error('Download resolution failed:', err);
+      const bridge = getBridge();
+      const results = await bridge.preflight.retry();
+      setChecks(results);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleChoosePath = async () => {
     try {
+      setIsLoading(true);
       const bridge = getBridge();
-      await bridge.preflight.selectAdbPath('C:\\platform-tools\\adb.exe');
+      await bridge.preflight.selectAdbPath('');
+      const results = await bridge.preflight.retry();
+      setChecks(results);
+      checkCompletion(results);
     } catch (err) {
       console.error('Choose path resolution failed:', err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleRetry = async () => {
     try {
+      setIsLoading(true);
       const bridge = getBridge();
       const results = await bridge.preflight.retry();
       setChecks(results);
       checkCompletion(results);
     } catch (err) {
       console.error('Retry resolution failed:', err);
+    } finally {
+      setIsLoading(false);
     }
   };
 

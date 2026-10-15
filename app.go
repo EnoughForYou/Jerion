@@ -267,7 +267,20 @@ func (a *App) PreflightDownloadAdb() error {
 
 	downloader := preflight.NewDownloader()
 	expectedSHA := preflight.DefaultPlatformToolsSHA256()
-	destPath, err := downloader.DownloadAndExtract(ctx, expectedSHA, nil)
+	destPath, err := downloader.DownloadAndExtract(ctx, expectedSHA, func(downloadedBytes, totalBytes int64) {
+		if totalBytes > 0 && a.ctx != nil {
+			pct := float64(downloadedBytes) / float64(totalBytes) * 100.0
+			remedy := "Downloading official Google platform-tools..."
+			wailsRuntime.EventsEmit(a.ctx, "preflight:update", contract.PreflightCheck{
+				ID:               "adb_binary",
+				Title:            "ADB Binary",
+				Status:           "downloading",
+				Detail:           fmt.Sprintf("Downloading... %.0f%%", pct),
+				Remedy:           &remedy,
+				DownloadProgress: &pct,
+			})
+		}
+	})
 	if err != nil {
 		return wireError("InternalError", err.Error(), "Ensure network connection and retry")
 	}
@@ -279,6 +292,26 @@ func (a *App) PreflightDownloadAdb() error {
 }
 
 func (a *App) PreflightSelectAdbPath(path string) error {
+	if strings.TrimSpace(path) == "" {
+		if a.ctx == nil {
+			return wireError("InternalError", "Window context not ready", "Wait for application window to appear")
+		}
+		selected, err := wailsRuntime.OpenFileDialog(a.ctx, wailsRuntime.OpenDialogOptions{
+			Title: "Select ADB Executable (adb.exe)",
+			Filters: []wailsRuntime.FileFilter{
+				{DisplayName: "ADB Executable (adb.exe; adb)", Pattern: "adb.exe;adb"},
+				{DisplayName: "All Files (*.*)", Pattern: "*.*"},
+			},
+		})
+		if err != nil {
+			return wireError("InternalError", err.Error(), "Browse and select valid adb.exe executable")
+		}
+		if selected == "" {
+			return nil // User cancelled file picker dialog
+		}
+		path = selected
+	}
+
 	if _, err := os.Stat(path); err != nil {
 		return wireError("AdbMissing", "Specified file does not exist", "Browse and select valid adb.exe executable")
 	}
@@ -305,12 +338,19 @@ func (a *App) convertPreflightCheck(c preflight.PreflightCheck) contract.Preflig
 		mappedID = val
 	}
 
+	var sourceURL *string
+	if (c.ID == "P1" || mappedID == "adb_binary") && (c.Status == preflight.StatusMissing || c.Status == preflight.StatusFailed) {
+		u := preflight.PlatformToolsDownloadURL()
+		sourceURL = &u
+	}
+
 	return contract.PreflightCheck{
-		ID:     mappedID,
-		Title:  c.Title,
-		Status: string(c.Status),
-		Detail: c.Description,
-		Remedy: c.Remedy,
+		ID:        mappedID,
+		Title:     c.Title,
+		Status:    string(c.Status),
+		Detail:    c.Description,
+		Remedy:    c.Remedy,
+		SourceURL: sourceURL,
 	}
 }
 

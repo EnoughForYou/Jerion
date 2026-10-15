@@ -88,5 +88,73 @@ describe('Preflight components', () => {
         expect(onComplete).toHaveBeenCalled();
       });
     });
+
+    it('resolves missing binary when user clicks download', async () => {
+      const onComplete = vi.fn();
+      const bridge = await import('../../lib/bridge').then(m => m.getBridge());
+      // Temporarily mark adb_binary as missing
+      vi.spyOn(bridge.preflight, 'run').mockResolvedValueOnce([
+        {
+          id: 'adb_binary',
+          title: 'ADB Binary',
+          status: 'missing',
+          detail: 'Executable missing',
+          remedy: 'Download official platform-tools.',
+          sourceUrl: 'https://dl.google.com/android/repository/platform-tools-latest-windows.zip',
+        },
+      ]);
+      const downloadSpy = vi.spyOn(bridge.preflight, 'downloadAdb').mockResolvedValueOnce();
+      vi.spyOn(bridge.preflight, 'retry').mockResolvedValueOnce([
+        {
+          id: 'adb_binary',
+          title: 'ADB Binary',
+          status: 'ok',
+          detail: 'Ready',
+        },
+      ]);
+
+      render(<PreflightView onComplete={onComplete} />);
+
+      const downloadBtn = await screen.findByRole('button', { name: /download/i });
+      fireEvent.click(downloadBtn);
+
+      await waitFor(() => {
+        expect(downloadSpy).toHaveBeenCalled();
+        expect(onComplete).toHaveBeenCalled();
+      });
+    });
+
+    it('resolves missing binary when user chooses path', async () => {
+      const onComplete = vi.fn();
+      const bridge = await import('../../lib/bridge').then(m => m.getBridge());
+      vi.spyOn(bridge.preflight, 'run').mockResolvedValueOnce([
+        {
+          id: 'adb_binary',
+          title: 'ADB Binary',
+          status: 'missing',
+          detail: 'Executable missing',
+          remedy: 'Choose path',
+        },
+      ]);
+      const selectSpy = vi.spyOn(bridge.preflight, 'selectAdbPath').mockResolvedValueOnce();
+      vi.spyOn(bridge.preflight, 'retry').mockResolvedValueOnce([
+        {
+          id: 'adb_binary',
+          title: 'ADB Binary',
+          status: 'ok',
+          detail: 'Ready',
+        },
+      ]);
+
+      render(<PreflightView onComplete={onComplete} />);
+
+      const chooseBtn = await screen.findByRole('button', { name: /choose existing/i });
+      fireEvent.click(chooseBtn);
+
+      await waitFor(() => {
+        expect(selectSpy).toHaveBeenCalledWith('');
+        expect(onComplete).toHaveBeenCalled();
+      });
+    });
   });
 });

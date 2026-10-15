@@ -14,6 +14,7 @@ import (
 	"github.com/EnoughForYou/Jerion/internal/contract"
 	"github.com/EnoughForYou/Jerion/internal/engine"
 	"github.com/EnoughForYou/Jerion/internal/logx"
+	"github.com/EnoughForYou/Jerion/internal/preflight"
 	"github.com/EnoughForYou/Jerion/internal/remediate"
 	"github.com/EnoughForYou/Jerion/internal/store"
 )
@@ -1276,6 +1277,53 @@ func TestRemediateCreatePlan_NilCachedResult(t *testing.T) {
 	}
 	if len(plan.Actions) != 0 {
 		t.Fatalf("expected 0 actions, got %d", len(plan.Actions))
+	}
+}
+
+func TestConvertPreflightCheck_SourceURLPopulation(t *testing.T) {
+	app, _ := setupTestApp(t)
+	defer app.store.Close()
+
+	// Missing P1 should populate SourceURL with official Google platform-tools download URL
+	missingP1 := preflight.PreflightCheck{
+		ID:          "P1",
+		Title:       "ADB Binary",
+		Description: "Missing",
+		Status:      preflight.StatusMissing,
+	}
+	dto1 := app.convertPreflightCheck(missingP1)
+	if dto1.SourceURL == nil || *dto1.SourceURL == "" {
+		t.Fatalf("expected non-empty SourceURL for missing P1 check, got nil")
+	}
+	if !strings.Contains(*dto1.SourceURL, "dl.google.com/android/repository/platform-tools") {
+		t.Errorf("expected official Google download URL, got %s", *dto1.SourceURL)
+	}
+
+	// OK P1 should have nil SourceURL
+	okP1 := preflight.PreflightCheck{
+		ID:          "P1",
+		Title:       "ADB Binary",
+		Description: "Ready",
+		Status:      preflight.StatusOk,
+	}
+	dto2 := app.convertPreflightCheck(okP1)
+	if dto2.SourceURL != nil {
+		t.Errorf("expected nil SourceURL for ok P1 check, got %v", *dto2.SourceURL)
+	}
+}
+
+func TestPreflightSelectAdbPath_EmptyContextError(t *testing.T) {
+	app, _ := setupTestApp(t)
+	defer app.store.Close()
+
+	// Empty path with nil a.ctx should return window context not ready error
+	app.ctx = nil
+	err := app.PreflightSelectAdbPath("")
+	if err == nil {
+		t.Fatalf("expected error when choosing path with nil window context, got nil")
+	}
+	if !strings.Contains(err.Error(), "Window context not ready") {
+		t.Errorf("unexpected error string: %v", err)
 	}
 }
 
