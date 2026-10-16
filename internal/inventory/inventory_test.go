@@ -307,4 +307,93 @@ func TestParseAppOpsOverlay(t *testing.T) {
 	}
 }
 
+func TestParseDumpsysPackage_UpdatedSystemApp(t *testing.T) {
+	fixture := `
+Packages:
+  Package [com.google.android.youtube] (7a2c10b):
+    userId=10045
+    pkg=Package{1b2c3d com.google.android.youtube}
+    codePath=/data/app/~~a8-vQ==/com.google.android.youtube-1/base.apk
+    resourcePath=/data/app/~~a8-vQ==/com.google.android.youtube-1/base.apk
+    versionCode=1520032800 minSdk=26 targetSdk=34
+    versionName=19.05.36
+    pkgFlags=[ HAS_CODE ALLOW_CLEAR_USER_DATA ]
+    pkgPrivateFlags=[ UPDATED_SYSTEM_APP ]
+    firstInstallTime=2021-01-01 12:00:00
+    lastUpdateTime=2024-02-15 10:30:00
+    enabled=0
+`
+	info := ParseDumpsysPackage(fixture)
+	if info == nil {
+		t.Fatal("expected non-nil AppInfo")
+	}
+	if !info.IsSystem {
+		t.Errorf("expected IsSystem=true for updated system app with UPDATED_SYSTEM_APP flag")
+	}
+	if info.Package != "com.google.android.youtube" {
+		t.Errorf("expected com.google.android.youtube, got %s", info.Package)
+	}
+}
+
+func TestIsSystemPackage(t *testing.T) {
+	fake := adb.NewFakeRunner()
+	svc := NewService(fake, nil)
+	ctx := context.Background()
+
+	// 1. Updated system app with /data/app path but listed in pm list packages -s
+	fake.SetResponse("pm list packages -s com.google.android.youtube", "package:com.google.android.youtube\n", "", nil)
+	fake.SetResponse("pm path com.google.android.youtube", "package:/data/app/~~abc/com.google.android.youtube-1/base.apk\n", "", nil)
+
+	if !svc.IsSystemPackage(ctx, "dev-123", "com.google.android.youtube") {
+		t.Errorf("expected updated system app with pm list -s match to be recognized as system app")
+	}
+
+	// 2. System app detected via dumpsys package flags (pm list -s returned other package or empty)
+	fake.SetResponse("pm list packages -s com.android.settings", "package:com.other.app\n", "", nil)
+	dumpsysSettings := `
+Packages:
+  Package [com.android.settings]:
+    pkgFlags=[ SYSTEM HAS_CODE ]
+    codePath=/system/priv-app/Settings/Settings.apk
+`
+	fake.SetResponse("dumpsys package com.android.settings", dumpsysSettings, "", nil)
+	if !svc.IsSystemPackage(ctx, "dev-123", "com.android.settings") {
+		t.Errorf("expected com.android.settings to be recognized as system app via dumpsys flags")
+	}
+
+	// 3. Fallback: recognized via /system/ codePath
+	fake.SetResponse("pm list packages -s com.oem.telephony", "", "", nil)
+	fake.SetResponse("dumpsys package com.oem.telephony", "Package [com.oem.telephony]:\n  userId=1000\n", "", nil)
+	fake.SetResponse("pm path com.oem.telephony", "package:/system/priv-app/TelephonyProvider.apk\n", "", nil)
+	if !svc.IsSystemPackage(ctx, "dev-123", "com.oem.telephony") {
+		t.Errorf("expected com.oem.telephony to be recognized as system app via fallback path")
+	}
+
+	// 4. Regular 3rd-party user app with /data/app/ path
+	fake.SetResponse("pm list packages -s com.example.adware", "", "", nil)
+	dumpsysAdware := `
+Packages:
+  Package [com.example.adware]:
+    pkgFlags=[ HAS_CODE ]
+    codePath=/data/app/com.example.adware/base.apk
+`
+	fake.SetResponse("dumpsys package com.example.adware", dumpsysAdware, "", nil)
+	fake.SetResponse("pm path com.example.adware", "package:/data/app/com.example.adware/base.apk\n", "", nil)
+	if svc.IsSystemPackage(ctx, "dev-123", "com.example.adware") {
+		t.Errorf("expected user app com.example.adware to NOT be recognized as system app")
+	}
+
+	// 5. Edge cases: empty/nil
+	if svc.IsSystemPackage(ctx, "", "com.example.adware") {
+		t.Errorf("expected false for empty serial")
+	}
+	if svc.IsSystemPackage(ctx, "dev-123", "") {
+		t.Errorf("expected false for empty package")
+	}
+	var nilSvc *Service
+	if nilSvc.IsSystemPackage(ctx, "dev-123", "com.example.adware") {
+		t.Errorf("expected false for nil service")
+	}
+}
+
 

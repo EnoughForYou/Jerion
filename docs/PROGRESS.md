@@ -1,27 +1,26 @@
 # PROGRESS
 
 ## Status sekarang
-- Fase aktif: Device Detection & Screen Resilience Hardening — Selesai Penuh
-- Branch: phase/device-detection-resilience
-- Terakhir selesai: Runner ADB Path Sync & Mock Audit (merge commit 5006d78)
+- Fase aktif: Audit Hardening & Cross-Platform CI Fix — Selesai Penuh
+- Branch: phase/audit-hardening-ci-fix
+- Terakhir selesai: Device Detection & Screen Resilience Hardening (merge commit 87ad5be)
 
-## Fase Device Detection & Screen Resilience Hardening — checklist
-- [x] Sub-tugas RESIL.1: Penanganan status `unauthorized`, `authorizing` (Android 11+ handshake), dan `offline` yang jelas dan edukatif di backend (`convertDevice`, `ParseDevices`) dan frontend (`HomeView.tsx`, `DeviceHeader.tsx`) memandu pengguna mengaktifkan dialog otorisasi RSA, beralih ke mode USB MTP/File Transfer saat ponsel hanya terdeteksi mengisi daya (charging), dan memeriksa opsi pengembang
-- [x] Sub-tugas RESIL.2: Perbaikan crash routing `TypeError: Cannot read properties of null (reading 'length')` pada data scan/array null lewat implementasi defensive null-guards di seluruh modul tampilan (`HomeView`, `ReportsView`, `AppDetailDrawer`, `EvidenceDrawer`, `MonitorView`, `RemediateView`, `AuditView`, `AppsView`), serta penambahan `ErrorBoundary` dan `RouteErrorBoundary` di seluruh rute React Router
-- [x] Sub-tugas RESIL.3: Pemformatan nama perangkat cerdas dari `ro.product.model`, `ro.product.marketname`, dan fallback `ro.product.brand`, menggantikan nama kode perangkat mentah
-- [x] Sub-tugas RESIL.4: Enforcing non-nil slice returns di backend (`DeviceList`, `InventoryList`, `AuditRun`, `AllowlistList`) serta polling langsung pada `DeviceGetConnected()` dan `DeviceList()` guna mencegah pembacaan data usang saat perangkat baru saja diizinkan
-- [x] Sub-tugas RESIL.5: Ergonomi layout & ketahanan resolusi tinggi (HiDPI) dengan batas minimum window Wails (1024x680, default 1200x780) sesuai PRD NFR-08 dan container scroll responsif `w-full min-w-0 min-h-0` tanpa pemotongan kaku
-- [x] Sub-tugas RESIL.6: Sinkronisasi perangkat global realtime di `AppLayout.tsx` lewat event `device:changed`, banner status "Zero-Footprint Mode (ADB Shell Connected)", serta tombol pintas cepat menuju aplikasi dan audit
-- [x] Sub-tugas RESIL.7: Analisis arsitektur perbandingan mekanisme daemon/aplikasi pendamping 3uTools vs filosofi zero-footprint Jerion via ADB user shell (PRD §1.4 & §6.8)
-- [x] Sub-tugas RESIL.8: Unit test komprehensif pada backend (`TestConvertDevice_UnauthorizedAndModelBrandParsing` di `app_test.go`, `TestParseDevices` di `adb_test.go`) dan frontend (`ErrorBoundary.test.tsx` & `placeholders.test.tsx`)
+## Fase Audit Hardening & Cross-Platform CI Fix — checklist
+- [x] Sub-tugas FIX.1: Portabilitas tes checksum platform-tools lintas OS (`internal/preflight/preflight_test.go`) dengan memvalidasi hash default menggunakan `runtime.GOOS` dan pengujian tabel mandiri untuk katalog Windows, Linux, dan Darwin (macOS), menyelesaikan kegagalan runner CI Ubuntu GitHub Actions (`TestTrustedPlatformToolsHashes`, `TestStrictChecksumMatching`)
+- [x] Sub-tugas FIX.2: Penerusan error status otorisasi perangkat (`DeviceUnauthorized`) pada `RemediateCreatePlan` dan `RemediateExecute`, mencegah penyamaran error dialog RSA USB debugging menjadi `DeviceOffline` sehingga pengguna tidak menerima pesan keliru saat belum menekan 'Allow'
+- [x] Sub-tugas FIX.3: Klasifikasi akurat aplikasi sistem yang diperbarui (updated system apps dengan APK di `/data/app/`) pada remediasi via metadata Package Manager tepercaya (`pm list packages -s`, flags dumpsys `SYSTEM`/`UPDATED_SYSTEM_APP`, dan fallback mount point) di `internal/inventory/parser.go`, `internal/inventory/inventory.go`, dan `app.go`
+- [x] Sub-tugas FIX.4: Penanganan seluruh status terminal scan (`completed`, `partial`, `failed`, `cancelled`) pada polling sinkron `ScanQuick()`, mengeliminasi blocking 60 detik saat scan berakhir dengan status terminal non-completed
+- [x] Sub-tugas FIX.5: Unit test komprehensif table-driven pada `app_test.go` (`TestRemediateDeviceUnauthorizedForwarding`, `TestRemediateUpdatedSystemApp`, `TestScanQuickTerminalStates`), `inventory_test.go` (`TestParseDumpsysPackage_UpdatedSystemApp`, `TestIsSystemPackage`), dan `preflight_test.go`
 
-## Pengukuran & Kualitas (Device Detection & Screen Resilience Hardening)
+## Pengukuran & Kualitas (Audit Hardening & Cross-Platform CI Fix)
 - **Backend Go Test Suite**: 100% test lulus di seluruh 16 paket backend Go (`go test -count=1 ./...`).
 - **Go Vet**: Lulus bersih tanpa peringatan (`go vet ./...`).
 - **Frontend Vitest Suite**: 136 pengujian lolos di 21 file tes (`npm run test`).
 - **ESLint & TypeScript**: 0 error, 0 warning pada `npm run lint` & `npm run typecheck`.
 - **Mock Elimination (`npm run check:no-mock`)**: 0 marker mock di seluruh bundle produksi.
-- **Production Compilation (`wails build`)**: Standalone binary Windows x64 `build/bin/Jerion.exe` terkompilasi bersih dalam 18.62 detik.
+- **Production Compilation (`wails build`)**: Standalone binary Windows x64 `build/bin/Jerion.exe` terkompilasi bersih dalam 18.47 detik.
+
+## Fase Device Detection & Screen Resilience Hardening — riwayat selesai
 
 ## Fase Runner ADB Path Sync & Mock Audit — riwayat selesai
 - [x] Sub-tugas SYNC.1: Sinkronisasi aktif path biner ADB dari `adb.Manager` ke `adb.Runner` (`RealRunner.SetADBPath`) pada `ResolveADBPath()`, `SetCustomPath()`, `CheckVersion()`, dan `StartServer()`, mengeliminasi kegagalan `exec: "adb": executable file not found in %PATH%`

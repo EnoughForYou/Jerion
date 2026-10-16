@@ -1420,4 +1420,200 @@ func TestConvertDevice_UnauthorizedAndModelBrandParsing(t *testing.T) {
 	}
 }
 
+func TestRemediateDeviceUnauthorizedForwarding(t *testing.T) {
+	app, fake := setupTestApp(t)
+	defer app.store.Close()
+	ctx := context.Background()
+
+	// Simulate connected device in unauthorized state (USB RSA debugging prompt not accepted)
+	fake.SetResponse("devices -l", "List of devices attached\nMOCK-UNAUTH unauthorized transport_id:2\n", "", nil)
+	_, _ = app.tracker.PollOnce(ctx)
+
+	// 1. RemediateCreatePlan must forward DeviceUnauthorized, NOT DeviceOffline
+	_, err := app.RemediateCreatePlan([]string{"find-unauth"})
+	if err == nil {
+		t.Fatalf("expected error from RemediateCreatePlan on unauthorized device, got nil")
+	}
+	if !strings.Contains(err.Error(), "DeviceUnauthorized") {
+		t.Errorf("expected DeviceUnauthorized error code, got: %v", err)
+	}
+	if strings.Contains(err.Error(), "DeviceOffline") {
+		t.Errorf("error should not be masked as DeviceOffline: %v", err)
+	}
+
+	// 2. RemediateExecute must forward DeviceUnauthorized, NOT DeviceOffline
+	_, err = app.RemediateExecute(contract.RemediationPlan{
+		Actions: []contract.RemediationAction{
+			{ID: "act-unauth", Type: "disable", Package: "com.test.app"},
+		},
+	})
+	if err == nil {
+		t.Fatalf("expected error from RemediateExecute on unauthorized device, got nil")
+	}
+	if !strings.Contains(err.Error(), "DeviceUnauthorized") {
+		t.Errorf("expected DeviceUnauthorized error code in execute, got: %v", err)
+	}
+	if strings.Contains(err.Error(), "DeviceOffline") {
+		t.Errorf("error should not be masked as DeviceOffline in execute: %v", err)
+	}
+}
+
+func TestRemediateUpdatedSystemApp(t *testing.T) {
+	app, fake := setupTestApp(t)
+	defer app.store.Close()
+	ctx := context.Background()
+
+	serial := "SYS-APP-001"
+	fake.SetResponse("devices -l", fmt.Sprintf("List of devices attached\n%s device transport_id:1\n", serial), "", nil)
+	_, _ = app.tracker.PollOnce(ctx)
+	app.activeSerial = serial
+
+	pkgUpdated := "com.google.android.youtube"
+	pkgUser := "com.cleaner.junk"
+
+	// Mock ADB responses for updated system app
+	// Note: Active APK path is in /data/app/ due to Play Store update
+	fake.SetResponse("pm path com.google.android.youtube", "package:/data/app/~~xyz/com.google.android.youtube-1/base.apk\n", "", nil)
+	// But Package Manager reports it as a system package
+	fake.SetResponse("pm list packages -s com.google.android.youtube", "package:com.google.android.youtube\n", "", nil)
+
+	// Mock ADB responses for regular user app
+	fake.SetResponse("pm path com.cleaner.junk", "package:/data/app/~~abc/com.cleaner.junk-1/base.apk\n", "", nil)
+	fake.SetResponse("pm list packages -s com.cleaner.junk", "", "", nil)
+	fake.SetResponse("dumpsys package com.cleaner.junk", "Package [com.cleaner.junk]:\n  pkgFlags=[ HAS_CODE ]\n", "", nil)
+
+	// Cache scan result with findings for both apps
+	app.mu.Lock()
+	app.cachedResults["scan-test"] = &contract.ScanResult{
+		ID:       "scan-test",
+		DeviceID: fmt.Sprintf("dev-%s", serial),
+		Findings: []contract.Finding{
+			{
+				ID:      "find-updated-sys",
+				Package: &pkgUpdated,
+				RecommendedAction: &contract.RemediationAction{
+					Type: remediate.ActionUninstall,
+				},
+			},
+			{
+				ID:      "find-user-app",
+				Package: &pkgUser,
+				RecommendedAction: &contract.RemediationAction{
+					Type: remediate.ActionUninstall,
+				},
+			},
+		},
+	}
+	app.mu.Unlock()
+
+	// 1. RemediateCreatePlan for updated system app
+	planSys, err := app.RemediateCreatePlan([]string{"find-updated-sys"})
+	if err != nil {
+		t.Fatalf("RemediateCreatePlan failed for updated system app: %v", err)
+	}
+	if len(planSys.Actions) != 1 {
+		t.Fatalf("expected 1 action, got %d", len(planSys.Actions))
+	}
+	sysAct := planSys.Actions[0]
+	if !strings.Contains(sysAct.Title, "Uninstall system package") || !strings.Contains(sysAct.Title, "for user 0") {
+		t.Errorf("expected system uninstall title for updated system app, got: %s", sysAct.Title)
+	}
+	if planSys.RequiresBackup {
+		t.Errorf("expected RequiresBackup=false for system package uninstall")
+	}
+
+	// 2. RemediateExecute for updated system app should execute pm uninstall --user 0
+	fake.SetResponse("pm uninstall --user 0 com.google.android.youtube", "Success\n", "", nil)
+	resSys, err := app.RemediateExecute(planSys)
+	if err != nil {
+		t.Fatalf("RemediateExecute failed for system app: %v", err)
+	}
+	if len(resSys) != 1 || resSys[0].Status != "success" {
+		t.Fatalf("expected successful execution: %+v", resSys)
+	}
+
+	// 3. RemediateCreatePlan for user app must require backup
+	planUser, err := app.RemediateCreatePlan([]string{"find-user-app"})
+	if err != nil {
+		t.Fatalf("RemediateCreatePlan failed for user app: %v", err)
+	}
+	if len(planUser.Actions) != 1 {
+		t.Fatalf("expected 1 action for user app, got %d", len(planUser.Actions))
+	}
+	userAct := planUser.Actions[0]
+	if !strings.Contains(userAct.Title, "Uninstall application") || strings.Contains(userAct.Title, "for user 0") {
+		t.Errorf("expected standard user uninstall title, got: %s", userAct.Title)
+	}
+	if !planUser.RequiresBackup {
+		t.Errorf("expected RequiresBackup=true for user app uninstall")
+	}
+}
+
+func TestScanQuickTerminalStates(t *testing.T) {
+	terminalStatuses := []struct {
+		name           string
+		terminalStatus string
+		mockScanErr    bool
+	}{
+		{name: "Terminal Completed", terminalStatus: "completed", mockScanErr: false},
+		{name: "Terminal Failed", terminalStatus: "failed", mockScanErr: true},
+		{name: "Terminal Partial", terminalStatus: "partial", mockScanErr: false},
+		{name: "Terminal Cancelled", terminalStatus: "cancelled", mockScanErr: false},
+	}
+
+	for _, tc := range terminalStatuses {
+		t.Run(tc.name, func(t *testing.T) {
+			app, fake := setupTestApp(t)
+			defer app.store.Close()
+			ctx := context.Background()
+
+			serial := "DEV-SCAN-01"
+			fake.SetResponse("devices -l", fmt.Sprintf("List of devices attached\n%s device transport_id:1\n", serial), "", nil)
+			_, _ = app.tracker.PollOnce(ctx)
+			app.activeSerial = serial
+
+			if tc.mockScanErr {
+				fake.SetResponse("pm list packages -f -3", "", "pm failed", os.ErrPermission)
+			} else if tc.terminalStatus == "completed" {
+				fake.SetResponse("pm list packages -f -3", "", "", nil)
+			} else {
+				// For partial or cancelled, intercept the active cached scan result
+				fake.SetResponse("pm list packages -f -3", "", "", nil)
+				go func() {
+					for i := 0; i < 20; i++ {
+						time.Sleep(50 * time.Millisecond)
+						app.mu.Lock()
+						for id, res := range app.cachedResults {
+							if res != nil {
+								res.Status = tc.terminalStatus
+								app.cachedResults[id] = res
+								app.mu.Unlock()
+								return
+							}
+						}
+						app.mu.Unlock()
+					}
+				}()
+			}
+
+			start := time.Now()
+			res, err := app.ScanQuick()
+			elapsed := time.Since(start)
+
+			if err != nil {
+				t.Fatalf("expected ScanQuick to return terminal result without error, got: %v", err)
+			}
+			if res == nil {
+				t.Fatalf("expected non-nil ScanResult")
+			}
+			if res.Status != tc.terminalStatus {
+				t.Errorf("expected status %s, got %s", tc.terminalStatus, res.Status)
+			}
+			if elapsed > 10*time.Second {
+				t.Errorf("ScanQuick took too long (%v), failed to terminate promptly on status %s", elapsed, tc.terminalStatus)
+			}
+		})
+	}
+}
+
 
