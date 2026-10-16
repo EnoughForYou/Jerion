@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ClipboardCheck, RotateCcw, AlertTriangle, Search, CheckCircle2, AlertOctagon, HelpCircle, ArrowRight } from 'lucide-react';
+import { ClipboardCheck, RotateCcw, AlertTriangle, Search, CheckCircle2, AlertOctagon, HelpCircle, ArrowRight, Smartphone } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/Card';
@@ -9,11 +9,13 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { getBridge } from '../../lib/bridge';
+import { useDeviceStore } from '../../app/deviceStore';
 import type { AuditItem } from '../../lib/bridge/schema';
 
 export const AuditView: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { activeDevice, setActiveDevice } = useDeviceStore();
   const [items, setItems] = useState<AuditItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,6 +26,16 @@ export const AuditView: React.FC = () => {
   const bridge = getBridge();
 
   const handleManualRun = async () => {
+    let dev = activeDevice;
+    if (!dev) {
+      try {
+        dev = await bridge.device.getConnected();
+        if (dev) setActiveDevice(dev);
+      } catch {
+        dev = null;
+      }
+    }
+    if (!dev || dev.connectionState !== 'ready') return;
     try {
       setIsLoading(true);
       setError(null);
@@ -40,7 +52,28 @@ export const AuditView: React.FC = () => {
     let isMounted = true;
 
     async function loadInitialAudit() {
+      let dev = activeDevice;
+      if (!dev) {
+        try {
+          dev = await bridge.device.getConnected();
+          if (dev && isMounted) {
+            setActiveDevice(dev);
+          }
+        } catch {
+          dev = null;
+        }
+      }
+
+      if (!dev || dev.connectionState !== 'ready') {
+        if (isMounted) {
+          setItems([]);
+          setIsLoading(false);
+          setError(null);
+        }
+        return;
+      }
       try {
+        setIsLoading(true);
         setError(null);
         const results = await bridge.audit.run();
         if (isMounted) {
@@ -62,7 +95,7 @@ export const AuditView: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [bridge]);
+  }, [bridge, activeDevice, setActiveDevice]);
 
   const filteredItems = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -84,6 +117,42 @@ export const AuditView: React.FC = () => {
     (items || []).forEach((item) => set.add(item.category));
     return ['all', ...Array.from(set)];
   }, [items]);
+
+  if (!activeDevice) {
+    return (
+      <div className="flex h-full items-center justify-center p-8">
+        <EmptyState
+          icon={<Smartphone className="w-5 h-5 text-text-secondary" />}
+          title={t('device.noDevice')}
+          description={t('device.noDeviceHint')}
+        />
+      </div>
+    );
+  }
+
+  if (activeDevice.connectionState === 'unauthorized') {
+    return (
+      <div className="flex h-full items-center justify-center p-8">
+        <EmptyState
+          icon={<AlertTriangle className="w-5 h-5 text-warning" />}
+          title={t('device.unauthorizedTitle')}
+          description={`${t('device.unauthorizedPrompt')} ${t('device.unauthorizedAction')}`}
+        />
+      </div>
+    );
+  }
+
+  if (activeDevice.connectionState === 'offline') {
+    return (
+      <div className="flex h-full items-center justify-center p-8">
+        <EmptyState
+          icon={<AlertTriangle className="w-5 h-5 text-warning" />}
+          title={t('device.offlineTitle')}
+          description={`${t('device.offlinePrompt')} ${t('device.offlineTip')}`}
+        />
+      </div>
+    );
+  }
 
   if (error) {
     return (

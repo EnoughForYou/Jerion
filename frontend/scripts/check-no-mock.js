@@ -9,6 +9,11 @@ const FORBIDDEN_PATTERNS = [
   'MockBridge',
   'ZodObject',
   'ZodError',
+  'BRIDGE: MOCK',
+  'Bridge: MOCK',
+  'MOCK (Simulated)',
+  'mode:"MOCK"',
+  'mode: "MOCK"',
 ];
 
 function getAllFiles(dir) {

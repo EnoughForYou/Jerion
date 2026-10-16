@@ -19,9 +19,11 @@ export const DeviceModel: React.FC<DeviceModelProps> = ({
   const ringColor =
     status === 'scanning'
       ? '#0A84FF'
-      : findingsCount > 0
-      ? '#FF6A3D'
-      : '#30D158';
+      : status === 'completed'
+      ? findingsCount > 0
+        ? '#FF6A3D'
+        : '#30D158'
+      : '#8E8E93';
 
   const boxGeo = useMemo(() => new THREE.BoxGeometry(1.4, 2.8, 0.15), []);
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { Search, ShieldAlert, ArrowUpDown } from 'lucide-react';
+import { Search, ShieldAlert, ArrowUpDown, Smartphone, AlertTriangle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Card } from '../../components/ui/Card';
@@ -9,6 +9,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { AppDetailDrawer } from './AppDetailDrawer';
 import { getBridge } from '../../lib/bridge';
+import { useDeviceStore } from '../../app/deviceStore';
 import type { AppInfo } from '../../lib/bridge/schema';
 
 type AppCategoryFilter = 'all' | 'user' | 'system' | 'risky';
@@ -16,6 +17,7 @@ type SortField = 'name' | 'installedAt' | 'updatedAt' | 'targetSdk';
 
 export const AppsView: React.FC = () => {
   const { t } = useTranslation();
+  const { activeDevice, setActiveDevice } = useDeviceStore();
   const [apps, setApps] = useState<AppInfo[]>([]);
   const [selectedApp, setSelectedApp] = useState<AppInfo | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -32,6 +34,28 @@ export const AppsView: React.FC = () => {
     let isMounted = true;
 
     async function loadApps() {
+      let dev = activeDevice;
+      if (!dev) {
+        try {
+          dev = await bridge.device.getConnected();
+          if (dev && isMounted) {
+            setActiveDevice(dev);
+          }
+        } catch {
+          dev = null;
+        }
+      }
+
+      // Prioritize device connection state: do not trigger backend call when no device is connected
+      if (!dev || dev.connectionState !== 'ready') {
+        if (isMounted) {
+          setApps([]);
+          setIsLoading(false);
+          setError(null);
+        }
+        return;
+      }
+
       try {
         setIsLoading(true);
         setError(null);
@@ -55,7 +79,7 @@ export const AppsView: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [bridge]);
+  }, [bridge, activeDevice, setActiveDevice]);
 
   const filteredApps = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -119,6 +143,42 @@ export const AppsView: React.FC = () => {
       setSortAsc(true);
     }
   };
+
+  if (!activeDevice) {
+    return (
+      <div className="flex h-full items-center justify-center p-8">
+        <EmptyState
+          icon={<Smartphone className="w-5 h-5 text-text-secondary" />}
+          title={t('device.noDevice')}
+          description={t('device.noDeviceHint')}
+        />
+      </div>
+    );
+  }
+
+  if (activeDevice.connectionState === 'unauthorized') {
+    return (
+      <div className="flex h-full items-center justify-center p-8">
+        <EmptyState
+          icon={<AlertTriangle className="w-5 h-5 text-warning" />}
+          title={t('device.unauthorizedTitle')}
+          description={`${t('device.unauthorizedPrompt')} ${t('device.unauthorizedAction')}`}
+        />
+      </div>
+    );
+  }
+
+  if (activeDevice.connectionState === 'offline') {
+    return (
+      <div className="flex h-full items-center justify-center p-8">
+        <EmptyState
+          icon={<AlertTriangle className="w-5 h-5 text-warning" />}
+          title={t('device.offlineTitle')}
+          description={`${t('device.offlinePrompt')} ${t('device.offlineTip')}`}
+        />
+      </div>
+    );
+  }
 
   if (error) {
     return (

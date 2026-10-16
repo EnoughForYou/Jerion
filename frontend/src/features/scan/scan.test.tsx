@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -6,10 +6,19 @@ import { ScanView } from './ScanView';
 import { ScanTimeline } from './ScanTimeline';
 import { EvidenceDrawer } from './EvidenceDrawer';
 import { getBridge } from '../../lib/bridge';
-import { MOCK_FINDINGS, MockBridge } from '../../lib/bridge/mock';
+import { MOCK_DEVICE, MOCK_FINDINGS, MockBridge } from '../../lib/bridge/mock';
+import { useDeviceStore } from '../../app/deviceStore';
 import '../../i18n';
 
 describe('ScanView and Interactive Scan Components', () => {
+  beforeEach(() => {
+    useDeviceStore.getState().setActiveDevice({
+      ...MOCK_DEVICE,
+      serial: 'dev-test',
+      id: 'dev-mock-01',
+      connectionState: 'ready',
+    });
+  });
   it('renders ScanTimeline with steps and progress percentage', () => {
     render(
       <ScanTimeline

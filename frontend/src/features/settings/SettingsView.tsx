@@ -15,7 +15,7 @@ import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useThemeStore } from '../../app/theme';
-import { getBridge } from '../../lib/bridge';
+import { getBridge, bridgeKind } from '../../lib/bridge';
 import type { AllowlistEntry, AllowlistType, Settings } from '../../lib/bridge/schema';
 
 export const SettingsView: React.FC = () => {
@@ -146,9 +146,6 @@ export const SettingsView: React.FC = () => {
     }
   };
 
-  const bridgeMode =
-    import.meta.env.VITE_BRIDGE === 'wails' ? 'WAILS (Backend)' : 'MOCK (Simulated)';
-
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -205,22 +202,30 @@ export const SettingsView: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Runtime Bridge & Rules Meta */}
+        {/* Diagnostics & Rules Meta */}
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
               <Shield className="w-4 h-4 text-accent" />
-              <CardTitle>{t('settings.bridge')}</CardTitle>
+              <CardTitle>{t('settings.diagnostics', 'Diagnostics & Rules')}</CardTitle>
             </div>
             <CardDescription>
-              Backend transport connection and threat definitions
+              {t('settings.diagnosticsDesc', 'System specifications and threat definitions')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <dl className="space-y-2 text-xs">
+              {import.meta.env.DEV && (
+                <div className="flex justify-between py-1 border-b border-separator/15">
+                  <dt className="text-text-secondary">Active Bridge</dt>
+                  <dd className="font-mono text-text-primary font-semibold">
+                    {bridgeKind === 'wails' ? 'WAILS (Backend)' : `${bridgeKind.toUpperCase()} (Simulated)`}
+                  </dd>
+                </div>
+              )}
               <div className="flex justify-between py-1 border-b border-separator/15">
-                <dt className="text-text-secondary">Active Bridge</dt>
-                <dd className="font-mono text-text-primary font-semibold">{bridgeMode}</dd>
+                <dt className="text-text-secondary">App Version</dt>
+                <dd className="font-mono text-text-primary">v1.0.2</dd>
               </div>
               <div className="flex justify-between py-1 border-b border-separator/15">
                 <dt className="text-text-secondary">{t('settings.rules')}</dt>

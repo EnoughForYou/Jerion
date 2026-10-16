@@ -3,11 +3,12 @@ import { Activity } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDeviceStore } from './deviceStore';
 
+import { bridgeKind } from '../lib/bridge';
+
 export const StatusBar: React.FC = () => {
   const { t } = useTranslation();
   const { activeJob, jobProgress } = useDeviceStore();
 
-  const bridgeMode = import.meta.env.VITE_BRIDGE === 'wails' ? 'WAILS' : 'MOCK';
   const ruleVersion = '2026.03.1';
 
   return (
@@ -30,13 +31,17 @@ export const StatusBar: React.FC = () => {
         ) : null}
       </div>
 
-      {/* Rules version & Bridge mode */}
+      {/* Rules version & Dev Bridge mode */}
       <div className="flex items-center gap-3">
         <span>{t('statusBar.ruleVersion', { version: ruleVersion })}</span>
-        <span className="text-separator">|</span>
-        <span className="font-mono text-[10px] uppercase px-1.5 py-0.2 rounded-xs bg-raised border border-separator/30 text-text-primary">
-          {t('statusBar.bridgeMode', { mode: bridgeMode })}
-        </span>
+        {import.meta.env.DEV && (
+          <>
+            <span className="text-separator">|</span>
+            <span className="font-mono text-[10px] uppercase px-1.5 py-0.2 rounded-xs bg-raised border border-separator text-text-primary">
+              {t('statusBar.bridgeMode', { mode: bridgeKind.toUpperCase() })}
+            </span>
+          </>
+        )}
       </div>
     </footer>
   );
