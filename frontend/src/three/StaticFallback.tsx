@@ -114,7 +114,7 @@ export const StaticFallback: React.FC<StaticFallbackProps> = ({
       </svg>
 
       {/* Center Phone Chassis Wireframe Representation */}
-      <div className="absolute flex flex-col items-center justify-center p-4 rounded-lg bg-surface/80 border border-separator/40 backdrop-blur-xs shadow-md">
+      <div className="absolute flex flex-col items-center justify-center p-4 rounded-lg bg-surface/80 border border-separator-subtle backdrop-blur-xs shadow-md">
         <Smartphone className="w-8 h-8 text-accent mb-1.5" />
         <span className="text-[11px] font-semibold text-text-primary capitalize">
           {title}

@@ -12,7 +12,7 @@ export const TooltipContent = React.forwardRef<
   <TooltipPrimitive.Content
     ref={ref}
     sideOffset={sideOffset}
-    className={`z-50 overflow-hidden rounded-sm bg-raised px-2.5 py-1 text-xs text-text-primary border border-separator/40 shadow-md animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 ${className}`}
+    className={`z-50 overflow-hidden rounded-sm bg-raised px-2.5 py-1 text-xs text-text-primary border border-separator-subtle shadow-md animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 ${className}`}
     {...props}
   />
 ));

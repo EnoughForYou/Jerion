@@ -195,7 +195,7 @@ export const AppsView: React.FC = () => {
       {/* Main Table Area */}
       <div className="flex-1 flex flex-col min-w-0 space-y-4">
         {/* Header & Filter Controls */}
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 p-4 bg-surface border border-separator/35 rounded-lg shadow-sm">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 p-4 bg-surface border border-separator-subtle rounded-lg shadow-sm">
           <div>
             <h2 className="text-md font-semibold text-text-primary">
               {t('apps.title')}
@@ -207,7 +207,7 @@ export const AppsView: React.FC = () => {
 
           <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
             {/* Category Filter Pills */}
-            <div className="flex items-center gap-1 bg-raised/50 p-1 rounded-md border border-separator/20">
+            <div className="flex items-center gap-1 bg-raised/50 p-1 rounded-md border border-separator-muted">
               {(['all', 'user', 'system', 'risky'] as AppCategoryFilter[]).map((cat) => (
                 <button
                   key={cat}
@@ -232,7 +232,7 @@ export const AppsView: React.FC = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={t('apps.searchPlaceholder')}
-                className="w-full h-8 pl-8 pr-3 text-xs bg-raised rounded-md border border-separator/35 text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-1 focus:ring-accent"
+                className="w-full h-8 pl-8 pr-3 text-xs bg-raised rounded-md border border-separator-subtle text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-1 focus:ring-accent"
               />
             </div>
           </div>
@@ -241,7 +241,7 @@ export const AppsView: React.FC = () => {
         {/* Virtualized Apps Table */}
         <Card className="flex-1 p-0 overflow-hidden flex flex-col min-h-[420px]">
           {/* Fixed Table Header */}
-          <div className="grid grid-cols-12 gap-2 px-4 py-2.5 border-b border-separator/25 bg-raised/30 text-xs font-semibold text-text-secondary select-none">
+          <div className="grid grid-cols-12 gap-2 px-4 py-2.5 border-b border-separator-muted bg-raised/30 text-xs font-semibold text-text-secondary select-none">
             <div
               className="col-span-5 flex items-center gap-1 cursor-pointer hover:text-text-primary"
               onClick={() => toggleSort('name')}
@@ -323,7 +323,7 @@ export const AppsView: React.FC = () => {
                         height: `${virtualRow.size}px`,
                         transform: `translateY(${virtualRow.start}px)`,
                       }}
-                      className={`grid grid-cols-12 gap-2 px-4 items-center text-xs border-b border-separator/15 transition-colors cursor-pointer select-none ${
+                      className={`grid grid-cols-12 gap-2 px-4 items-center text-xs border-b border-separator-muted transition-colors cursor-pointer select-none ${
                         isSelected
                           ? 'bg-accent/10 border-accent/30'
                           : 'hover:bg-raised/40'
@@ -355,7 +355,7 @@ export const AppsView: React.FC = () => {
                       {/* Attributes / Badges */}
                       <div className="col-span-2 flex items-center justify-end gap-1 flex-wrap">
                         {app.isSystem ? (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-raised text-text-secondary border border-separator/30">
+                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-raised text-text-secondary border border-separator-muted">
                             {t('apps.flags.system')}
                           </span>
                         ) : (

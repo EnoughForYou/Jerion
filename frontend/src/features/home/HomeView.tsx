@@ -125,7 +125,7 @@ export const HomeView: React.FC = () => {
   return (
     <div className="space-y-5">
       {/* Top Banner & Quick Scan Action */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-5 rounded-lg bg-surface border border-separator/35 shadow-sm">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-5 rounded-lg bg-surface border border-separator-subtle shadow-sm">
         <div className="flex items-center gap-3.5">
           <div className="w-11 h-11 rounded-lg bg-accent/15 text-accent flex items-center justify-center shrink-0">
             <Shield className="w-6 h-6" />
@@ -216,7 +216,7 @@ export const HomeView: React.FC = () => {
             {t('device.unauthorizedPrompt', "Unlock your phone screen and look for the 'Allow USB debugging?' prompt.")}{' '}
             <span className="text-sev-high font-semibold">{t('device.unauthorizedAction', "Check 'Always allow from this computer' and tap 'Allow'.")}</span>
           </p>
-          <div className="flex items-start gap-2 p-2.5 rounded bg-surface/60 border border-separator/20 text-[11px] text-text-secondary leading-relaxed">
+          <div className="flex items-start gap-2 p-2.5 rounded bg-surface/60 border border-separator-muted text-[11px] text-text-secondary leading-relaxed">
             <HelpCircle className="w-3.5 h-3.5 text-accent shrink-0 mt-0.5" />
             <span>{t('device.unauthorizedTip', "Prompt not showing? Swipe down your Android notification shade, switch USB mode from 'Charging only' to 'File Transfer (MTP)', or toggle USB Debugging in Developer Options.")}</span>
           </div>
@@ -253,7 +253,7 @@ export const HomeView: React.FC = () => {
           <p className="text-xs text-text-primary font-medium leading-relaxed">
             {t('device.offlinePrompt', 'Your Android phone is detected via USB but the ADB connection is currently offline.')}
           </p>
-          <div className="flex items-start gap-2 p-2.5 rounded bg-surface/60 border border-separator/20 text-[11px] text-text-secondary leading-relaxed">
+          <div className="flex items-start gap-2 p-2.5 rounded bg-surface/60 border border-separator-muted text-[11px] text-text-secondary leading-relaxed">
             <HelpCircle className="w-3.5 h-3.5 text-accent shrink-0 mt-0.5" />
             <span>{t('device.offlineTip', "Try unlocking your phone, reconnecting the USB cable, or switching USB mode to 'File Transfer (MTP)'. Ensure USB Debugging is turned on in Developer Options.")}</span>
           </div>
@@ -436,7 +436,7 @@ export const HomeView: React.FC = () => {
                 <p className="text-xs text-text-secondary leading-relaxed">
                   {t('home.noFindingsDesc', 'Inspected applications, system permissions, active overlays, and background services without finding threat anomalies.')}
                 </p>
-                <div className="pt-2 border-t border-separator/20 text-[11px] text-text-secondary font-mono">
+                <div className="pt-2 border-t border-separator-muted text-[11px] text-text-secondary font-mono">
                   {securityContext.contextText}
                 </div>
               </div>
@@ -450,7 +450,7 @@ export const HomeView: React.FC = () => {
                   <Badge severity="info" count={scanResult.summary?.counts?.info ?? 0} />
                 </div>
 
-                <div className="pt-2 border-t border-separator/20 flex items-center justify-between text-xs text-text-secondary">
+                <div className="pt-2 border-t border-separator-muted flex items-center justify-between text-xs text-text-secondary">
                   <span className="font-mono text-[11px]">{securityContext.contextText}</span>
                   <Button variant="outline" size="sm" onClick={() => navigate('/scan')}>
                     <span>{t('home.reviewFindings', 'Review Findings')}</span>
@@ -499,7 +499,7 @@ export const HomeView: React.FC = () => {
       </div>
 
       {/* 3D Scene / Visual Area Container */}
-      <Card className="min-h-[220px] p-0 overflow-hidden flex items-center justify-center bg-surface border border-separator/35 shadow-sm">
+      <Card className="min-h-[220px] p-0 overflow-hidden flex items-center justify-center bg-surface border border-separator-subtle shadow-sm">
         <React.Suspense
           fallback={
             <StaticFallback

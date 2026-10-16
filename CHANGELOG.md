@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-16
+
+### Added
+- **Stage UX-1b (Visual Polish, Accessible Actions & System Theme)**:
+  - **System Theme Support (`frontend/src/app/theme.ts`)**: Implemented full OS color-scheme synchronization (`themeMode: 'system' | 'dark' | 'light'`) with dynamic `matchMedia('(prefers-color-scheme: light)')` listeners and persistent localStorage storage. Added 3-way toggle (System, Dark, Light) with Lucide `Laptop`, `Moon`, and `Sun` icons in `SettingsView.tsx`.
+  - **Semantic Separator Tokens (`tokens.css` & `tailwind.config.js`)**: Defined `--separator-subtle` and `--separator-muted` tokens per PRD §5.3, eliminating harsh neon outlines on cards, dialogs, drawers, and headers. Extended Tailwind colors with `separator: { DEFAULT, subtle, muted }`.
+  - **Border Token Refactoring Across All Views**: Systematically replaced all raw `border-separator/\d+` slash opacity classes with semantic tokens (`border-separator-subtle` for cards/dialogs/drawers and `border-separator-muted` for inner table rows/dividers), ensuring compliant, calm Apple-grade UI styling across 20+ components.
+  - **Accessible Action Buttons (`frontend/src/components/ui/Button.tsx`)**: Replaced `disabled:pointer-events-none` with accessible `aria-disabled="true"`, `cursor-not-allowed`, and keyboard focus retention, allowing informative tooltips and `title` text to explain why actions cannot be triggered.
+  - **Sentence Case Standardization**: Fixed scanner copy from uppercase `READY TO RUN QUICK SCAN` to calm sentence case `Ready to run quick scan` in `ScanView.tsx`.
+  - **Popup Hunter Static Signal Indicators**: Standardized telemetry chips in `MonitorView.tsx` into static non-clickable indicator badges.
+  - **Theme Unit Tests (`theme.test.ts` & `settings.test.tsx`)**: Added comprehensive tests verifying System theme detection, manual overrides, backward-compatible aliases, and settings toggle interactions (155 tests passed).
+
 ## [1.0.2] - 2026-10-16
 
 ### Added

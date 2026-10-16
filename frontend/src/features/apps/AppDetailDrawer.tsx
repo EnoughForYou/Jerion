@@ -65,7 +65,7 @@ export const AppDetailDrawer: React.FC<AppDetailDrawerProps> = ({
     >
       <div className="space-y-4 text-xs">
         {/* Action Buttons */}
-        <div className="p-3 rounded-md bg-raised/40 border border-separator/20 space-y-2">
+        <div className="p-3 rounded-md bg-raised/40 border border-separator-subtle space-y-2">
           <span className="font-semibold text-text-primary text-[11px] block">
             {t('apps.detail.actions')}
           </span>
@@ -117,7 +117,7 @@ export const AppDetailDrawer: React.FC<AppDetailDrawerProps> = ({
         </div>
 
         {/* General Attributes */}
-        <div className="space-y-2 border-b border-separator/20 pb-3">
+        <div className="space-y-2 border-b border-separator-muted pb-3">
           <div className="grid grid-cols-2 gap-2">
             <div>
               <span className="text-text-secondary block font-medium">
@@ -201,7 +201,7 @@ export const AppDetailDrawer: React.FC<AppDetailDrawerProps> = ({
             <ShieldAlert className="w-3.5 h-3.5 text-accent" />
             <span>{t('apps.detail.permissions', { count: app.permissions?.length ?? 0 })}</span>
           </h4>
-          <div className="max-h-44 overflow-y-auto space-y-1 bg-raised/30 p-2 rounded-md border border-separator/25 font-mono text-[11px]">
+          <div className="max-h-44 overflow-y-auto space-y-1 bg-raised/30 p-2 rounded-md border border-separator-subtle font-mono text-[11px]">
             {(app.permissions?.length ?? 0) === 0 ? (
               <span className="text-text-secondary">{t('apps.detail.noPermissions')}</span>
             ) : (
@@ -220,7 +220,7 @@ export const AppDetailDrawer: React.FC<AppDetailDrawerProps> = ({
             <PackageCheck className="w-3.5 h-3.5 text-accent" />
             <span>{t('apps.detail.signatures', { count: app.signatures?.length ?? 0 })}</span>
           </h4>
-          <div className="space-y-1 bg-raised/30 p-2 rounded-md border border-separator/25 font-mono text-[11px]">
+          <div className="space-y-1 bg-raised/30 p-2 rounded-md border border-separator-subtle font-mono text-[11px]">
             {(app.signatures || []).map((sig, idx) => (
               <div key={idx} className="break-all text-text-secondary">
                 {sig}

@@ -100,7 +100,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
           </p>
 
           {/* Step content */}
-          <div className="flex items-start gap-3 p-3 rounded-md bg-raised/50 border border-separator/25">
+          <div className="flex items-start gap-3 p-3 rounded-md bg-raised/50 border border-separator-subtle">
             <div className="w-9 h-9 rounded-md bg-accent/15 text-accent flex items-center justify-center shrink-0 mt-0.5">
               {step.icon}
             </div>

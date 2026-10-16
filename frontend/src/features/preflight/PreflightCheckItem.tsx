@@ -49,7 +49,7 @@ export const PreflightCheckItem: React.FC<PreflightCheckItemProps> = ({
   const isActionable = check.status === 'missing' || check.status === 'failed';
 
   return (
-    <div className="flex flex-col border border-separator/25 rounded-md bg-raised/30 p-3 transition-all duration-150">
+    <div className="flex flex-col border border-separator-subtle rounded-md bg-raised/30 p-3 transition-all duration-150">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5 truncate">
           {getStatusIcon()}
@@ -80,7 +80,7 @@ export const PreflightCheckItem: React.FC<PreflightCheckItemProps> = ({
 
       {/* Actionable expanded drawer on missing/failed requirements */}
       {isActionable ? (
-        <div className="mt-3 pt-2.5 border-t border-separator/20 text-xs text-text-secondary">
+        <div className="mt-3 pt-2.5 border-t border-separator-muted text-xs text-text-secondary">
           {check.remedy ? (
             <p className="mb-3 text-[11px] leading-relaxed text-text-secondary">
               {check.remedy}

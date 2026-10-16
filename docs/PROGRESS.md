@@ -1,26 +1,34 @@
 # PROGRESS
 
 ## Status sekarang
-- Fase aktif: UX-1a — Product Honesty & State Machine (v1.0.2)
-- Branch: phase/ux-1a
-- Terakhir selesai: Kebersihan Repo & CI (tag v1.0.1)
+- Fase aktif: UX-1b — Visual Polish, Accessible Actions & System Theme (v1.1.0)
+- Branch: phase/ux-1b
+- Terakhir selesai: Product Honesty & State Machine (tag v1.0.2)
 
-## Fase UX-1a (Product Honesty & State Machine) — checklist
-- [x] Sub-tugas UX1A.1: Implementasi mesin 8 status keamanan kanonis (`frontend/src/app/deviceSecurityState.ts`): `no-device`, `unauthorized`, `offline`, `never-scanned`, `scanning`, `scanned-clean`, `scanned-findings`, `partial-failed` dengan pengikatan serial perangkat ketat (`deviceId === activeDevice.serial || deviceId === activeDevice.id`) guna mengeliminasi kebocoran cache antar perangkat.
-- [x] Sub-tugas UX1A.2: Eliminasi rasa aman palsu (PRD §1.6): centang hijau dan indikator clean secara eksklusif hanya diizinkan pada status `scanned-clean` (scan selesai penuh dengan 0 temuan pada perangkat yang sedang terhubung).
-- [x] Sub-tugas UX1A.3: Standardisasi copy jujur & 3D honest rendering: "No findings in the last scan" menggantikan "Device Protected" dan "No threats detected" pada `StaticFallback.tsx`, `DeviceModel.tsx`, `HomeView.tsx`, `ScanView.tsx`, dan `en.json`. Cincin Three.js berwarna netral abu-abu `#8E8E93` saat idle/belum scan dan hijau `#30D158` hanya bila scanned-clean. Konteks lengkap scan (mode, jumlah aplikasi, waktu, versi rules) ditampilkan secara eksplisit.
-- [x] Sub-tugas UX1A.4: Single source of truth untuk bridge: ekspor `bridgeKind: BridgeKind` dari `frontend/src/lib/bridge/index.ts`, hapus seluruh pembacaan `import.meta.env.VITE_BRIDGE` di UI. Badge bridge pada `StatusBar.tsx` dan baris bridge pada `SettingsView.tsx` dikunci hanya tampil pada `import.meta.env.DEV`, mengeliminasi pembakaran literal string `"MOCK"` pada bundle produksi Wails.
-- [x] Sub-tugas UX1A.5: Pengetatan gerbang bundle `frontend/scripts/check-no-mock.js`: penambahan pola terlarang `'BRIDGE: MOCK'`, `'Bridge: MOCK'`, `'MOCK (Simulated)'`, `'mode:"MOCK"'`, dan `'mode: "MOCK"'`.
-- [x] Sub-tugas UX1A.6: Prioritas status perangkat sebelum error: `AppsView.tsx`, `AuditView.tsx`, `MonitorView.tsx`, dan `RemediateView.tsx` memprioritaskan empty state kanonis (`no-device`, `unauthorized`, `offline`) sebelum menampilkan `ErrorState` "Failed to Load ... Retry", mengeliminasi pesan kegagalan palsu saat perangkat belum terhubung.
-- [x] Sub-tugas UX1A.7: Unit tests komprehensif: pembuatan `deviceSecurityState.test.ts` (10 skenario pengujian 8 state kanonis dan isolasi serial), `noMockLiterals.test.ts` (verifikasi string literal MOCK pada komponen UI), serta pembaruan suite tes pada `scene.test.tsx`, `scan.test.tsx`, `audit.test.tsx`, `monitor.test.tsx`, dan `placeholders.test.tsx` (152 tes lulus 100%).
+## Fase UX-1b (Visual Polish & System Theme) — checklist
+- [x] Sub-tugas UX1B.1: Sistem tema terpadu OS (`frontend/src/app/theme.ts`): penambahan tipe `ThemeMode = 'system' | 'dark' | 'light'`, pendeteksian otomatis OS theme via `window.matchMedia('(prefers-color-scheme: light)')`, listener pergantian tema OS secara reaktif, dan persistensi di `localStorage` (`jerion_theme_mode`).
+- [x] Sub-tugas UX1B.2: Pengaturan tema 3-opsi pada `SettingsView.tsx`: tombol System (ikon `Laptop`), Dark (`Moon`), dan Light (`Sun`) dengan status aktif varian `primary`. Pembaruan App Version diagnostik menjadi `v1.1.0`.
+- [x] Sub-tugas UX1B.3: Token separator semantik (`tokens.css` & `tailwind.config.js`): penambahan `--separator-subtle` dan `--separator-muted` pada mode gelap dan terang per PRD §5.3, serta mapping `separator: { DEFAULT, subtle, muted }` pada konfigurasi Tailwind untuk mengeliminasi garis tepi terang/kasar.
+- [x] Sub-tugas UX1B.4: Refactoring seluruh border kartu & outline UI: penggantian seluruh kelas `border-separator/\d+` menjadi token semantik `border-separator-subtle` (kartu, drawer, modal dialog, panel samping) dan `border-separator-muted` (divider baris tabel, divider header, chip teks) di 20+ komponen frontend.
+- [x] Sub-tugas UX1B.5: Tombol aksi aksesibel (`frontend/src/components/ui/Button.tsx`): penggantian `disabled:pointer-events-none` dengan `aria-disabled="true"`, `cursor-not-allowed`, pencegahan klik di handler, serta retensi hover pointer events agar tooltip / atribut `title` yang menjelaskan alasan tombol tidak aktif tetap dapat dibaca oleh pengguna dan screen reader.
+- [x] Sub-tugas UX1B.6: Standardisasi sentence case & copy tenang: teks "Ready to run QUICK scan" diubah menjadi sentence case "Ready to run quick scan" pada `ScanView.tsx`.
+- [x] Sub-tugas UX1B.7: Popup Hunter signal chips: standarisasi chip telemetri monitor pada `MonitorView.tsx` menjadi badge indikator statis non-klik yang tenang.
+- [x] Sub-tugas UX1B.8: Pengujian regresi visual & tema: penambahan unit tests di `theme.test.ts` (8 pengujian mencakup mode system, matchMedia, alias legacy, dan toggling) dan `settings.test.tsx` (155 pengujian lulus 100%).
 
-## Pengukuran & Kualitas (UX-1a)
-- **Frontend Vitest Suite**: 152 pengujian lolos di 23 file tes (`npm run test`).
+## Pengukuran & Kualitas (UX-1b)
+- **Frontend Vitest Suite**: 155 pengujian lolos di 23 file tes (`npm run test`).
 - **ESLint & TypeScript**: 0 error, 0 warning pada `npm run lint` & `npm run typecheck`.
 - **Mock Elimination (`npm run check:no-mock`)**: 0 marker mock di seluruh bundle produksi.
 - **Backend Go Test Suite**: 100% test lulus di seluruh 16 paket backend Go (`go test -count=1 . ./internal/...`).
 - **Backend Go Vet**: Lulus bersih tanpa peringatan (`go vet . ./internal/...`).
-- **Production Compilation (`wails build`)**: Standalone binary Windows x64 `build/bin/Jerion.exe` terkompilasi bersih dalam 19.59 detik.
+- **Production Bundle Vite**: Selesai dalam 5.96 detik, ukuran CSS terkompresi 6.24 kB gzip.
+
+## Fase UX-1a (Product Honesty & State Machine) — riwayat selesai (v1.0.2)
+- Mesin 8 status keamanan kanonis (`no-device`, `unauthorized`, `offline`, `never-scanned`, `scanning`, `scanned-clean`, `scanned-findings`, `partial-failed`) dengan pengikatan serial perangkat ketat.
+- Eliminasi rasa aman palsu: centang hijau eksklusif hanya untuk `scanned-clean`.
+- Single source of truth bridge via `bridgeKind`, badge MOCK dikunci strictly pada `import.meta.env.DEV`.
+- Prioritas status perangkat sebelum error state.
+- 152 unit tests lulus, 0 marker mock di bundle produksi.
 
 ## Fase HYG-1 (Kebersihan Repo & CI) — riwayat selesai (v1.0.1)
 - **Produksi NPM Audit**: 0 vulnerabilities (`npm audit --omit=dev --prefix frontend`).

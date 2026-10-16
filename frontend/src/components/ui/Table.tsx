@@ -17,7 +17,7 @@ export const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className = '', ...props }, ref) => (
-  <thead ref={ref} className={`border-b border-separator/40 bg-surface/50 text-text-secondary text-xs uppercase tracking-wider ${className}`} {...props} />
+  <thead ref={ref} className={`border-b border-separator-muted bg-surface/50 text-text-secondary text-xs uppercase tracking-wider ${className}`} {...props} />
 ));
 TableHeader.displayName = 'TableHeader';
 
@@ -25,7 +25,7 @@ export const TableBody = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className = '', ...props }, ref) => (
-  <tbody ref={ref} className={`divide-y divide-separator/20 ${className}`} {...props} />
+  <tbody ref={ref} className={`divide-y divide-separator-muted ${className}`} {...props} />
 ));
 TableBody.displayName = 'TableBody';
 

@@ -12,7 +12,7 @@ export const StatusBar: React.FC = () => {
   const ruleVersion = '2026.03.1';
 
   return (
-    <footer className="h-7 border-t border-separator/35 bg-surface/70 backdrop-blur-xs px-3 flex items-center justify-between text-[11px] text-text-secondary select-none shrink-0 z-10">
+    <footer className="h-7 border-t border-separator-subtle bg-surface/70 backdrop-blur-xs px-3 flex items-center justify-between text-[11px] text-text-secondary select-none shrink-0 z-10">
       {/* Active Job & Progress */}
       <div className="flex items-center gap-2">
         <Activity className={`w-3 h-3 ${activeJob ? 'text-accent animate-pulse' : 'text-text-secondary'}`} />

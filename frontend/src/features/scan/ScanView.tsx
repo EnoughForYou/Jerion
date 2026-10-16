@@ -169,7 +169,7 @@ export const ScanView: React.FC = () => {
           className={`p-4 rounded-lg border transition-all cursor-pointer ${
             mode === 'quick'
               ? 'border-accent bg-accent/5 ring-1 ring-accent'
-              : 'border-separator/35 bg-surface hover:bg-raised/40'
+              : 'border-separator-subtle bg-surface hover:bg-raised/40'
           }`}
         >
           <div className="flex items-center gap-2.5 mb-2">
@@ -189,7 +189,7 @@ export const ScanView: React.FC = () => {
           className={`p-4 rounded-lg border transition-all cursor-pointer ${
             mode === 'deep'
               ? 'border-accent bg-accent/5 ring-1 ring-accent'
-              : 'border-separator/35 bg-surface hover:bg-raised/40'
+              : 'border-separator-subtle bg-surface hover:bg-raised/40'
           }`}
         >
           <div className="flex items-center gap-2.5 mb-2">
@@ -205,14 +205,14 @@ export const ScanView: React.FC = () => {
       </div>
 
       {/* Options & Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-surface border border-separator/35 rounded-lg shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-surface border border-separator-subtle rounded-lg shadow-sm">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-accent" />
             <span className="font-semibold text-xs text-text-primary">
               {isScanning
                 ? t('scan.running')
-                : t('scan.ready', { mode })}
+                : t('scan.ready', { mode: mode.toLowerCase() })}
             </span>
           </div>
           <p className="text-[11px] text-text-secondary">
@@ -300,7 +300,7 @@ export const ScanView: React.FC = () => {
                   className={`px-2 py-0.5 rounded text-[11px] font-medium border transition-colors ${
                     selectedSeverity === 'all'
                       ? 'bg-accent text-accent-foreground border-accent'
-                      : 'bg-raised text-text-secondary border-separator/30 hover:text-text-primary'
+                      : 'bg-raised text-text-secondary border-separator-subtle hover:text-text-primary'
                   }`}
                 >
                   {t('scan.allSeverities')} ({(findings || []).length})
@@ -317,7 +317,7 @@ export const ScanView: React.FC = () => {
                       className={`px-2 py-0.5 rounded text-[11px] font-medium border transition-colors ${
                         selectedSeverity === sev
                           ? 'bg-accent text-accent-foreground border-accent'
-                          : 'bg-raised text-text-secondary border-separator/30 hover:text-text-primary'
+                          : 'bg-raised text-text-secondary border-separator-subtle hover:text-text-primary'
                       }`}
                     >
                       {sev.toUpperCase()} ({count})
@@ -426,7 +426,7 @@ export const ScanView: React.FC = () => {
               {filteredFindings.map((finding) => (
                 <div
                   key={finding.id}
-                  className="p-3.5 rounded-md bg-raised/30 border border-separator/25 space-y-2 text-xs transition-colors hover:border-separator/40"
+                  className="p-3.5 rounded-md bg-raised/30 border border-separator-subtle space-y-2 text-xs transition-colors hover:border-separator"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="space-y-0.5">
@@ -464,7 +464,7 @@ export const ScanView: React.FC = () => {
                   </p>
 
                   {finding.recommendedAction && (
-                    <div className="pt-2 border-t border-separator/15 text-[11px] text-accent flex items-center justify-between gap-2">
+                    <div className="pt-2 border-t border-separator-muted text-[11px] text-accent flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1.5 truncate">
                         <AlertTriangle className="w-3.5 h-3.5 text-sev-medium shrink-0" />
                         <span className="truncate">

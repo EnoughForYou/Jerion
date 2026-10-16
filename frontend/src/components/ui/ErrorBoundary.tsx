@@ -96,7 +96,7 @@ export const RouteErrorBoundary: React.FC = () => {
       : t('common.errorRemedy', 'An unexpected error occurred while loading this view.');
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[360px] p-8 text-center border border-separator/35 rounded-lg bg-surface max-w-lg mx-auto my-12 shadow-sm">
+    <div className="flex flex-col items-center justify-center min-h-[360px] p-8 text-center border border-separator-subtle rounded-lg bg-surface max-w-lg mx-auto my-12 shadow-sm">
       <div className="w-12 h-12 rounded-full bg-sev-critical/15 text-sev-critical flex items-center justify-center mb-4">
         <AlertOctagon className="w-6 h-6" />
       </div>
@@ -106,7 +106,7 @@ export const RouteErrorBoundary: React.FC = () => {
       <h3 className="text-base font-semibold text-text-primary mb-2">
         {t('common.error', 'Failed to Load View')}
       </h3>
-      <p className="text-xs text-text-secondary leading-relaxed mb-6 max-w-md font-mono bg-raised/50 p-2.5 rounded border border-separator/20 break-words">
+      <p className="text-xs text-text-secondary leading-relaxed mb-6 max-w-md font-mono bg-raised/50 p-2.5 rounded border border-separator-muted break-words">
         {errorMessage}
       </p>
       <div className="flex items-center gap-3">

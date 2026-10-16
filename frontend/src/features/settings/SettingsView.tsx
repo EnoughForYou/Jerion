@@ -3,6 +3,7 @@ import {
   Settings as SettingsIcon,
   Moon,
   Sun,
+  Laptop,
   Shield,
   Layers,
   Plus,
@@ -20,7 +21,7 @@ import type { AllowlistEntry, AllowlistType, Settings } from '../../lib/bridge/s
 
 export const SettingsView: React.FC = () => {
   const { t } = useTranslation();
-  const { theme, setTheme } = useThemeStore();
+  const { themeMode, setThemeMode } = useThemeStore();
   const [allowlist, setAllowlist] = useState<AllowlistEntry[]>([]);
   const [settings, setSettings] = useState<Settings>({
     theme: 'dark',
@@ -149,7 +150,7 @@ export const SettingsView: React.FC = () => {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center gap-3.5 p-5 bg-surface border border-separator/35 rounded-lg shadow-sm">
+      <div className="flex items-center gap-3.5 p-5 bg-surface border border-separator-subtle rounded-lg shadow-sm">
         <div className="w-11 h-11 rounded-lg bg-accent/15 text-accent flex items-center justify-center shrink-0">
           <SettingsIcon className="w-6 h-6" />
         </div>
@@ -183,17 +184,25 @@ export const SettingsView: React.FC = () => {
           <CardContent>
             <div className="flex flex-wrap items-center gap-2.5">
               <Button
-                variant={theme === 'dark' ? 'primary' : 'secondary'}
+                variant={themeMode === 'system' ? 'primary' : 'secondary'}
                 size="md"
-                onClick={() => setTheme('dark')}
+                onClick={() => setThemeMode('system')}
+              >
+                <Laptop className="w-4 h-4" />
+                <span>{t('settings.themeSystem')}</span>
+              </Button>
+              <Button
+                variant={themeMode === 'dark' ? 'primary' : 'secondary'}
+                size="md"
+                onClick={() => setThemeMode('dark')}
               >
                 <Moon className="w-4 h-4" />
                 <span>{t('settings.themeDark')}</span>
               </Button>
               <Button
-                variant={theme === 'light' ? 'primary' : 'secondary'}
+                variant={themeMode === 'light' ? 'primary' : 'secondary'}
                 size="md"
-                onClick={() => setTheme('light')}
+                onClick={() => setThemeMode('light')}
               >
                 <Sun className="w-4 h-4" />
                 <span>{t('settings.themeLight')}</span>
@@ -216,18 +225,18 @@ export const SettingsView: React.FC = () => {
           <CardContent>
             <dl className="space-y-2 text-xs">
               {import.meta.env.DEV && (
-                <div className="flex justify-between py-1 border-b border-separator/15">
+                <div className="flex justify-between py-1 border-b border-separator-muted">
                   <dt className="text-text-secondary">Active Bridge</dt>
                   <dd className="font-mono text-text-primary font-semibold">
                     {bridgeKind === 'wails' ? 'WAILS (Backend)' : `${bridgeKind.toUpperCase()} (Simulated)`}
                   </dd>
                 </div>
               )}
-              <div className="flex justify-between py-1 border-b border-separator/15">
+              <div className="flex justify-between py-1 border-b border-separator-muted">
                 <dt className="text-text-secondary">App Version</dt>
-                <dd className="font-mono text-text-primary">v1.0.2</dd>
+                <dd className="font-mono text-text-primary">v1.1.0</dd>
               </div>
-              <div className="flex justify-between py-1 border-b border-separator/15">
+              <div className="flex justify-between py-1 border-b border-separator-muted">
                 <dt className="text-text-secondary">{t('settings.rules')}</dt>
                 <dd className="font-mono text-text-primary">v2026.03.1 (32 rules)</dd>
               </div>
@@ -261,7 +270,7 @@ export const SettingsView: React.FC = () => {
                 value={adbPathInput}
                 onChange={(e) => setAdbPathInput(e.target.value)}
                 placeholder={t('settings.adbPathPlaceholder')}
-                className="flex-1 h-9 px-3 text-xs font-mono bg-raised rounded-md border border-separator/35 text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                className="flex-1 h-9 px-3 text-xs font-mono bg-raised rounded-md border border-separator-subtle text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
               />
               <Button variant="secondary" size="md" onClick={handleSaveAdbPath}>
                 {t('settings.saveAdbPath')}
@@ -269,7 +278,7 @@ export const SettingsView: React.FC = () => {
             </div>
           </div>
 
-          <div className="pt-2 border-t border-separator/15 flex items-center justify-between">
+          <div className="pt-2 border-t border-separator-muted flex items-center justify-between">
             <div>
               <span className="font-medium text-text-primary block">
                 {t('settings.autoCheck')}
@@ -318,7 +327,7 @@ export const SettingsView: React.FC = () => {
           </div>
 
           {/* ClamAV Host & Port Input */}
-          <div className="space-y-1.5 pt-2 border-t border-separator/15">
+          <div className="space-y-1.5 pt-2 border-t border-separator-muted">
             <label className="font-medium text-text-primary block">
               {t('settings.clamavHost')}
             </label>
@@ -328,7 +337,7 @@ export const SettingsView: React.FC = () => {
                 value={clamavHost}
                 onChange={(e) => setClamavHost(e.target.value)}
                 placeholder={t('settings.clamavHostPlaceholder')}
-                className="flex-1 h-9 px-3 text-xs font-mono bg-raised rounded-md border border-separator/35 text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                className="flex-1 h-9 px-3 text-xs font-mono bg-raised rounded-md border border-separator-subtle text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
               />
               <Button
                 variant="outline"
@@ -383,7 +392,7 @@ export const SettingsView: React.FC = () => {
           {/* Add Exclusion Form */}
           <form
             onSubmit={handleAddAllowlist}
-            className="p-3 rounded-md bg-raised/30 border border-separator/20 space-y-2.5 text-xs"
+            className="p-3 rounded-md bg-raised/30 border border-separator-subtle space-y-2.5 text-xs"
           >
             <span className="font-semibold text-text-primary text-[11px] block">
               {t('settings.addAllowlist')}
@@ -395,13 +404,13 @@ export const SettingsView: React.FC = () => {
                 value={newTarget}
                 onChange={(e) => setNewTarget(e.target.value)}
                 placeholder={t('settings.targetPlaceholder')}
-                className="sm:col-span-6 h-8 px-2.5 font-mono text-[11px] bg-raised rounded border border-separator/35 text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-1 focus:ring-accent"
+                className="sm:col-span-6 h-8 px-2.5 font-mono text-[11px] bg-raised rounded border border-separator-subtle text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-1 focus:ring-accent"
               />
 
               <select
                 value={newType}
                 onChange={(e) => setNewType(e.target.value as AllowlistType)}
-                className="sm:col-span-3 h-8 px-2 text-[11px] bg-raised rounded border border-separator/35 text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                className="sm:col-span-3 h-8 px-2 text-[11px] bg-raised rounded border border-separator-subtle text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
               >
                 <option value="package">Package</option>
                 <option value="rule_package">Rule + Package</option>
@@ -424,7 +433,7 @@ export const SettingsView: React.FC = () => {
               value={newReason}
               onChange={(e) => setNewReason(e.target.value)}
               placeholder={t('settings.reasonPlaceholder')}
-              className="w-full h-8 px-2.5 text-[11px] bg-raised rounded border border-separator/35 text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-1 focus:ring-accent"
+              className="w-full h-8 px-2.5 text-[11px] bg-raised rounded border border-separator-subtle text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-1 focus:ring-accent"
             />
           </form>
 
@@ -438,14 +447,14 @@ export const SettingsView: React.FC = () => {
               {(allowlist || []).map((item) => (
                 <div
                   key={item.id}
-                  className="p-3 rounded-md bg-raised/20 border border-separator/20 flex items-center justify-between gap-3 text-xs transition-colors hover:bg-raised/30"
+                  className="p-3 rounded-md bg-raised/20 border border-separator-subtle flex items-center justify-between gap-3 text-xs transition-colors hover:bg-raised/30"
                 >
                   <div className="space-y-0.5 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-text-primary font-medium truncate">
                         {item.target}
                       </span>
-                      <span className="text-[10px] text-text-secondary uppercase px-1.5 py-0.2 rounded bg-raised border border-separator/20">
+                      <span className="text-[10px] text-text-secondary uppercase px-1.5 py-0.2 rounded bg-raised border border-separator-muted">
                         {item.type}
                       </span>
                     </div>
