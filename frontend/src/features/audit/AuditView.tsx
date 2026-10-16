@@ -201,7 +201,7 @@ export const AuditView: React.FC = () => {
   return (
     <div className="space-y-5">
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 bg-surface border border-separator/35 rounded-lg shadow-sm">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 bg-surface border border-separator-subtle rounded-lg shadow-sm">
         <div className="flex items-center gap-3.5">
           <div className="w-11 h-11 rounded-lg bg-accent/15 text-accent flex items-center justify-center shrink-0">
             <ClipboardCheck className="w-6 h-6" />
@@ -228,7 +228,7 @@ export const AuditView: React.FC = () => {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 bg-surface border border-separator/35 rounded-lg text-xs">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 bg-surface border border-separator-subtle rounded-lg text-xs">
         {/* Category Pills */}
         <div className="flex items-center gap-1.5 flex-wrap">
           {categories.map((cat) => (
@@ -239,7 +239,7 @@ export const AuditView: React.FC = () => {
               className={`px-2.5 py-1 rounded text-[11px] font-medium border transition-colors ${
                 selectedCategory === cat
                   ? 'bg-accent text-accent-foreground border-accent'
-                  : 'bg-raised text-text-secondary border-separator/30 hover:text-text-primary'
+                  : 'bg-raised text-text-secondary border-separator-subtle hover:text-text-primary'
               }`}
             >
               {cat === 'all' ? t('audit.allCategories') : cat.toUpperCase()}
@@ -255,7 +255,7 @@ export const AuditView: React.FC = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t('audit.searchPlaceholder')}
-            className="w-full h-8 pl-8 pr-3 text-xs bg-raised rounded-md border border-separator/35 text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-1 focus:ring-accent"
+            className="w-full h-8 pl-8 pr-3 text-xs bg-raised rounded-md border border-separator-subtle text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-1 focus:ring-accent"
           />
         </div>
       </div>
@@ -281,7 +281,7 @@ export const AuditView: React.FC = () => {
                   className={`px-2 py-0.5 rounded text-[11px] font-medium border transition-colors ${
                     selectedStatus === st
                       ? 'bg-accent text-accent-foreground border-accent'
-                      : 'bg-raised text-text-secondary border-separator/30 hover:text-text-primary'
+                      : 'bg-raised text-text-secondary border-separator-subtle hover:text-text-primary'
                   }`}
                 >
                   {st.toUpperCase()}
@@ -324,7 +324,7 @@ export const AuditView: React.FC = () => {
               {(filteredItems || []).map((item) => (
                 <div
                   key={item.id}
-                  className="p-3.5 rounded-md bg-raised/30 border border-separator/25 space-y-2 text-xs transition-colors hover:border-separator/40"
+                  className="p-3.5 rounded-md bg-raised/30 border border-separator-subtle space-y-2 text-xs transition-colors hover:border-separator"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="space-y-1">
@@ -332,7 +332,7 @@ export const AuditView: React.FC = () => {
                         <span className="font-semibold text-text-primary text-xs">
                           {item.title}
                         </span>
-                        <span className="px-1.5 py-0.5 rounded text-[10px] uppercase font-mono bg-raised text-text-secondary border border-separator/25">
+                        <span className="px-1.5 py-0.5 rounded text-[10px] uppercase font-mono bg-raised text-text-secondary border border-separator-muted">
                           {item.category}
                         </span>
                       </div>
@@ -348,7 +348,7 @@ export const AuditView: React.FC = () => {
 
                   {/* Evidence traces */}
                   {item.evidence.length > 0 && (
-                    <div className="space-y-1 pt-1 border-t border-separator/15">
+                    <div className="space-y-1 pt-1 border-t border-separator-muted">
                       <span className="text-[10px] text-text-secondary font-medium block">
                         {t('audit.evidence')}:
                       </span>
@@ -356,7 +356,7 @@ export const AuditView: React.FC = () => {
                         {item.evidence.map((ev, idx) => (
                           <div
                             key={idx}
-                            className="font-mono text-[11px] text-text-secondary bg-base/70 px-2 py-1 rounded border border-separator/20 break-all select-all"
+                            className="font-mono text-[11px] text-text-secondary bg-base/70 px-2 py-1 rounded border border-separator-muted break-all select-all"
                           >
                             {ev}
                           </div>
@@ -367,7 +367,7 @@ export const AuditView: React.FC = () => {
 
                   {/* Remediation Action Suggestion */}
                   {item.remedy && item.status !== 'ok' && (
-                    <div className="pt-2 border-t border-separator/15 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] bg-accent/5 p-2 rounded border border-accent/20">
+                    <div className="pt-2 border-t border-separator-muted flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] bg-accent/5 p-2 rounded border border-accent/20">
                       <div className="flex items-center gap-1.5 text-accent">
                         <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
                         <span>

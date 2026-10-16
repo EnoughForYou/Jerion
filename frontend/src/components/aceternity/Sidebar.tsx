@@ -36,7 +36,7 @@ export const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
         ref={ref}
         role="navigation"
         aria-label="Main Navigation"
-        className={`h-full shrink-0 border-r border-separator/35 bg-surface/90 backdrop-blur-md flex flex-col justify-between transition-[width] duration-200 ease-out select-none z-20 ${
+        className={`h-full shrink-0 border-r border-separator-subtle bg-surface/90 backdrop-blur-md flex flex-col justify-between transition-[width] duration-200 ease-out select-none z-20 ${
           open ? 'w-[220px]' : 'w-[64px]'
         } ${className}`}
         {...props}

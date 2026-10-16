@@ -91,7 +91,7 @@ export const AppLayout: React.FC = () => {
           <SidebarBody>
             <div className="flex flex-col space-y-1">
               {/* App Brand Header */}
-              <div className="flex items-center gap-2.5 px-2 py-3 mb-2 border-b border-separator/20">
+              <div className="flex items-center gap-2.5 px-2 py-3 mb-2 border-b border-separator-muted">
                 <div className="w-7 h-7 rounded-md bg-accent flex items-center justify-center text-white font-bold text-xs shadow-xs">
                   J
                 </div>
@@ -118,7 +118,7 @@ export const AppLayout: React.FC = () => {
             </div>
 
             {/* Bottom Collapse Toggle */}
-            <div className="pt-2 border-t border-separator/20">
+            <div className="pt-2 border-t border-separator-muted">
               <SidebarToggle />
             </div>
           </SidebarBody>

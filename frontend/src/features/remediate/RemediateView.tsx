@@ -224,7 +224,7 @@ export const RemediateView: React.FC = () => {
   return (
     <div className="space-y-5">
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 bg-surface border border-separator/35 rounded-lg shadow-sm">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 bg-surface border border-separator-subtle rounded-lg shadow-sm">
         <div className="flex items-center gap-3.5">
           <div className="w-11 h-11 rounded-lg bg-accent/15 text-accent flex items-center justify-center shrink-0">
             <ShieldCheck className="w-6 h-6" />
@@ -279,7 +279,7 @@ export const RemediateView: React.FC = () => {
       )}
 
       {/* Action Guardrails Notice */}
-      <div className="p-3.5 rounded-lg bg-raised/40 border border-separator/30 text-xs flex items-center gap-3">
+      <div className="p-3.5 rounded-lg bg-raised/40 border border-separator-subtle text-xs flex items-center gap-3">
         <AlertOctagon className="w-4 h-4 text-sev-high shrink-0" />
         <span className="text-text-secondary leading-relaxed">
           {t('cleanup.guardrailNotice')}
@@ -341,10 +341,10 @@ export const RemediateView: React.FC = () => {
                       key={action.id}
                       className={`p-3.5 rounded-md border text-xs transition-colors ${
                         action.isBlocked
-                          ? 'bg-raised/20 border-separator/20 opacity-70'
+                          ? 'bg-raised/20 border-separator-muted opacity-70'
                           : isSelected
                           ? 'bg-accent/5 border-accent/40'
-                          : 'bg-raised/30 border-separator/25 hover:border-separator/40'
+                          : 'bg-raised/30 border-separator-subtle hover:border-separator'
                       }`}
                     >
                       <div className="flex items-start gap-3">
@@ -361,7 +361,7 @@ export const RemediateView: React.FC = () => {
                             <span className="font-semibold text-text-primary text-xs">
                               {action.title}
                             </span>
-                            <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-raised text-text-secondary border border-separator/25">
+                            <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-raised text-text-secondary border border-separator-muted">
                               {action.type}
                             </span>
                           </div>
@@ -412,7 +412,7 @@ export const RemediateView: React.FC = () => {
                   return (
                     <div
                       key={entry.id}
-                      className="p-3 rounded-md bg-raised/20 border border-separator/20 text-xs space-y-1.5"
+                      className="p-3 rounded-md bg-raised/20 border border-separator-subtle text-xs space-y-1.5"
                     >
                       <div className="flex items-center justify-between gap-2 flex-wrap">
                         <div className="flex items-center gap-2 truncate">

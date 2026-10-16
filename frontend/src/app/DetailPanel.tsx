@@ -23,10 +23,10 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     <aside
       role="complementary"
       aria-label={title}
-      className="w-[420px] h-full shrink-0 border-l border-separator/35 bg-surface/95 backdrop-blur-md flex flex-col justify-between shadow-xl z-20 select-none animate-in slide-in-from-right duration-200"
+      className="w-[420px] h-full shrink-0 border-l border-separator-subtle bg-surface/95 backdrop-blur-md flex flex-col justify-between shadow-xl z-20 select-none animate-in slide-in-from-right duration-200"
     >
       {/* Panel Header */}
-      <div className="h-12 px-4 border-b border-separator/30 flex items-center justify-between shrink-0">
+      <div className="h-12 px-4 border-b border-separator-muted flex items-center justify-between shrink-0">
         <div className="flex flex-col truncate pr-2">
           <h3 className="text-base font-semibold text-text-primary truncate">{title}</h3>
           {description ? (

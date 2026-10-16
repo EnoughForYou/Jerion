@@ -14,8 +14,12 @@ describe('SettingsView', () => {
     );
 
     expect(screen.getByText('Settings')).toBeInTheDocument();
+    expect(screen.getByText('System Theme')).toBeInTheDocument();
     expect(screen.getByText('Dark Theme')).toBeInTheDocument();
     expect(screen.getByText('Light Theme')).toBeInTheDocument();
+
+    const systemBtn = screen.getByRole('button', { name: /system theme/i });
+    fireEvent.click(systemBtn);
 
     await waitFor(() => {
       expect(screen.getByText('com.android.settings')).toBeInTheDocument();

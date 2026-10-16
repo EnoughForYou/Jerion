@@ -41,7 +41,7 @@ export const EvidenceDrawer: React.FC<EvidenceDrawerProps> = ({
         <DialogHeader>
           <div className="flex items-center gap-2 mb-1">
             <Badge severity={finding.severity} />
-            <span className="text-xs font-mono text-text-secondary bg-raised px-2 py-0.5 rounded border border-separator/30">
+            <span className="text-xs font-mono text-text-secondary bg-raised px-2 py-0.5 rounded border border-separator-muted">
               {finding.ruleId}
             </span>
             <span className="text-xs text-text-secondary">
@@ -60,7 +60,7 @@ export const EvidenceDrawer: React.FC<EvidenceDrawerProps> = ({
 
         <div className="space-y-4 py-2 text-xs">
           {/* Why Flagged */}
-          <div className="p-3 rounded-md bg-raised/40 border border-separator/25 space-y-1.5">
+          <div className="p-3 rounded-md bg-raised/40 border border-separator-subtle space-y-1.5">
             <div className="flex items-center gap-1.5 font-semibold text-text-primary">
               <Shield className="w-3.5 h-3.5 text-accent" />
               <span>{t('scan.evidenceDrawer.whyFlagged')}</span>
@@ -71,7 +71,7 @@ export const EvidenceDrawer: React.FC<EvidenceDrawerProps> = ({
           </div>
 
           {/* False Positive Guidance */}
-          <div className="p-3 rounded-md bg-surface border border-separator/25 space-y-1.5">
+          <div className="p-3 rounded-md bg-surface border border-separator-subtle space-y-1.5">
             <div className="flex items-center gap-1.5 font-semibold text-text-primary">
               <AlertCircle className="w-3.5 h-3.5 text-sev-medium" />
               <span>{t('scan.evidenceDrawer.falsePositiveContext')}</span>
@@ -93,13 +93,13 @@ export const EvidenceDrawer: React.FC<EvidenceDrawerProps> = ({
             {(finding.evidence || []).map((item, idx) => (
               <div
                 key={idx}
-                className="p-3 rounded-md bg-raised/20 border border-separator/20 space-y-2"
+                className="p-3 rounded-md bg-raised/20 border border-separator-subtle space-y-2"
               >
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-text-primary text-[11px]">
                     {item.title}
                   </span>
-                  <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-raised text-text-secondary border border-separator/20">
+                  <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-raised text-text-secondary border border-separator-muted">
                     {item.type}
                   </span>
                 </div>
@@ -113,7 +113,7 @@ export const EvidenceDrawer: React.FC<EvidenceDrawerProps> = ({
                       <Terminal className="w-3 h-3" />
                       <span>{t('scan.evidenceDrawer.rawOutput')}</span>
                     </div>
-                    <pre className="p-2 rounded bg-base/80 border border-separator/20 text-[11px] font-mono text-text-primary overflow-x-auto whitespace-pre-wrap select-all">
+                    <pre className="p-2 rounded bg-base/80 border border-separator-muted text-[11px] font-mono text-text-primary overflow-x-auto whitespace-pre-wrap select-all">
                       {item.rawOutput}
                     </pre>
                   </div>

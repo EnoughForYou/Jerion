@@ -12,9 +12,11 @@ export default {
         surface: "var(--bg-surface)",
         raised: "var(--bg-raised)",
         "text-primary": "var(--text-primary)",
-        "text-secondary": "var(--text-secondary)",
-        separator: "var(--separator)",
-        accent: "var(--accent)",
+        separator: {
+          DEFAULT: "var(--separator)",
+          subtle: "var(--separator-subtle)",
+          muted: "var(--separator-muted)",
+        },
         sev: {
           info: "var(--sev-info)",
           low: "var(--sev-low)",

@@ -68,7 +68,7 @@ export const ReportsView: React.FC = () => {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 bg-surface border border-separator/35 rounded-lg shadow-sm">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 bg-surface border border-separator-subtle rounded-lg shadow-sm">
         <div className="flex items-center gap-3.5">
           <div className="w-11 h-11 rounded-lg bg-accent/15 text-accent flex items-center justify-center shrink-0">
             <FileText className="w-6 h-6" />
@@ -135,7 +135,7 @@ export const ReportsView: React.FC = () => {
                   {t('reports.resolvedFindings')}
                 </span>
               </div>
-              <div className="p-3 bg-raised/30 rounded-md border border-separator/20">
+              <div className="p-3 bg-raised/30 rounded-md border border-separator-subtle">
                 <span className="text-md font-bold text-text-primary block">
                   {comparison.unchangedFindings?.length ?? 0}
                 </span>
@@ -147,7 +147,7 @@ export const ReportsView: React.FC = () => {
 
             {/* Expanded Detailed Delta */}
             {showDiffDetails && (
-              <div className="space-y-3 pt-2 border-t border-separator/20 text-xs">
+              <div className="space-y-3 pt-2 border-t border-separator-muted text-xs">
                 {(comparison.newFindings?.length ?? 0) > 0 && (
                   <div className="space-y-1.5">
                     <span className="font-semibold text-sev-critical text-xs block">
@@ -222,14 +222,14 @@ export const ReportsView: React.FC = () => {
                 return (
                   <div
                     key={scan.id}
-                    className="p-3.5 rounded-md bg-raised/30 border border-separator/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs transition-colors hover:border-separator/40"
+                    className="p-3.5 rounded-md bg-raised/30 border border-separator-subtle flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs transition-colors hover:border-separator"
                   >
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-text-primary font-mono text-xs">
                           {scan.id}
                         </span>
-                        <span className="px-1.5 py-0.5 rounded text-[10px] text-text-secondary font-mono bg-raised uppercase border border-separator/20">
+                        <span className="px-1.5 py-0.5 rounded text-[10px] text-text-secondary font-mono bg-raised uppercase border border-separator-muted">
                           {scan.mode}
                         </span>
                         <Badge

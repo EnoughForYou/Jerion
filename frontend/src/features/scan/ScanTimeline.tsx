@@ -27,7 +27,7 @@ export const ScanTimeline: React.FC<ScanTimelineProps> = ({
   const currentPercentage = progress?.progress ?? 0;
 
   return (
-    <div className="space-y-3 p-4 rounded-lg bg-surface border border-separator/35 shadow-sm text-xs">
+    <div className="space-y-3 p-4 rounded-lg bg-surface border border-separator-subtle shadow-sm text-xs">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           {isScanning && <Loader2 className="w-4 h-4 text-accent animate-spin" />}
@@ -49,13 +49,13 @@ export const ScanTimeline: React.FC<ScanTimelineProps> = ({
       </div>
 
       {progress?.currentPackage && isScanning && (
-        <div className="text-[11px] font-mono text-text-secondary truncate bg-raised/50 px-2 py-1 rounded border border-separator/20">
+        <div className="text-[11px] font-mono text-text-secondary truncate bg-raised/50 px-2 py-1 rounded border border-separator-muted">
           Target: <span className="text-text-primary">{progress.currentPackage}</span>
         </div>
       )}
 
       {/* Step nodes */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 pt-2 border-t border-separator/20">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 pt-2 border-t border-separator-muted">
         {SCAN_STEPS.map((step) => {
           const isDone = currentPercentage >= step.threshold || (!isScanning && currentPercentage > 0);
           const isCurrent = isScanning && currentPercentage < step.threshold && (
@@ -70,7 +70,7 @@ export const ScanTimeline: React.FC<ScanTimelineProps> = ({
                   ? 'bg-ok/5 border-ok/20 text-text-primary'
                   : isCurrent
                   ? 'bg-accent/5 border-accent/30 text-text-primary'
-                  : 'bg-raised/20 border-separator/15 text-text-secondary/60'
+                  : 'bg-raised/20 border-separator-muted text-text-secondary/60'
               }`}
             >
               <div className="mt-0.5 shrink-0">

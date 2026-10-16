@@ -39,7 +39,7 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
   };
 
   return (
-    <header className="h-12 border-b border-separator/35 bg-surface/50 backdrop-blur-sm px-4 flex items-center justify-between shrink-0 select-none">
+    <header className="h-12 border-b border-separator-subtle bg-surface/50 backdrop-blur-sm px-4 flex items-center justify-between shrink-0 select-none">
       {/* Device Information section */}
       <div className="flex items-center gap-3">
         <div className="w-8 h-8 rounded-md bg-raised flex items-center justify-center text-accent shrink-0">
@@ -63,7 +63,7 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
               {getStatusBadge()}
 
               {activeDevice.connectionState === 'ready' && typeof activeDevice.batteryLevel === 'number' && activeDevice.batteryLevel > 0 ? (
-                <span className="inline-flex items-center gap-1 text-xs text-text-secondary bg-raised/70 px-2 py-0.5 rounded-sm border border-separator/30">
+                <span className="inline-flex items-center gap-1 text-xs text-text-secondary bg-raised/70 px-2 py-0.5 rounded-sm border border-separator-muted">
                   {activeDevice.isCharging ? (
                     <BatteryCharging className="w-3.5 h-3.5 text-ok" />
                   ) : (

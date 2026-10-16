@@ -169,7 +169,7 @@ export const MonitorView: React.FC = () => {
   return (
     <div className="space-y-5">
       {/* Header & Monitor Control */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 bg-surface border border-separator/35 rounded-lg shadow-sm">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 bg-surface border border-separator-subtle rounded-lg shadow-sm">
         <div className="flex items-center gap-3.5">
           <div className="w-11 h-11 rounded-lg bg-accent/15 text-accent flex items-center justify-center shrink-0">
             <Radar className={`w-6 h-6 ${isMonitoring ? 'animate-spin' : ''}`} />
@@ -247,7 +247,7 @@ export const MonitorView: React.FC = () => {
           return (
             <div
               key={source.key}
-              className="p-3 bg-surface border border-separator/30 rounded-md flex items-center justify-between text-xs shadow-xs"
+              className="p-3 bg-surface border border-separator-subtle rounded-md flex items-center justify-between text-xs shadow-xs"
             >
               <span className="font-medium text-text-secondary">{source.label}</span>
               <div className="flex items-center gap-1.5">
@@ -288,7 +288,7 @@ export const MonitorView: React.FC = () => {
                 {(candidates || []).map((cand) => (
                   <div
                     key={cand.package}
-                    className="p-3.5 rounded-md bg-raised/30 border border-separator/25 space-y-2 text-xs transition-colors hover:border-separator/40"
+                    className="p-3.5 rounded-md bg-raised/30 border border-separator-subtle space-y-2 text-xs transition-colors hover:border-separator"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-semibold text-text-primary text-xs">
@@ -311,7 +311,7 @@ export const MonitorView: React.FC = () => {
                       {cand.whyFlagged}
                     </p>
 
-                    <div className="pt-2 border-t border-separator/15 flex items-center justify-end gap-2">
+                    <div className="pt-2 border-t border-separator-muted flex items-center justify-end gap-2">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -361,14 +361,14 @@ export const MonitorView: React.FC = () => {
                   return (
                     <div
                       key={evt.id}
-                      className="p-2.5 rounded-md bg-raised/20 border border-separator/20 text-xs transition-colors hover:bg-raised/35"
+                      className="p-2.5 rounded-md bg-raised/20 border border-separator-subtle text-xs transition-colors hover:bg-raised/35"
                     >
                       <div
                         className="flex items-center justify-between cursor-pointer select-none"
                         onClick={() => setExpandedEventId(isExpanded ? null : evt.id)}
                       >
                         <div className="flex items-center gap-2 truncate">
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-mono text-text-secondary uppercase bg-raised border border-separator/20">
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-mono text-text-secondary uppercase bg-raised border border-separator-muted">
                             {evt.type}
                           </span>
                           <span className="font-mono text-[11px] text-text-primary truncate font-medium">
@@ -389,7 +389,7 @@ export const MonitorView: React.FC = () => {
                       </div>
 
                       {isExpanded && (
-                        <div className="mt-2 pt-2 border-t border-separator/15 space-y-1 text-[11px] font-mono text-text-secondary bg-base/60 p-2 rounded">
+                        <div className="mt-2 pt-2 border-t border-separator-muted space-y-1 text-[11px] font-mono text-text-secondary bg-base/60 p-2 rounded">
                           {Object.entries(evt.details || {}).map(([key, val]) => (
                             <div key={key} className="flex gap-2">
                               <span className="text-accent">{key}:</span>

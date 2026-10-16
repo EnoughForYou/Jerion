@@ -27,7 +27,7 @@ export const DialogContent = React.forwardRef<
     <DialogOverlay />
     <DialogPrimitive.Content
       ref={ref}
-      className={`fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-separator/40 bg-surface p-6 shadow-xl duration-200 rounded-lg text-text-primary focus:outline-none ${className}`}
+      className={`fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-separator-subtle bg-surface p-6 shadow-xl duration-200 rounded-lg text-text-primary focus:outline-none ${className}`}
       {...props}
     >
       {children}
@@ -52,7 +52,7 @@ export const DialogFooter = ({
   className = '',
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={`flex items-center justify-end gap-2 pt-4 border-t border-separator/20 ${className}`} {...props} />
+  <div className={`flex items-center justify-end gap-2 pt-4 border-t border-separator-muted ${className}`} {...props} />
 );
 DialogFooter.displayName = 'DialogFooter';
 

@@ -56,11 +56,11 @@ export const RemediateConfirmDialog: React.FC<RemediateConfirmDialogProps> = ({
 
         <div className="space-y-3.5 py-2 text-xs">
           {/* Actions summary list */}
-          <div className="max-h-48 overflow-y-auto space-y-2 p-3 bg-raised/30 rounded-md border border-separator/20">
+          <div className="max-h-48 overflow-y-auto space-y-2 p-3 bg-raised/30 rounded-md border border-separator-subtle">
             {actions.map((act) => (
               <div
                 key={act.id}
-                className="flex items-start justify-between gap-2 p-2 rounded bg-surface/70 border border-separator/15"
+                className="flex items-start justify-between gap-2 p-2 rounded bg-surface/70 border border-separator-muted"
               >
                 <div>
                   <span className="font-semibold text-text-primary block">
@@ -70,7 +70,7 @@ export const RemediateConfirmDialog: React.FC<RemediateConfirmDialogProps> = ({
                     {act.package}
                   </span>
                 </div>
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-raised text-text-secondary border border-separator/20 uppercase shrink-0">
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-raised text-text-secondary border border-separator-muted uppercase shrink-0">
                   {act.type}
                 </span>
               </div>

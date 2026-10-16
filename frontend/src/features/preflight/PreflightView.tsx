@@ -117,9 +117,9 @@ export const PreflightView: React.FC<PreflightViewProps> = ({ onComplete }) => {
 
   return (
     <div className="flex h-screen w-screen items-center justify-center bg-base p-4 select-none">
-      <div className="w-full max-w-[480px] bg-surface border border-separator/35 rounded-lg p-6 shadow-xl text-text-primary">
+      <div className="w-full max-w-[480px] bg-surface border border-separator-subtle rounded-lg p-6 shadow-xl text-text-primary">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-4 pb-3 border-b border-separator/20">
+        <div className="flex items-center gap-3 mb-4 pb-3 border-b border-separator-muted">
           <div className="w-10 h-10 rounded-lg bg-accent/15 text-accent flex items-center justify-center shrink-0">
             <ShieldCheck className="w-6 h-6" />
           </div>
