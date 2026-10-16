@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -139,26 +140,96 @@ func TestTrustedPlatformToolsHashes(t *testing.T) {
 		t.Fatal("expected non-empty default platform tools SHA256")
 	}
 
-	if !IsTrustedPlatformToolsHash("windows", defSHA) {
-		t.Errorf("expected default SHA to be trusted on windows: %s", defSHA)
+	// Default hash must be trusted for the host environment OS
+	if !IsTrustedPlatformToolsHash(runtime.GOOS, defSHA) {
+		t.Errorf("expected default SHA to be trusted on host OS %s: %s", runtime.GOOS, defSHA)
 	}
 
-	if IsTrustedPlatformToolsHash("windows", "0000000000000000000000000000000000000000000000000000000000000000") {
-		t.Error("expected bogus SHA to NOT be trusted")
+	// Table-driven verification across all supported operating systems (Windows, Darwin, Linux)
+	tests := []struct {
+		name     string
+		goos     string
+		hash     string
+		expected bool
+	}{
+		{
+			name:     "Windows r37.0.1 trusted",
+			goos:     "windows",
+			hash:     "45f4d63113e895ebde0c90f194099a4676b6ac653bd28d54314a9e022bbc1a99",
+			expected: true,
+		},
+		{
+			name:     "Windows r35.0.2 trusted",
+			goos:     "windows",
+			hash:     "86be168bfaae7ea1d86f9f5926ec3ba04164b4c73656910e54d89fa7a00f8aa4",
+			expected: true,
+		},
+		{
+			name:     "Darwin r37.0.1 trusted",
+			goos:     "darwin",
+			hash:     "ee39ad5967e95c2a07f04dbcbde96b1a0c916ba376096db5d2f498b7727a5d1d",
+			expected: true,
+		},
+		{
+			name:     "Linux r37.0.1 trusted",
+			goos:     "linux",
+			hash:     "d230f13842f60f782a8645f9c813f8f845bf36089ea7289f28c48f17979313f1",
+			expected: true,
+		},
+		{
+			name:     "Unsupported OS untrusted",
+			goos:     "freebsd",
+			hash:     "45f4d63113e895ebde0c90f194099a4676b6ac653bd28d54314a9e022bbc1a99",
+			expected: false,
+		},
+		{
+			name:     "Bogus SHA untrusted on windows",
+			goos:     "windows",
+			hash:     "0000000000000000000000000000000000000000000000000000000000000000",
+			expected: false,
+		},
+		{
+			name:     "Bogus SHA untrusted on linux",
+			goos:     "linux",
+			hash:     "0000000000000000000000000000000000000000000000000000000000000000",
+			expected: false,
+		},
+		{
+			name:     "Bogus SHA untrusted on darwin",
+			goos:     "darwin",
+			hash:     "0000000000000000000000000000000000000000000000000000000000000000",
+			expected: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := IsTrustedPlatformToolsHash(tc.goos, tc.hash)
+			if got != tc.expected {
+				t.Errorf("IsTrustedPlatformToolsHash(%q, %q) = %v; want %v", tc.goos, tc.hash, got, tc.expected)
+			}
+		})
 	}
 }
 
 func TestStrictChecksumMatching(t *testing.T) {
-	// Pinned r37.0.1 hash must match itself
+	// Pinned r37.0.1 hash for host OS must match itself
 	pinned := DefaultPlatformToolsSHA256()
-	if !IsTrustedPlatformToolsHash("windows", pinned) {
-		t.Fatalf("expected pinned SHA256 %s to be trusted", pinned)
+	if pinned == "" {
+		t.Fatal("expected non-empty default platform tools SHA256")
+	}
+
+	if !IsTrustedPlatformToolsHash(runtime.GOOS, pinned) {
+		t.Fatalf("expected pinned SHA256 %s to be trusted on %s", pinned, runtime.GOOS)
 	}
 
 	// Mismatched hash must not be accepted when pinned version is required
-	olderHash := "86be168bfaae7ea1d86f9f5926ec3ba04164b4c73656910e54d89fa7a00f8aa4" // r35.0.2
-	if strings.EqualFold(olderHash, pinned) {
-		t.Fatalf("expected r35.0.2 hash to differ from pinned r37.0.1")
+	bogusHash := "0000000000000000000000000000000000000000000000000000000000000000"
+	if strings.EqualFold(bogusHash, pinned) {
+		t.Fatalf("expected bogus hash to differ from pinned")
+	}
+	if IsTrustedPlatformToolsHash(runtime.GOOS, bogusHash) {
+		t.Fatalf("expected bogus hash to not be trusted on %s", runtime.GOOS)
 	}
 }
 
