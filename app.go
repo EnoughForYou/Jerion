@@ -976,13 +976,16 @@ func (a *App) ScanQuick() (*contract.ScanResult, error) {
 		return nil, err
 	}
 
-	// Poll until completed (for synchronous quickScan callers)
+	// Poll until terminal state (completed, partial, failed, cancelled) for synchronous callers
 	deadline := time.Now().Add(60 * time.Second)
 	for time.Now().Before(deadline) {
 		time.Sleep(300 * time.Millisecond)
 		res, _ := a.ScanStatus(scanId)
-		if res != nil && res.Status == "completed" {
-			return res, nil
+		if res != nil {
+			switch res.Status {
+			case "completed", "partial", "failed", "cancelled":
+				return res, nil
+			}
 		}
 	}
 
@@ -1358,7 +1361,10 @@ func (a *App) AuditGetLatest() ([]contract.AuditItem, error) {
 
 func (a *App) RemediateCreatePlan(findingIds []string) (contract.RemediationPlan, error) {
 	serial, err := a.getTargetSerial()
-	if err != nil || serial == "" {
+	if err != nil {
+		return contract.RemediationPlan{}, err
+	}
+	if serial == "" {
 		return contract.RemediationPlan{}, wireError("DeviceOffline", "No active trusted device connected", "Connect a device via USB and verify ADB authorization")
 	}
 
@@ -1460,17 +1466,8 @@ func (a *App) RemediateCreatePlan(findingIds []string) (contract.RemediationPlan
 			}
 		}
 
-		// Detect if system package
-		isSystem := false
-		if serial != "" {
-			stdout, _, err := a.runner.Run(ctx, serial, "shell", "pm", "path", pkg)
-			if err == nil {
-				p := string(stdout)
-				if strings.Contains(p, "/system/") || strings.Contains(p, "/product/") || strings.Contains(p, "/vendor/") || strings.Contains(p, "/apex/") {
-					isSystem = true
-				}
-			}
-		}
+		// Detect if system package via trusted Package Manager metadata
+		isSystem := a.isSystemPackage(ctx, serial, pkg)
 
 		act := a.remediate.CreateAction(actionType, pkg, perm, appop, isSystem)
 		act.DeviceSerial = serial
@@ -1500,7 +1497,10 @@ func (a *App) RemediateCreatePlan(findingIds []string) (contract.RemediationPlan
 
 func (a *App) RemediateExecute(plan contract.RemediationPlan) ([]contract.ActionLogEntry, error) {
 	serial, err := a.getTargetSerial()
-	if err != nil || serial == "" {
+	if err != nil {
+		return nil, err
+	}
+	if serial == "" {
 		return nil, wireError("DeviceOffline", "No active trusted device connected", "Connect a device via USB and verify ADB authorization")
 	}
 
@@ -1666,6 +1666,48 @@ func (a *App) RemediateUndo(logEntryId string) (contract.ActionLogEntry, error) 
 		AuditSaved: entry.AuditSaved,
 		AuditError: entry.AuditError,
 	}, nil
+}
+
+func (a *App) isSystemPackage(ctx context.Context, serial, pkg string) bool {
+	if a.inventory != nil {
+		return a.inventory.IsSystemPackage(ctx, serial, pkg)
+	}
+
+	if serial == "" || pkg == "" {
+		return false
+	}
+
+	// 1. Check Package Manager system package catalog (pm list packages -s <pkg>)
+	stdout, _, err := a.runner.Run(ctx, serial, "shell", "pm", "list", "packages", "-s", pkg)
+	if err == nil {
+		lines := strings.Split(string(stdout), "\n")
+		expected := "package:" + pkg
+		for _, line := range lines {
+			if strings.TrimSpace(line) == expected {
+				return true
+			}
+		}
+	}
+
+	// 2. Check Package Manager dumpsys metadata (flags / pkgFlags / privateFlags)
+	dOut, _, dErr := a.runner.Run(ctx, serial, "shell", "dumpsys", "package", pkg)
+	if dErr == nil {
+		dInfo := inventory.ParseDumpsysPackage(string(dOut))
+		if dInfo != nil && dInfo.IsSystem {
+			return true
+		}
+	}
+
+	// 3. Fallback: check APK path for system partition mount points
+	pOut, _, pErr := a.runner.Run(ctx, serial, "shell", "pm", "path", pkg)
+	if pErr == nil {
+		p := string(pOut)
+		if strings.Contains(p, "/system/") || strings.Contains(p, "/product/") || strings.Contains(p, "/vendor/") || strings.Contains(p, "/apex/") || strings.Contains(p, "/system_ext/") || strings.Contains(p, "/odm/") || strings.Contains(p, "/oem/") {
+			return true
+		}
+	}
+
+	return false
 }
 
 // --- 8. Report Service ---
