@@ -5,7 +5,6 @@ import {
   Shield,
   Search,
   CheckCircle2,
-  Calendar,
   HelpCircle,
   AlertTriangle,
   RotateCcw,
@@ -25,6 +24,7 @@ import { ErrorState } from '../../components/ui/ErrorState';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { getBridge } from '../../lib/bridge';
 import { useDeviceStore } from '../../app/deviceStore';
+import { getCanonicalSecurityState } from '../../app/deviceSecurityState';
 import { StaticFallback } from '../../three/StaticFallback';
 import { OnboardingModal } from './OnboardingModal';
 import type { ScanResult } from '../../lib/bridge/schema';
@@ -34,7 +34,7 @@ const DeviceScene = React.lazy(() => import('../../three/DeviceScene'));
 export const HomeView: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { activeDevice, setActiveDevice } = useDeviceStore();
+  const { activeDevice, setActiveDevice, activeJob } = useDeviceStore();
 
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -51,10 +51,22 @@ export const HomeView: React.FC = () => {
       const device = await bridge.device.getConnected();
       setActiveDevice(device);
 
-      const scanList = await bridge.report.list();
-      if (scanList && scanList.length > 0) {
-        const latest = await bridge.report.get(scanList[0].id);
-        setScanResult(latest);
+      // Enforce strict device-serial binding: only query and apply scan results
+      // that belong to the actively connected device
+      if (device && device.connectionState === 'ready') {
+        const scanList = await bridge.report.list();
+        if (scanList && scanList.length > 0) {
+          const latest = await bridge.report.get(scanList[0].id);
+          if (latest && latest.deviceId === device.serial) {
+            setScanResult(latest);
+          } else {
+            setScanResult(null);
+          }
+        } else {
+          setScanResult(null);
+        }
+      } else {
+        setScanResult(null);
       }
     } catch (err: unknown) {
       setError(
@@ -102,6 +114,8 @@ export const HomeView: React.FC = () => {
   }
 
   const device = activeDevice;
+  const isScanning = Boolean(activeJob && activeJob.toLowerCase().includes('scan'));
+  const securityContext = getCanonicalSecurityState(device, scanResult, isScanning);
 
   // Determine device connection state for conditional rendering
   const isDeviceReady = device?.connectionState === 'ready';
@@ -126,26 +140,48 @@ export const HomeView: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {!device && (
-            <Button
-              variant="secondary"
-              size="md"
-              onClick={() => setShowOnboarding(true)}
-            >
-              <HelpCircle className="w-4 h-4" />
-              {t('onboarding.title')}
-            </Button>
+        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
+          {!device ? (
+            <>
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => setShowOnboarding(true)}
+              >
+                <HelpCircle className="w-4 h-4" />
+                <span>{t('home.connectDevice', 'Connect Device')}</span>
+              </Button>
+              <Button
+                variant="secondary"
+                size="md"
+                aria-disabled={true}
+                className="opacity-50 cursor-not-allowed"
+                title={securityContext.disabledReason}
+                onClick={(e) => e.preventDefault()}
+              >
+                <Search className="w-4 h-4" />
+                <span>{t('home.scanCta')}</span>
+              </Button>
+            </>
+          ) : (
+            <div className="flex flex-col items-end gap-1">
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => navigate('/scan')}
+                disabled={!isDeviceReady}
+                aria-disabled={!isDeviceReady}
+              >
+                <Search className="w-4 h-4" />
+                <span>{t('home.scanCta')}</span>
+              </Button>
+              {!isDeviceReady && securityContext.disabledReason && (
+                <span className="text-[10px] text-text-secondary">
+                  {securityContext.disabledReason}
+                </span>
+              )}
+            </div>
           )}
-          <Button
-            variant="primary"
-            size="md"
-            onClick={() => navigate('/scan')}
-            disabled={!isDeviceReady}
-          >
-            <Search className="w-4 h-4" />
-            {t('home.scanCta')}
-          </Button>
         </div>
       </div>
 
@@ -361,11 +397,11 @@ export const HomeView: React.FC = () => {
                 description={t('device.noDeviceHint')}
                 action={
                   <Button
-                    variant="secondary"
+                    variant="primary"
                     size="sm"
                     onClick={() => setShowOnboarding(true)}
                   >
-                    {t('onboarding.title')}
+                    {t('home.connectDevice', 'Connect Device')}
                   </Button>
                 }
               />
@@ -391,7 +427,20 @@ export const HomeView: React.FC = () => {
                 <Skeleton className="h-4 w-5/6" />
                 <Skeleton className="h-4 w-3/4" />
               </div>
-            ) : scanResult ? (
+            ) : securityContext.state === 'scanned-clean' ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-ok text-sm font-semibold">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span>{t('home.noFindingsTitle', 'No findings in the last scan')}</span>
+                </div>
+                <p className="text-xs text-text-secondary leading-relaxed">
+                  {t('home.noFindingsDesc', 'Inspected applications, system permissions, active overlays, and background services without finding threat anomalies.')}
+                </p>
+                <div className="pt-2 border-t border-separator/20 text-[11px] text-text-secondary font-mono">
+                  {securityContext.contextText}
+                </div>
+              </div>
+            ) : securityContext.state === 'scanned-findings' && scanResult ? (
               <div className="space-y-3.5">
                 <div className="flex flex-wrap gap-2">
                   <Badge severity="critical" count={scanResult.summary?.counts?.critical ?? 0} />
@@ -401,28 +450,48 @@ export const HomeView: React.FC = () => {
                   <Badge severity="info" count={scanResult.summary?.counts?.info ?? 0} />
                 </div>
 
-                <div className="pt-2 border-t border-separator/20 grid grid-cols-2 gap-2 text-xs text-text-secondary">
-                  <div className="flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5" />
-                    <span>
-                      {t('home.scanMode', {
-                        mode: (scanResult.mode || 'quick').toUpperCase(),
-                      })}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-ok" />
-                    <span>
-                      {t('home.findingsDetected', {
-                        count: scanResult.findings?.length ?? 0,
-                      })}
-                    </span>
-                  </div>
+                <div className="pt-2 border-t border-separator/20 flex items-center justify-between text-xs text-text-secondary">
+                  <span className="font-mono text-[11px]">{securityContext.contextText}</span>
+                  <Button variant="outline" size="sm" onClick={() => navigate('/scan')}>
+                    <span>{t('home.reviewFindings', 'Review Findings')}</span>
+                  </Button>
                 </div>
               </div>
+            ) : securityContext.state === 'partial-failed' ? (
+              <div className="py-3 text-center text-xs text-text-secondary space-y-2">
+                <AlertTriangle className="w-6 h-6 text-warning mx-auto opacity-80" />
+                <p className="font-medium text-text-primary">
+                  {t('home.scanIncompleteTitle', 'Scan Incomplete or Interrupted')}
+                </p>
+                <p className="text-[11px] text-text-secondary font-mono">
+                  {securityContext.contextText}
+                </p>
+              </div>
+            ) : securityContext.state === 'never-scanned' ? (
+              <div className="py-4 text-center text-xs text-text-secondary space-y-2.5">
+                <Shield className="w-6 h-6 text-accent/70 mx-auto opacity-70" />
+                <div>
+                  <p className="font-medium text-text-primary">
+                    {t('home.readyToScanTitle', 'Ready to Scan')}
+                  </p>
+                  <p className="text-[11px] text-text-secondary">
+                    {t('home.readyToScanDesc', 'No scan performed yet for this device. Run a scan to inspect installed apps and system permissions.')}
+                  </p>
+                </div>
+                <Button variant="secondary" size="sm" onClick={() => navigate('/scan')}>
+                  <Search className="w-3.5 h-3.5" />
+                  <span>{t('home.scanCta')}</span>
+                </Button>
+              </div>
             ) : (
-              <div className="py-4 text-center text-xs text-text-secondary">
-                {t('home.noScan')}
+              <div className="py-4 text-center text-xs text-text-secondary space-y-2">
+                <Smartphone className="w-6 h-6 text-text-secondary mx-auto opacity-50" />
+                <p className="font-medium text-text-primary">
+                  {t('device.noDevice')}
+                </p>
+                <p className="text-[11px] text-text-secondary">
+                  {t('device.noDeviceHint')}
+                </p>
               </div>
             )}
           </CardContent>
@@ -434,13 +503,21 @@ export const HomeView: React.FC = () => {
         <React.Suspense
           fallback={
             <StaticFallback
-              findingsCount={scanResult?.findings?.length ?? 0}
+              canonicalState={securityContext.state}
+              findingsCount={securityContext.findingsCount}
             />
           }
         >
           <DeviceScene
-            status={scanResult ? 'completed' : 'idle'}
-            findingsCount={scanResult?.findings?.length ?? 0}
+            status={
+              securityContext.state === 'scanning'
+                ? 'scanning'
+                : securityContext.state === 'scanned-clean' || securityContext.state === 'scanned-findings'
+                ? 'completed'
+                : 'idle'
+            }
+            canonicalState={securityContext.state}
+            findingsCount={securityContext.findingsCount}
           />
         </React.Suspense>
       </Card>

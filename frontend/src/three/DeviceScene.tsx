@@ -3,16 +3,19 @@ import { Canvas } from '@react-three/fiber';
 import { DeviceModel } from './DeviceModel';
 import { StaticFallback } from './StaticFallback';
 import { isWebGLAvailable, prefersReducedMotion } from './webgl';
+import type { CanonicalSecurityState } from '../app/deviceSecurityState';
 
 export interface DeviceSceneProps {
   status?: 'idle' | 'scanning' | 'completed';
   findingsCount?: number;
+  canonicalState?: CanonicalSecurityState;
   className?: string;
 }
 
 export const DeviceScene: React.FC<DeviceSceneProps> = ({
   status = 'idle',
   findingsCount = 0,
+  canonicalState,
   className = '',
 }) => {
   const safeCount = Math.max(0, Number(findingsCount) || 0);
@@ -41,7 +44,14 @@ export const DeviceScene: React.FC<DeviceSceneProps> = ({
   }, [canRender3D]);
 
   if (!canRender3D) {
-    return <StaticFallback status={status} findingsCount={safeCount} className={className} />;
+    return (
+      <StaticFallback
+        status={status}
+        findingsCount={safeCount}
+        canonicalState={canonicalState}
+        className={className}
+      />
+    );
   }
 
   return (

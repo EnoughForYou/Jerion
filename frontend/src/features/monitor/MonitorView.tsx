@@ -11,12 +11,15 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
+  Smartphone,
+  AlertTriangle,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { getBridge } from '../../lib/bridge';
 import { useDeviceStore } from '../../app/deviceStore';
 import type { MonitorCandidate, MonitorEvent, MonitorSnapshot } from '../../lib/bridge/schema';
@@ -24,7 +27,7 @@ import type { MonitorCandidate, MonitorEvent, MonitorSnapshot } from '../../lib/
 export const MonitorView: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { setActiveJob } = useDeviceStore();
+  const { activeDevice, setActiveDevice, setActiveJob } = useDeviceStore();
 
   const [snapshot, setSnapshot] = useState<MonitorSnapshot | null>(null);
   const [candidates, setCandidates] = useState<MonitorCandidate[]>([]);
@@ -39,6 +42,27 @@ export const MonitorView: React.FC = () => {
     let isMounted = true;
 
     async function loadSnapshot() {
+      let dev = activeDevice;
+      if (!dev) {
+        try {
+          dev = await bridge.device.getConnected();
+          if (dev && isMounted) {
+            setActiveDevice(dev);
+          }
+        } catch {
+          dev = null;
+        }
+      }
+
+      if (!dev || dev.connectionState !== 'ready') {
+        if (isMounted) {
+          setSnapshot(null);
+          setIsMonitoring(false);
+          setCandidates([]);
+          setEvents([]);
+        }
+        return;
+      }
       try {
         const snap = await bridge.monitor.snapshot();
         if (isMounted) {
@@ -70,7 +94,7 @@ export const MonitorView: React.FC = () => {
       unsubEvent();
       unsubCandidate();
     };
-  }, [bridge]);
+  }, [bridge, activeDevice, setActiveDevice]);
 
   const toggleMonitoring = async () => {
     try {
@@ -105,6 +129,42 @@ export const MonitorView: React.FC = () => {
       console.error('Failed to mark popup:', err);
     }
   };
+
+  if (!activeDevice) {
+    return (
+      <div className="flex h-full items-center justify-center p-8">
+        <EmptyState
+          icon={<Smartphone className="w-5 h-5 text-text-secondary" />}
+          title={t('device.noDevice')}
+          description={t('device.noDeviceHint')}
+        />
+      </div>
+    );
+  }
+
+  if (activeDevice.connectionState === 'unauthorized') {
+    return (
+      <div className="flex h-full items-center justify-center p-8">
+        <EmptyState
+          icon={<AlertTriangle className="w-5 h-5 text-warning" />}
+          title={t('device.unauthorizedTitle')}
+          description={`${t('device.unauthorizedPrompt')} ${t('device.unauthorizedAction')}`}
+        />
+      </div>
+    );
+  }
+
+  if (activeDevice.connectionState === 'offline') {
+    return (
+      <div className="flex h-full items-center justify-center p-8">
+        <EmptyState
+          icon={<AlertTriangle className="w-5 h-5 text-warning" />}
+          title={t('device.offlineTitle')}
+          description={`${t('device.offlinePrompt')} ${t('device.offlineTip')}`}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -141,6 +201,14 @@ export const MonitorView: React.FC = () => {
             variant={isMonitoring ? 'destructive' : 'primary'}
             size="md"
             onClick={toggleMonitoring}
+            disabled={!activeDevice || activeDevice.connectionState !== 'ready'}
+            title={
+              !activeDevice
+                ? t('device.noDeviceHint')
+                : activeDevice.connectionState !== 'ready'
+                ? t('device.unauthorizedPrompt')
+                : undefined
+            }
           >
             {isMonitoring ? (
               <>

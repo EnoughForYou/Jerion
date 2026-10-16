@@ -50,7 +50,7 @@ describe('Feature Placeholder Views with Mock Bridge Fixtures', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/Authorization Required/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Authorization Required/i).length).toBeGreaterThan(0);
       expect(screen.getAllByText(/Pending Authorization/i).length).toBeGreaterThan(0);
     });
 

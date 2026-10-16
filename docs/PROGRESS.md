@@ -1,17 +1,28 @@
 # PROGRESS
 
 ## Status sekarang
-- Fase aktif: HYG-1 — Kebersihan Repo & CI (v1.0.1)
-- Branch: phase/hyg-1
-- Terakhir selesai: Audit Hardening & Cross-Platform CI Fix (tag v1.0.0)
+- Fase aktif: UX-1a — Product Honesty & State Machine (v1.0.2)
+- Branch: phase/ux-1a
+- Terakhir selesai: Kebersihan Repo & CI (tag v1.0.1)
 
-## Fase HYG-1 (Kebersihan Repo & CI) — checklist
-- [x] Sub-tugas HYG.1: Pemindahan dependensi build CSS (`tailwindcss`, `postcss`, `autoprefixer`) dari `dependencies` ke `devDependencies` di `frontend/package.json`, menghasilkan **0 vulnerabilities** pada runtime dependencies produksi (`npm audit --omit=dev`).
-- [x] Sub-tugas HYG.2: Dokumentasi risiko diterima untuk 7 temuan audit dev penuh (2 moderate, 5 high pada rantai chokidar/micromatch/braces dan postcss-nested/postcss-selector-parser) sebagai risiko tooling kompilasi semata (*build-time only*), dengan migrasi terencana ke Tailwind v4 di masa depan melalui ADR terpisah tanpa `--force`.
-- [x] Sub-tugas HYG.3: Penggantian cakupan uji `go vet` dan `go test` dari wildcard global `./...` menjadi paket aplikasi eksplisit `. ./internal/...` pada skrip lokal dan alur CI GitHub Actions, mengeliminasi penjelajahan modul `frontend/node_modules/flatted/golang`.
-- [x] Sub-tugas HYG.4: Integrasi pemeriksaan keamanan Go `govulncheck` dan linter statis `golangci-lint` pada alur CI GitHub Actions (`.github/workflows/ci.yml`).
+## Fase UX-1a (Product Honesty & State Machine) — checklist
+- [x] Sub-tugas UX1A.1: Implementasi mesin 8 status keamanan kanonis (`frontend/src/app/deviceSecurityState.ts`): `no-device`, `unauthorized`, `offline`, `never-scanned`, `scanning`, `scanned-clean`, `scanned-findings`, `partial-failed` dengan pengikatan serial perangkat ketat (`deviceId === activeDevice.serial || deviceId === activeDevice.id`) guna mengeliminasi kebocoran cache antar perangkat.
+- [x] Sub-tugas UX1A.2: Eliminasi rasa aman palsu (PRD §1.6): centang hijau dan indikator clean secara eksklusif hanya diizinkan pada status `scanned-clean` (scan selesai penuh dengan 0 temuan pada perangkat yang sedang terhubung).
+- [x] Sub-tugas UX1A.3: Standardisasi copy jujur & 3D honest rendering: "No findings in the last scan" menggantikan "Device Protected" dan "No threats detected" pada `StaticFallback.tsx`, `DeviceModel.tsx`, `HomeView.tsx`, `ScanView.tsx`, dan `en.json`. Cincin Three.js berwarna netral abu-abu `#8E8E93` saat idle/belum scan dan hijau `#30D158` hanya bila scanned-clean. Konteks lengkap scan (mode, jumlah aplikasi, waktu, versi rules) ditampilkan secara eksplisit.
+- [x] Sub-tugas UX1A.4: Single source of truth untuk bridge: ekspor `bridgeKind: BridgeKind` dari `frontend/src/lib/bridge/index.ts`, hapus seluruh pembacaan `import.meta.env.VITE_BRIDGE` di UI. Badge bridge pada `StatusBar.tsx` dan baris bridge pada `SettingsView.tsx` dikunci hanya tampil pada `import.meta.env.DEV`, mengeliminasi pembakaran literal string `"MOCK"` pada bundle produksi Wails.
+- [x] Sub-tugas UX1A.5: Pengetatan gerbang bundle `frontend/scripts/check-no-mock.js`: penambahan pola terlarang `'BRIDGE: MOCK'`, `'Bridge: MOCK'`, `'MOCK (Simulated)'`, `'mode:"MOCK"'`, dan `'mode: "MOCK"'`.
+- [x] Sub-tugas UX1A.6: Prioritas status perangkat sebelum error: `AppsView.tsx`, `AuditView.tsx`, `MonitorView.tsx`, dan `RemediateView.tsx` memprioritaskan empty state kanonis (`no-device`, `unauthorized`, `offline`) sebelum menampilkan `ErrorState` "Failed to Load ... Retry", mengeliminasi pesan kegagalan palsu saat perangkat belum terhubung.
+- [x] Sub-tugas UX1A.7: Unit tests komprehensif: pembuatan `deviceSecurityState.test.ts` (10 skenario pengujian 8 state kanonis dan isolasi serial), `noMockLiterals.test.ts` (verifikasi string literal MOCK pada komponen UI), serta pembaruan suite tes pada `scene.test.tsx`, `scan.test.tsx`, `audit.test.tsx`, `monitor.test.tsx`, dan `placeholders.test.tsx` (152 tes lulus 100%).
 
-## Pengukuran & Kualitas (HYG-1)
+## Pengukuran & Kualitas (UX-1a)
+- **Frontend Vitest Suite**: 152 pengujian lolos di 23 file tes (`npm run test`).
+- **ESLint & TypeScript**: 0 error, 0 warning pada `npm run lint` & `npm run typecheck`.
+- **Mock Elimination (`npm run check:no-mock`)**: 0 marker mock di seluruh bundle produksi.
+- **Backend Go Test Suite**: 100% test lulus di seluruh 16 paket backend Go (`go test -count=1 . ./internal/...`).
+- **Backend Go Vet**: Lulus bersih tanpa peringatan (`go vet . ./internal/...`).
+- **Production Compilation (`wails build`)**: Standalone binary Windows x64 `build/bin/Jerion.exe` terkompilasi bersih dalam 19.59 detik.
+
+## Fase HYG-1 (Kebersihan Repo & CI) — riwayat selesai (v1.0.1)
 - **Produksi NPM Audit**: 0 vulnerabilities (`npm audit --omit=dev --prefix frontend`).
 - **Audit Tooling Dev Penuh (Accepted Risk)**: 7 temuan (braces DoS via nested patterns, postcss CPU exhaustion) terbatas pada AST parser watcher Tailwind v3 lokal dan tidak terbundel ke runtime JavaScript browser maupun binary executable Wails.
 - **Backend Go Vet**: Lulus bersih tanpa peringatan pada `. ./internal/...`.

@@ -17,6 +17,7 @@ import { Button } from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { RemediateConfirmDialog } from './RemediateConfirmDialog';
 import { getBridge } from '../../lib/bridge';
+import { useDeviceStore } from '../../app/deviceStore';
 import type { ActionLogEntry, RemediationAction, RemediationPlan } from '../../lib/bridge/schema';
 
 interface ExecutionFeedback {
@@ -27,6 +28,7 @@ interface ExecutionFeedback {
 
 export const RemediateView: React.FC = () => {
   const { t } = useTranslation();
+  const { activeDevice, setActiveDevice } = useDeviceStore();
   const [logs, setLogs] = useState<ActionLogEntry[]>([]);
   const [stagedActions, setStagedActions] = useState<RemediationAction[]>([]);
   const [selectedActionIds, setSelectedActionIds] = useState<Set<string>>(new Set());
@@ -41,24 +43,57 @@ export const RemediateView: React.FC = () => {
     try {
       setIsLoading(true);
 
+      let dev = activeDevice;
+      if (!dev) {
+        try {
+          dev = await bridge.device.getConnected();
+          if (dev) {
+            setActiveDevice(dev);
+          }
+        } catch {
+          dev = null;
+        }
+      }
+
       // Load action history
       const history = await bridge.remediate.getHistory();
       setLogs(history || []);
 
-      // Load actionable findings from latest report to generate staged remediation plan
-      const reports = await bridge.report.list();
-      if (reports && reports.length > 0) {
-        const latestScan = await bridge.report.get(reports[0].id);
-        if (latestScan && latestScan.findings) {
-          const findingIds = latestScan.findings.map((f) => f.id);
-          const plan = await bridge.remediate.createPlan(findingIds);
-          if (plan && plan.actions) {
-            setStagedActions(plan.actions);
-            // Select all non-blocked actions by default
-            setSelectedActionIds(
-              new Set(plan.actions.filter((a) => !a.isBlocked).map((a) => a.id))
-            );
+      // Load actionable findings from latest report matching activeDevice serial or id
+      if (!dev || dev.connectionState !== 'ready') {
+        setStagedActions([]);
+        setSelectedActionIds(new Set());
+      } else {
+        const reports = await bridge.report.list();
+        const devId = dev.serial;
+        const altId = dev.id;
+        if (reports && reports.length > 0) {
+          const latestScan = await bridge.report.get(reports[0].id);
+          if (
+            latestScan &&
+            latestScan.findings &&
+            ((devId && latestScan.deviceId === devId) ||
+              (altId && latestScan.deviceId === altId))
+          ) {
+            const findingIds = latestScan.findings.map((f) => f.id);
+            const plan = await bridge.remediate.createPlan(findingIds);
+            if (plan && plan.actions) {
+              setStagedActions(plan.actions);
+              // Select all non-blocked actions by default
+              setSelectedActionIds(
+                new Set(plan.actions.filter((a) => !a.isBlocked).map((a) => a.id))
+              );
+            } else {
+              setStagedActions([]);
+              setSelectedActionIds(new Set());
+            }
+          } else {
+            setStagedActions([]);
+            setSelectedActionIds(new Set());
           }
+        } else {
+          setStagedActions([]);
+          setSelectedActionIds(new Set());
         }
       }
     } catch (err) {
@@ -66,7 +101,7 @@ export const RemediateView: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [bridge]);
+  }, [bridge, activeDevice, setActiveDevice]);
 
   useEffect(() => {
     let isMounted = true;
@@ -96,6 +131,9 @@ export const RemediateView: React.FC = () => {
   };
 
   const handleExecutePlan = async (plan: RemediationPlan) => {
+    if (!activeDevice || activeDevice.connectionState !== 'ready') {
+      return;
+    }
     try {
       setIsExecuting(true);
       const newLogs = await bridge.remediate.execute(plan);
@@ -264,7 +302,14 @@ export const RemediateView: React.FC = () => {
                   variant="destructive"
                   size="sm"
                   onClick={() => setShowConfirmDialog(true)}
-                  disabled={isExecuting}
+                  disabled={isExecuting || !activeDevice || activeDevice.connectionState !== 'ready'}
+                  title={
+                    !activeDevice
+                      ? t('device.noDeviceHint')
+                      : activeDevice.connectionState !== 'ready'
+                      ? t('device.unauthorizedPrompt')
+                      : undefined
+                  }
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   <span>

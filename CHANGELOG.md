@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-10-16
+
+### Added
+- **Stage UX-1a (Product Honesty, Canonical State Machine & Bridge Diagnostics)**:
+  - **Canonical Device Security State Machine (`frontend/src/app/deviceSecurityState.ts`)**: Implemented an explicit 8-state security evaluator (`no-device`, `unauthorized`, `offline`, `never-scanned`, `scanning`, `scanned-clean`, `scanned-findings`, `partial-failed`) with strict device serial and ID matching (`scanResult.deviceId === device.serial || scanResult.deviceId === device.id`), preventing cross-device scan report cache contamination.
+  - **Clean Verdict Restriction (PRD §1.6)**: Strictly restricted green checkmarks, `text-ok` badges, and clean security verdicts to `scanned-clean` (completed scan on the actively connected device with 0 threat findings).
+  - **Honest Copy & 3D Visual Rendering**: Replaced overclaiming "Device Protected" and "No threats detected" labels with factual copy: "No findings in the last scan" accompanied by explicit scan context (mode, inspected apps count, completion timestamp, rules version). Replaced unconditional green 3D ring with honest status coloring (neutral gray `#8E8E93` when idle/unscanned, green `#30D158` ONLY on `scanned-clean`).
+  - **Bridge Mode Source of Truth & Zero-Mock Production Bundling**: Exported `bridgeKind: BridgeKind` from `frontend/src/lib/bridge/index.ts`, eliminated brittle compile-time `import.meta.env.VITE_BRIDGE` checks in UI components, and restricted bridge mode badges in `StatusBar.tsx` and "Active Bridge" row in `SettingsView.tsx` strictly to `import.meta.env.DEV`.
+  - **Production Bundle Forbidden Pattern Enforcement (`scripts/check-no-mock.js`)**: Added checks for `'BRIDGE: MOCK'`, `'Bridge: MOCK'`, `'MOCK (Simulated)'`, and `'mode:"MOCK"'` to verify 0 mock tokens appear in production bundles.
+  - **Device Connection Priority over Error States**: Updated `AppsView.tsx`, `AuditView.tsx`, `MonitorView.tsx`, and `RemediateView.tsx` to prioritize canonical empty states (`no-device`, `unauthorized`, `offline`) before displaying `ErrorState` ("Failed to Load... Retry"), eliminating confusing error screens when no device is connected.
+  - **Automated Regression Test Suite**: Added `deviceSecurityState.test.ts` (10 tests covering all 8 states and leak prevention), `noMockLiterals.test.ts` (source AST/raw check verifying 0 hardcoded MOCK string literals in production components), and updated all component test suites (152 tests passed).
+
 ## [1.0.1] - 2026-10-16
 
 ### Changed

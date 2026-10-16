@@ -8,6 +8,8 @@ import {
   AlertTriangle,
   Shield,
   Filter,
+  Smartphone,
+  Clock,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/Card';
@@ -23,13 +25,14 @@ import {
 } from '../../components/ui/Dialog';
 import { getBridge } from '../../lib/bridge';
 import { useDeviceStore } from '../../app/deviceStore';
+import { getCanonicalSecurityState } from '../../app/deviceSecurityState';
 import { ScanTimeline } from './ScanTimeline';
 import { EvidenceDrawer } from './EvidenceDrawer';
 import type { Finding, ScanMode, ScanProgress, ScanResult, Severity } from '../../lib/bridge/schema';
 
 export const ScanView: React.FC = () => {
   const { t } = useTranslation();
-  const { activeDevice, setActiveJob } = useDeviceStore();
+  const { activeDevice, setActiveDevice, setActiveJob } = useDeviceStore();
 
   const [mode, setMode] = useState<ScanMode>('quick');
   const [includeSystem, setIncludeSystem] = useState(false);
@@ -45,6 +48,8 @@ export const ScanView: React.FC = () => {
   const bridge = getBridge();
 
   useEffect(() => {
+    let isMounted = true;
+
     const unsubProgress = bridge.on('scan:progress', (data) => {
       setProgress(data);
       setActiveJob(data.step, data.progress);
@@ -64,13 +69,41 @@ export const ScanView: React.FC = () => {
 
     async function loadInitial() {
       try {
-        const list = await bridge.report.list();
-        if (list && list.length > 0) {
-          const res = await bridge.report.get(list[0].id);
-          if (res) {
-            setScanResult(res);
-            setFindings(res.findings || []);
+        let device = activeDevice;
+        if (!device) {
+          try {
+            device = await bridge.device.getConnected();
+            if (device && isMounted) {
+              setActiveDevice(device);
+            }
+          } catch {
+            device = null;
           }
+        }
+
+        if (device && device.connectionState === 'ready') {
+          const list = await bridge.report.list();
+          const devId = device.serial;
+          const altId = device.id;
+          if (list && list.length > 0) {
+            const res = await bridge.report.get(list[0].id);
+            if (
+              res &&
+              ((devId && res.deviceId === devId) || (altId && res.deviceId === altId))
+            ) {
+              setScanResult(res);
+              setFindings(res.findings || []);
+            } else {
+              setScanResult(null);
+              setFindings([]);
+            }
+          } else {
+            setScanResult(null);
+            setFindings([]);
+          }
+        } else {
+          setScanResult(null);
+          setFindings([]);
         }
       } catch (err) {
         console.error('Failed to load initial scan:', err);
@@ -80,11 +113,12 @@ export const ScanView: React.FC = () => {
     loadInitial();
 
     return () => {
+      isMounted = false;
       unsubProgress();
       unsubFinding();
       unsubDone();
     };
-  }, [bridge, setActiveJob]);
+  }, [bridge, setActiveJob, activeDevice, setActiveDevice]);
 
   const handleStartScan = async () => {
     try {
@@ -123,9 +157,11 @@ export const ScanView: React.FC = () => {
     return findings.filter((f) => f.severity === selectedSeverity);
   }, [findings, selectedSeverity]);
 
+  const securityContext = getCanonicalSecurityState(activeDevice, scanResult, isScanning);
+
   return (
     <div className="space-y-5">
-      {/* Scan Mode Selection Header */}
+      {/* Scan Mode Selection Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Quick Scan Card */}
         <div
@@ -176,7 +212,7 @@ export const ScanView: React.FC = () => {
             <span className="font-semibold text-xs text-text-primary">
               {isScanning
                 ? t('scan.running')
-                : t('scan.ready', { mode: mode.toUpperCase() })}
+                : t('scan.ready', { mode })}
             </span>
           </div>
           <p className="text-[11px] text-text-secondary">
@@ -209,15 +245,23 @@ export const ScanView: React.FC = () => {
               {t('scan.cancelScan')}
             </Button>
           ) : (
-            <Button
-              variant="primary"
-              size="md"
-              onClick={handleStartScan}
-              disabled={activeDevice?.connectionState !== 'ready'}
-            >
-              <Search className="w-3.5 h-3.5" />
-              {t('scan.startScan')}
-            </Button>
+            <div className="flex flex-col items-end gap-1">
+              <Button
+                variant="primary"
+                size="md"
+                onClick={handleStartScan}
+                disabled={!securityContext.canStartScan}
+                aria-disabled={!securityContext.canStartScan}
+              >
+                <Search className="w-3.5 h-3.5" />
+                {t('scan.startScan')}
+              </Button>
+              {!securityContext.canStartScan && securityContext.disabledReason && (
+                <span className="text-[10px] text-text-secondary">
+                  {securityContext.disabledReason}
+                </span>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -246,45 +290,87 @@ export const ScanView: React.FC = () => {
               </CardDescription>
             </div>
 
-            {/* Filter pills */}
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <Filter className="w-3.5 h-3.5 text-text-secondary mr-1" />
-              <button
-                type="button"
-                onClick={() => setSelectedSeverity('all')}
-                className={`px-2 py-0.5 rounded text-[11px] font-medium border transition-colors ${
-                  selectedSeverity === 'all'
-                    ? 'bg-accent text-accent-foreground border-accent'
-                    : 'bg-raised text-text-secondary border-separator/30 hover:text-text-primary'
-                }`}
-              >
-                {t('scan.allSeverities')} ({(findings || []).length})
-              </button>
+            {/* Filter pills - only displayed when findings exist */}
+            {(findings || []).length > 0 && (
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <Filter className="w-3.5 h-3.5 text-text-secondary mr-1" />
+                <button
+                  type="button"
+                  onClick={() => setSelectedSeverity('all')}
+                  className={`px-2 py-0.5 rounded text-[11px] font-medium border transition-colors ${
+                    selectedSeverity === 'all'
+                      ? 'bg-accent text-accent-foreground border-accent'
+                      : 'bg-raised text-text-secondary border-separator/30 hover:text-text-primary'
+                  }`}
+                >
+                  {t('scan.allSeverities')} ({(findings || []).length})
+                </button>
 
-              {(['critical', 'high', 'medium', 'low', 'info'] as Severity[]).map((sev) => {
-                const count = (findings || []).filter((f) => f.severity === sev).length;
+                {(['critical', 'high', 'medium', 'low', 'info'] as Severity[]).map((sev) => {
+                  const count = (findings || []).filter((f) => f.severity === sev).length;
 
-                return (
-                  <button
-                    key={sev}
-                    type="button"
-                    onClick={() => setSelectedSeverity(sev)}
-                    className={`px-2 py-0.5 rounded text-[11px] font-medium border transition-colors ${
-                      selectedSeverity === sev
-                        ? 'bg-accent text-accent-foreground border-accent'
-                        : 'bg-raised text-text-secondary border-separator/30 hover:text-text-primary'
-                    }`}
-                  >
-                    {sev.toUpperCase()} ({count})
-                  </button>
-                );
-              })}
-            </div>
+                  return (
+                    <button
+                      key={sev}
+                      type="button"
+                      onClick={() => setSelectedSeverity(sev)}
+                      className={`px-2 py-0.5 rounded text-[11px] font-medium border transition-colors ${
+                        selectedSeverity === sev
+                          ? 'bg-accent text-accent-foreground border-accent'
+                          : 'bg-raised text-text-secondary border-separator/30 hover:text-text-primary'
+                      }`}
+                    >
+                      {sev.toUpperCase()} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </CardHeader>
         <CardContent>
           {(filteredFindings?.length ?? 0) === 0 ? (
-            scanResult && (scanResult.status === 'failed' || scanResult.status === 'cancelled') ? (
+            securityContext.state === 'no-device' ? (
+              <div className="py-8 text-center text-xs text-text-secondary space-y-2">
+                <Smartphone className="w-8 h-8 text-text-secondary mx-auto mb-2 opacity-50" />
+                <p className="font-medium text-text-primary">
+                  {t('device.noDevice')}
+                </p>
+                <p className="text-[11px] text-text-secondary max-w-sm mx-auto">
+                  {t('device.noDeviceHint')}
+                </p>
+              </div>
+            ) : securityContext.state === 'unauthorized' ? (
+              <div className="py-8 text-center text-xs text-text-secondary space-y-2">
+                <AlertTriangle className="w-8 h-8 text-sev-high mx-auto mb-2 opacity-80" />
+                <p className="font-medium text-text-primary">
+                  {t('device.unauthorizedTitle', 'Authorization Required')}
+                </p>
+                <p className="text-[11px] text-text-secondary max-w-sm mx-auto">
+                  {t('device.unauthorizedPrompt', "Unlock your phone screen and tap 'Allow USB debugging'.")}
+                </p>
+              </div>
+            ) : securityContext.state === 'offline' ? (
+              <div className="py-8 text-center text-xs text-text-secondary space-y-2">
+                <AlertTriangle className="w-8 h-8 text-sev-medium mx-auto mb-2 opacity-80" />
+                <p className="font-medium text-text-primary">
+                  {t('device.offlineTitle', 'Device Offline')}
+                </p>
+                <p className="text-[11px] text-text-secondary max-w-sm mx-auto">
+                  {t('device.offlinePrompt', 'Device connection is offline. Reconnect USB.')}
+                </p>
+              </div>
+            ) : securityContext.state === 'never-scanned' ? (
+              <div className="py-8 text-center text-xs text-text-secondary space-y-2">
+                <Clock className="w-8 h-8 text-text-secondary mx-auto mb-2 opacity-60" />
+                <p className="font-medium text-text-primary">
+                  {t('scan.noScanYetTitle', 'No Scan Performed Yet')}
+                </p>
+                <p className="text-[11px] text-text-secondary max-w-sm mx-auto">
+                  {t('scan.noScanYetDesc', 'Select a scan mode above and start scanning to inspect this device.')}
+                </p>
+              </div>
+            ) : scanResult && (scanResult.status === 'failed' || scanResult.status === 'cancelled') ? (
               <div className="py-8 text-center text-xs text-text-secondary space-y-2">
                 <AlertTriangle className="w-8 h-8 text-warning mx-auto mb-2 opacity-80" />
                 <p className="font-medium text-text-primary">
@@ -314,10 +400,25 @@ export const ScanView: React.FC = () => {
                   {t('scan.noFindingsMatchFilterDesc')}
                 </p>
               </div>
-            ) : (
-              <div className="py-8 text-center text-xs text-text-secondary">
+            ) : securityContext.state === 'scanned-clean' ? (
+              <div className="py-8 text-center text-xs text-text-secondary space-y-2">
                 <CheckCircle2 className="w-8 h-8 text-ok mx-auto mb-2 opacity-80" />
-                {t('scan.noFindings')}
+                <p className="font-medium text-text-primary">
+                  {t('scan.noFindingsTitle', 'No findings in the last scan')}
+                </p>
+                <p className="text-[11px] text-text-secondary max-w-sm mx-auto font-mono">
+                  {securityContext.contextText}
+                </p>
+              </div>
+            ) : (
+              <div className="py-8 text-center text-xs text-text-secondary space-y-2">
+                <Clock className="w-8 h-8 text-text-secondary mx-auto mb-2 opacity-60" />
+                <p className="font-medium text-text-primary">
+                  {t('scan.noScanYetTitle', 'No Scan Performed Yet')}
+                </p>
+                <p className="text-[11px] text-text-secondary max-w-sm mx-auto">
+                  {t('scan.noScanYetDesc')}
+                </p>
               </div>
             )
           ) : (
