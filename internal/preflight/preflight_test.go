@@ -183,6 +183,12 @@ func TestTrustedPlatformToolsHashes(t *testing.T) {
 			expected: false,
 		},
 		{
+			name:     "Windows r37.0.1 trusted uppercase and whitespace",
+			goos:     "windows",
+			hash:     "  45F4D63113E895EBDE0C90F194099A4676B6AC653BD28D54314A9E022BBC1A99 \n",
+			expected: true,
+		},
+		{
 			name:     "Bogus SHA untrusted on windows",
 			goos:     "windows",
 			hash:     "0000000000000000000000000000000000000000000000000000000000000000",

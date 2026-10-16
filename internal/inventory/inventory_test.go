@@ -335,6 +335,39 @@ Packages:
 	}
 }
 
+func TestParseDumpsysPackage_FlagSubstrings(t *testing.T) {
+	// 1. User app with REQUIRED_FOR_SYSTEM_USER in private flags must NOT be marked as system app
+	userFixture := `
+Packages:
+  Package [com.user.taskmanager]:
+    userId=10190
+    pkgFlags=[ HAS_CODE ALLOW_CLEAR_USER_DATA ]
+    pkgPrivateFlags=[ REQUIRED_FOR_SYSTEM_USER ]
+`
+	userInfo := ParseDumpsysPackage(userFixture)
+	if userInfo == nil {
+		t.Fatal("expected non-nil AppInfo")
+	}
+	if userInfo.IsSystem {
+		t.Errorf("expected IsSystem=false for user app with REQUIRED_FOR_SYSTEM_USER flag, got true")
+	}
+
+	// 2. System app with SYSTEM in flags must be marked as system app
+	sysFixture := `
+Packages:
+  Package [com.android.systemui]:
+    userId=1000
+    pkgFlags=[ SYSTEM HAS_CODE ]
+`
+	sysInfo := ParseDumpsysPackage(sysFixture)
+	if sysInfo == nil {
+		t.Fatal("expected non-nil AppInfo")
+	}
+	if !sysInfo.IsSystem {
+		t.Errorf("expected IsSystem=true for system app with SYSTEM flag")
+	}
+}
+
 func TestIsSystemPackage(t *testing.T) {
 	fake := adb.NewFakeRunner()
 	svc := NewService(fake, nil)
@@ -369,7 +402,29 @@ Packages:
 		t.Errorf("expected com.oem.telephony to be recognized as system app via fallback path")
 	}
 
-	// 4. Regular 3rd-party user app with /data/app/ path
+	// 4. Fallback: recognized via /system_ext/ or /apex/ codePath
+	fake.SetResponse("pm list packages -s com.android.apex.service", "", "", nil)
+	fake.SetResponse("dumpsys package com.android.apex.service", "Package [com.android.apex.service]:\n  userId=1000\n", "", nil)
+	fake.SetResponse("pm path com.android.apex.service", "package:/system_ext/app/Service.apk\n", "", nil)
+	if !svc.IsSystemPackage(ctx, "dev-123", "com.android.apex.service") {
+		t.Errorf("expected com.android.apex.service to be recognized as system app via system_ext path")
+	}
+
+	// 5. Regular 3rd-party user app with /data/app/ path even if package name has "system"
+	fake.SetResponse("pm list packages -s com.system.cleaner", "", "", nil)
+	dumpsysCleaner := `
+Packages:
+  Package [com.system.cleaner]:
+    pkgFlags=[ HAS_CODE ]
+    codePath=/data/app/com.system.cleaner/base.apk
+`
+	fake.SetResponse("dumpsys package com.system.cleaner", dumpsysCleaner, "", nil)
+	fake.SetResponse("pm path com.system.cleaner", "package:/data/app/~~xyz/com.system.cleaner-1/base.apk\n", "", nil)
+	if svc.IsSystemPackage(ctx, "dev-123", "com.system.cleaner") {
+		t.Errorf("expected user app com.system.cleaner to NOT be recognized as system app")
+	}
+
+	// 6. Regular 3rd-party user app with /data/app/ path
 	fake.SetResponse("pm list packages -s com.example.adware", "", "", nil)
 	dumpsysAdware := `
 Packages:
@@ -383,12 +438,18 @@ Packages:
 		t.Errorf("expected user app com.example.adware to NOT be recognized as system app")
 	}
 
-	// 5. Edge cases: empty/nil
+	// 7. Edge cases: empty/nil/invalid package names
 	if svc.IsSystemPackage(ctx, "", "com.example.adware") {
 		t.Errorf("expected false for empty serial")
 	}
 	if svc.IsSystemPackage(ctx, "dev-123", "") {
 		t.Errorf("expected false for empty package")
+	}
+	if svc.IsSystemPackage(ctx, "dev-123", "com.evil;rm -rf /") {
+		t.Errorf("expected false for invalid package name with shell characters")
+	}
+	if svc.IsSystemPackage(ctx, "dev-123", "bad package name with spaces") {
+		t.Errorf("expected false for invalid package name with spaces")
 	}
 	var nilSvc *Service
 	if nilSvc.IsSystemPackage(ctx, "dev-123", "com.example.adware") {
