@@ -166,8 +166,20 @@ func ParseDumpsysPackage(output string) *AppInfo {
 
 		// Flags: check SYSTEM or UPDATED_SYSTEM_APP
 		lowerTrimmed := strings.ToLower(trimmed)
-		if strings.Contains(lowerTrimmed, "flags") && (strings.Contains(trimmed, "SYSTEM") || strings.Contains(trimmed, "UPDATED_SYSTEM_APP")) {
-			info.IsSystem = true
+		if strings.Contains(lowerTrimmed, "flags") {
+			content := trimmed
+			if start := strings.Index(trimmed, "["); start != -1 {
+				if end := strings.LastIndex(trimmed, "]"); end > start {
+					content = trimmed[start+1 : end]
+				}
+			}
+			for _, flag := range strings.Fields(content) {
+				flag = strings.Trim(flag, ",[]")
+				if flag == "SYSTEM" || flag == "UPDATED_SYSTEM_APP" {
+					info.IsSystem = true
+					break
+				}
+			}
 		}
 
 		// Enabled state

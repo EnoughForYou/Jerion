@@ -50,6 +50,29 @@ func NewService(runner adb.Runner, logger *logx.Logger) *Service {
 	}
 }
 
+// systemMountPrefixes represents standard Android system and vendor partition mount points.
+var systemMountPrefixes = []string{
+	"/system/",
+	"/vendor/",
+	"/product/",
+	"/apex/",
+	"/system_ext/",
+	"/odm/",
+	"/oem/",
+	"/system_dlkm/",
+	"/vendor_dlkm/",
+}
+
+// isSystemMountPath checks whether an APK path originates from a system partition mount point.
+func isSystemMountPath(path string) bool {
+	for _, prefix := range systemMountPrefixes {
+		if strings.HasPrefix(path, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
 // ListPackages returns all installed packages (or user-installed only if userOnly is true).
 func (s *Service) ListPackages(ctx context.Context, serial string, userOnly bool) ([]AppInfo, error) {
 	args := []string{"shell", "pm", "list", "packages", "-f", "-u"}
@@ -70,7 +93,7 @@ func (s *Service) ListPackages(ctx context.Context, serial string, userOnly bool
 			Package:              entry.Package,
 			Label:                prettifyPackageLabel(entry.Package),
 			CodePath:             entry.CodePath,
-			IsSystem:             strings.HasPrefix(entry.CodePath, "/system") || strings.HasPrefix(entry.CodePath, "/vendor") || strings.HasPrefix(entry.CodePath, "/product"),
+			IsSystem:             isSystemMountPath(entry.CodePath),
 			Enabled:              true,
 			RequestedPermissions: []string{},
 			GrantedPermissions:   []string{},
@@ -120,6 +143,9 @@ func (s *Service) IsSystemPackage(ctx context.Context, serial, pkg string) bool 
 	if s == nil || s.runner == nil || serial == "" || pkg == "" {
 		return false
 	}
+	if err := adb.ValidatePackageName(pkg); err != nil {
+		return false
+	}
 
 	// 1. Check Package Manager system package catalog (pm list packages -s <pkg>)
 	stdout, _, err := s.runner.Run(ctx, serial, "shell", "pm", "list", "packages", "-s", pkg)
@@ -145,9 +171,14 @@ func (s *Service) IsSystemPackage(ctx context.Context, serial, pkg string) bool 
 	// 3. Fallback: check APK path for system partition mount points
 	pOut, _, pErr := s.runner.Run(ctx, serial, "shell", "pm", "path", pkg)
 	if pErr == nil {
-		p := string(pOut)
-		if strings.Contains(p, "/system/") || strings.Contains(p, "/product/") || strings.Contains(p, "/vendor/") || strings.Contains(p, "/apex/") || strings.Contains(p, "/system_ext/") || strings.Contains(p, "/odm/") || strings.Contains(p, "/oem/") {
-			return true
+		for _, line := range strings.Split(string(pOut), "\n") {
+			line = strings.TrimSpace(line)
+			if strings.HasPrefix(line, "package:") {
+				path := strings.TrimPrefix(line, "package:")
+				if isSystemMountPath(path) {
+					return true
+				}
+			}
 		}
 	}
 

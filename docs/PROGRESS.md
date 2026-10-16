@@ -11,6 +11,7 @@
 - [x] Sub-tugas FIX.3: Klasifikasi akurat aplikasi sistem yang diperbarui (updated system apps dengan APK di `/data/app/`) pada remediasi via metadata Package Manager tepercaya (`pm list packages -s`, flags dumpsys `SYSTEM`/`UPDATED_SYSTEM_APP`, dan fallback mount point) di `internal/inventory/parser.go`, `internal/inventory/inventory.go`, dan `app.go`
 - [x] Sub-tugas FIX.4: Penanganan seluruh status terminal scan (`completed`, `partial`, `failed`, `cancelled`) pada polling sinkron `ScanQuick()`, mengeliminasi blocking 60 detik saat scan berakhir dengan status terminal non-completed
 - [x] Sub-tugas FIX.5: Unit test komprehensif table-driven pada `app_test.go` (`TestRemediateDeviceUnauthorizedForwarding`, `TestRemediateUpdatedSystemApp`, `TestScanQuickTerminalStates`), `inventory_test.go` (`TestParseDumpsysPackage_UpdatedSystemApp`, `TestIsSystemPackage`), dan `preflight_test.go`
+- [x] Sub-tugas FIX.6: Resolusi pelanggaran arsitektur layering pada `app.go` (`isSystemPackage` mendelegasikan langsung ke `internal/inventory.Service`), pencocokan token flag presisi pada `ParseDumpsysPackage` untuk mengeliminasi false positive `REQUIRED_FOR_SYSTEM_USER`, sanitasi nama paket via `ValidatePackageName`, standardisasi path prefix partisi sistem kanonis (`isSystemMountPath`), dan penambahan pengujian tepi komprehensif
 
 ## Pengukuran & Kualitas (Audit Hardening & Cross-Platform CI Fix)
 - **Backend Go Test Suite**: 100% test lulus di seluruh 16 paket backend Go (`go test -count=1 ./...`).

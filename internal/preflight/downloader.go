@@ -62,8 +62,9 @@ func IsTrustedPlatformToolsHash(goos, hash string) bool {
 	if !ok {
 		return false
 	}
+	trimmed := strings.TrimSpace(hash)
 	for _, t := range trusted {
-		if strings.EqualFold(t, hash) {
+		if strings.EqualFold(t, trimmed) {
 			return true
 		}
 	}

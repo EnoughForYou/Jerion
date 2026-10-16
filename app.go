@@ -1672,41 +1672,9 @@ func (a *App) isSystemPackage(ctx context.Context, serial, pkg string) bool {
 	if a.inventory != nil {
 		return a.inventory.IsSystemPackage(ctx, serial, pkg)
 	}
-
-	if serial == "" || pkg == "" {
-		return false
+	if a.runner != nil {
+		return inventory.NewService(a.runner, a.logger).IsSystemPackage(ctx, serial, pkg)
 	}
-
-	// 1. Check Package Manager system package catalog (pm list packages -s <pkg>)
-	stdout, _, err := a.runner.Run(ctx, serial, "shell", "pm", "list", "packages", "-s", pkg)
-	if err == nil {
-		lines := strings.Split(string(stdout), "\n")
-		expected := "package:" + pkg
-		for _, line := range lines {
-			if strings.TrimSpace(line) == expected {
-				return true
-			}
-		}
-	}
-
-	// 2. Check Package Manager dumpsys metadata (flags / pkgFlags / privateFlags)
-	dOut, _, dErr := a.runner.Run(ctx, serial, "shell", "dumpsys", "package", pkg)
-	if dErr == nil {
-		dInfo := inventory.ParseDumpsysPackage(string(dOut))
-		if dInfo != nil && dInfo.IsSystem {
-			return true
-		}
-	}
-
-	// 3. Fallback: check APK path for system partition mount points
-	pOut, _, pErr := a.runner.Run(ctx, serial, "shell", "pm", "path", pkg)
-	if pErr == nil {
-		p := string(pOut)
-		if strings.Contains(p, "/system/") || strings.Contains(p, "/product/") || strings.Contains(p, "/vendor/") || strings.Contains(p, "/apex/") || strings.Contains(p, "/system_ext/") || strings.Contains(p, "/odm/") || strings.Contains(p, "/oem/") {
-			return true
-		}
-	}
-
 	return false
 }
 
