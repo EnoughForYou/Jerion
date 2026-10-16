@@ -1,11 +1,23 @@
 # PROGRESS
 
 ## Status sekarang
-- Fase aktif: Audit Hardening & Cross-Platform CI Fix — Selesai Penuh
-- Branch: phase/audit-hardening-ci-fix
-- Terakhir selesai: Device Detection & Screen Resilience Hardening (merge commit 87ad5be)
+- Fase aktif: HYG-1 — Kebersihan Repo & CI (v1.0.1)
+- Branch: phase/hyg-1
+- Terakhir selesai: Audit Hardening & Cross-Platform CI Fix (tag v1.0.0)
 
-## Fase Audit Hardening & Cross-Platform CI Fix — checklist
+## Fase HYG-1 (Kebersihan Repo & CI) — checklist
+- [x] Sub-tugas HYG.1: Pemindahan dependensi build CSS (`tailwindcss`, `postcss`, `autoprefixer`) dari `dependencies` ke `devDependencies` di `frontend/package.json`, menghasilkan **0 vulnerabilities** pada runtime dependencies produksi (`npm audit --omit=dev`).
+- [x] Sub-tugas HYG.2: Dokumentasi risiko diterima untuk 7 temuan audit dev penuh (2 moderate, 5 high pada rantai chokidar/micromatch/braces dan postcss-nested/postcss-selector-parser) sebagai risiko tooling kompilasi semata (*build-time only*), dengan migrasi terencana ke Tailwind v4 di masa depan melalui ADR terpisah tanpa `--force`.
+- [x] Sub-tugas HYG.3: Penggantian cakupan uji `go vet` dan `go test` dari wildcard global `./...` menjadi paket aplikasi eksplisit `. ./internal/...` pada skrip lokal dan alur CI GitHub Actions, mengeliminasi penjelajahan modul `frontend/node_modules/flatted/golang`.
+- [x] Sub-tugas HYG.4: Integrasi pemeriksaan keamanan Go `govulncheck` dan linter statis `golangci-lint` pada alur CI GitHub Actions (`.github/workflows/ci.yml`).
+
+## Pengukuran & Kualitas (HYG-1)
+- **Produksi NPM Audit**: 0 vulnerabilities (`npm audit --omit=dev --prefix frontend`).
+- **Audit Tooling Dev Penuh (Accepted Risk)**: 7 temuan (braces DoS via nested patterns, postcss CPU exhaustion) terbatas pada AST parser watcher Tailwind v3 lokal dan tidak terbundel ke runtime JavaScript browser maupun binary executable Wails.
+- **Backend Go Vet**: Lulus bersih tanpa peringatan pada `. ./internal/...`.
+- **Backend Go Test Suite**: 100% lulus pada `. ./internal/...` tanpa gangguan modul pihak ketiga di node_modules.
+
+## Fase Audit Hardening & Cross-Platform CI Fix — riwayat selesai (v1.0.0)
 - [x] Sub-tugas FIX.1: Portabilitas tes checksum platform-tools lintas OS (`internal/preflight/preflight_test.go`) dengan memvalidasi hash default menggunakan `runtime.GOOS` dan pengujian tabel mandiri untuk katalog Windows, Linux, dan Darwin (macOS), menyelesaikan kegagalan runner CI Ubuntu GitHub Actions (`TestTrustedPlatformToolsHashes`, `TestStrictChecksumMatching`)
 - [x] Sub-tugas FIX.2: Penerusan error status otorisasi perangkat (`DeviceUnauthorized`) pada `RemediateCreatePlan` dan `RemediateExecute`, mencegah penyamaran error dialog RSA USB debugging menjadi `DeviceOffline` sehingga pengguna tidak menerima pesan keliru saat belum menekan 'Allow'
 - [x] Sub-tugas FIX.3: Klasifikasi akurat aplikasi sistem yang diperbarui (updated system apps dengan APK di `/data/app/`) pada remediasi via metadata Package Manager tepercaya (`pm list packages -s`, flags dumpsys `SYSTEM`/`UPDATED_SYSTEM_APP`, dan fallback mount point) di `internal/inventory/parser.go`, `internal/inventory/inventory.go`, dan `app.go`

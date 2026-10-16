@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-10-16
+
+### Changed
+- **Stage HYG-1 (Repo Hygiene & CI Pipeline Modernization)**:
+  - **DevDependencies Separation**: Moved build-time CSS dependencies (`tailwindcss`, `postcss`, `autoprefixer`) from `dependencies` to `devDependencies` in `frontend/package.json`, resulting in 0 vulnerabilities on runtime production dependencies (`npm audit --omit=dev`).
+  - **Documented Accepted Build-Time Audit Risk**: Documented 7 advisory findings on the local Tailwind v3 developer toolchain (nested pattern DoS in braces and selector parser CPU exhaustion) as low-impact build-time risk, planning Tailwind v4 migration in a subsequent ADR.
+  - **Targeted Go Vet & Test Execution**: Replaced wildcard `./...` package scanning with explicit application packages `. ./internal/...` across local scripts and GitHub Actions CI, avoiding traversal of third-party node_modules (`flatted/golang`).
+  - **Security & Linter CI Integration**: Added automated `govulncheck` vulnerability scanning and `golangci-lint` static analysis steps to GitHub Actions Ubuntu CI workflow (`.github/workflows/ci.yml`).
+
+
 ### Added
 - **Audit Hardening & Cross-Platform CI Fix**:
   - **Cross-Platform Preflight Checksum Portability**: Updated `TestTrustedPlatformToolsHashes` and `TestStrictChecksumMatching` in `internal/preflight/preflight_test.go` to validate `DefaultPlatformToolsSHA256()` dynamically against host environment `runtime.GOOS`, and added table-driven test cases covering Windows, Darwin (macOS), and Linux official catalogs independently, resolving Ubuntu CI runner check failures.
