@@ -1,11 +1,25 @@
 # PROGRESS
 
 ## Status sekarang
-- Fase aktif: HONESTY-1.1 — Version & Contract Single Source of Truth, Content-Hash Rule Version, ClamAV Deduplication (v1.2.1)
-- Branch: phase/safety-1
-- Terakhir selesai: HONESTY-1 — Product Truthfulness, Fail-Closed ClamAV & Dynamic Telemetry (tag v1.2.0)
+- Fase aktif: CONNECT-1 — Evidence-Based Connectivity Diagnostics, OEM Driver Directory & Wireless Debugging (v1.3.0)
+- Branch: phase/connectivity-diagnostics
+- Terakhir selesai: HONESTY-1.1 — Version & Contract Single Source of Truth, Content-Hash Rule Version, ClamAV Deduplication (tag v1.2.1)
 
-## Fase HONESTY-1.1 (Version & Contract Single Source, Content-Hash Rules, ClamAV Dedup) — checklist
+## Fase CONNECT-1 (Connectivity Diagnostics, OEM Driver Directory & Wireless Debugging) — checklist
+- [x] Sub-tugas C1.1: Lapisan Diagnostik Perangkat Keras & PnP USB (`internal/adb/diagnostics.go`, `diagnostics_windows.go`, `diagnostics_posix.go`, `fake_runner.go`) — pemisahan bukti deteksi USB fisik via `Win32_PnPEntity` vs antarmuka ADB daemon, heuristik kandidat perangkat Android (Google, Samsung, Xiaomi, Transsion/Infinix, OPPO, vivo, MTK, Qualcomm), dan atribusi akar masalah berbasis bukti (no USB, missing driver vs charge-only mode, unauthorized RSA, offline).
+- [x] Sub-tugas C1.2: Dual-Port Wireless Debugging Android 11+ (API 30+) (`internal/adb/manager.go`, `runner.go`) — pemisahan port pairing (`adb pair <host>:<pairingPort> <pairingCode>`) dari port koneksi sesi (`adb connect <host>:<connectionPort>`), sanitasi & redaksi kredensial pairing code (`[REDACTED]`) pada log dan laporan error.
+- [x] Sub-tugas C1.3: Pemulihan Aman & Bindings Wails (`app.go`, `app_test.go`) — implementasi soft reconnect (`adb reconnect`) non-destruktif, dialog konfirmasi terproteksi sebelum restart server global (`adb kill-server`), ekspos DTO `ConnectionDiagnosticResult` & `USBDevice` ke Wails controller dan regenerasi frontend bindings.
+- [x] Sub-tugas C1.4: UI Diagnostik Koneksi & Panduan Driver OEM (`ConnectionTroubleshootModal.tsx`, `WirelessConnectModal.tsx`, `DeviceHeader.tsx`, `HomeView.tsx`, `en.json`) — direktori portal resmi pabrikan OEM Android dengan kebijakan zero-driver-bundling, panduan langkah demi langkah opsi pengembang, modal dual-tab Wireless Debugging, dan pengujian Vitest lengkap.
+
+## Pengukuran & Kualitas (CONNECT-1)
+- **Backend Go Test Suite**: 100% test lulus di seluruh 17 paket backend Go (`go test -count=1 . ./internal/...`).
+- **Backend Go Vet**: Lulus bersih tanpa peringatan (`go vet . ./internal/...`).
+- **Frontend Vitest Suite**: 167 pengujian lolos di 24 file tes (`npm run test`).
+- **ESLint & TypeScript**: 0 error, 0 warning pada `npm run lint` & `npm run typecheck`.
+- **Mock Elimination (`npm run check:no-mock`)**: 0 marker mock di seluruh 3 bundle produksi.
+- **Production Compilation (`wails build`)**: Standalone binary Windows x64 `build/bin/Jerion.exe` terkompilasi bersih dalam 19.12 detik.
+
+## Fase HONESTY-1.1 (Version & Contract Single Source, Content-Hash Rules, ClamAV Dedup) — riwayat selesai (v1.2.1)
 - [x] Sub-tugas H-1.1.A: Sinkronisasi versi tunggal `1.2.1` pada `internal/version/version.go`, `wails.json`, `frontend/package.json`, `frontend/package-lock.json`, dan `CHANGELOG.md` dengan pengujian konsistensi otomatis `TestVersionConsistency` di `internal/version/version_test.go`.
 - [x] Sub-tugas H-1.1.B: Single source of truth versi kontrak `1.1.0` via konstanta `version.ContractVersion` di Go backend, eliminasi sufiks manual `(Additive)` pada UI (`SettingsView.tsx`), pembaruan schema Zod/TS di `schema.ts`, `index.ts`, dan dokumentasi `docs/contract.md`.
 - [x] Sub-tugas H-1.1.C: Penurunan versi aturan forensik secara dinamis dari SHA-256 digest katalog YAML embedded (`2026.03.1+<8hex>`), eliminasi konstanta hardcoded `RULE_VERSION` pada frontend (`deviceSecurityState.ts`, `StatusBar.tsx`, dll.), penyediaan `useSystemInfoStore` Zustand untuk penyebaran metadata dinamis.

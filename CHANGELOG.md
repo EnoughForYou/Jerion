@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-17
+
+### Added
+- **Stage CONNECT-1 (Evidence-Based Connectivity Diagnostics, OEM Driver Directory & Wireless Debugging)**:
+  - **Hardware PnP & USB Diagnostics (`internal/adb/diagnostics.go`, `diagnostics_windows.go`)**: Implemented multi-tier device connection diagnostics distinguishing physical USB presence (`Win32_PnPEntity`) from ADB daemon status and authorization. Detects candidate Android vendor IDs (Google, Samsung, Xiaomi, Transsion/Infinix, OPPO, vivo, MTK, Qualcomm) and attributes connection roadblocks to actionable root causes (cable/charge-only mode, missing interface driver, unauthorized RSA prompt, offline device).
+  - **Official OEM Driver Directory (`ConnectionTroubleshootModal.tsx` & `en.json`)**: Curated verified direct links to official manufacturer support portals for major Android OEMs while strictly adhering to a zero-bundling policy (zero `.inf` or executable driver downloads packaged into repo or binary).
+  - **Dual-Port Wireless Debugging (`internal/adb/manager.go`, `WirelessConnectModal.tsx`)**: Full support for Android 11+ (API 30+) wireless debugging adhering strictly to two distinct ephemeral ports: pairing port (`adb pair <host>:<pairingPort> <pairingCode>`) vs connection port (`adb connect <host>:<connectionPort>`). Scrubbed pairing codes (`[REDACTED]`) from logs and error reporting.
+  - **Safe ADB Recovery Actions**: Implemented non-destructive soft reconnect (`adb reconnect`) and guarded global ADB server restart behind an explicit user confirmation dialog.
+  - **Automated Regression Suite**: Added comprehensive unit tests for USB diagnostics heuristics, argument redaction, Wails bindings, and frontend modal interactions (167 Vitest tests and 100% Go test suite passing across 17 packages).
+
 ## [1.2.1] - 2026-10-17
 
 ### Fixed
