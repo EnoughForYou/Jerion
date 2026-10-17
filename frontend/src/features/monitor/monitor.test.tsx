@@ -40,10 +40,12 @@ describe('MonitorView (Popup Hunter)', () => {
 
     expect(screen.getByText('Popup Hunter')).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByText('Start Monitoring')).toBeInTheDocument();
-      expect(screen.getByText('Window Focus')).toBeInTheDocument();
-      expect(screen.getByText('Logcat Traces')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /start monitoring/i })).toBeInTheDocument();
     });
+    expect(screen.getByText('Window Focus (dumpsys window)')).toBeInTheDocument();
+    expect(screen.getByText('Window Overlays (TYPE_APPLICATION_OVERLAY)')).toBeInTheDocument();
+    expect(screen.queryByText(/Logcat Traces/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Toast Broadcasts/i)).not.toBeInTheDocument();
   });
 
   it('starts monitoring and enables "Popup Just Appeared!" button', async () => {

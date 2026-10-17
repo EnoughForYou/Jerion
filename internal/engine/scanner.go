@@ -12,6 +12,7 @@ import (
 	"github.com/EnoughForYou/Jerion/internal/logx"
 	"github.com/EnoughForYou/Jerion/internal/rules"
 	"github.com/EnoughForYou/Jerion/internal/store"
+	"github.com/EnoughForYou/Jerion/internal/version"
 )
 
 // Scanner coordinates end-to-end device threat analysis.
@@ -92,8 +93,8 @@ func (s *Scanner) Scan(
 			Mode:         opts.Mode,
 			StartedAt:    startTime,
 			FinishedAt:   time.Now().UTC(),
-			RulesVersion: "1.0.0",
-			AppVersion:   "0.4.0",
+			RulesVersion: rules.RulesVersion,
+			AppVersion:   version.AppVersion,
 			Findings:     []Finding{},
 			TotalApps:    0,
 		}, nil
@@ -164,6 +165,48 @@ func (s *Scanner) Scan(
 							})
 						}
 					}
+
+					// Inspect pulled APK binary with local ClamAV engine if enabled
+					if s.intel != nil && s.intel.GetClamAVClient() != nil {
+						clamRes, clamErr := s.intel.ScanFileWithClamAV(ctx, basePath)
+						if clamErr != nil {
+							s.logger.Warn("deep scan: clamav scan failed", "package", pkgName, "err", clamErr)
+							isPartial = true
+							allFindings = append(allFindings, Finding{
+								ID:                fmt.Sprintf("%s-f-clamav-err-%s", scanID, pkgName),
+								RuleID:            "CLAMAV-SCAN-ERR",
+								Package:           pkgName,
+								Category:          "info",
+								Severity:          "info",
+								Confidence:        "high",
+								Weight:            1,
+								Title:             "Antivirus Scan Incomplete (ClamAV)",
+								WhyFlagged:        fmt.Sprintf("ClamAV offline inspection failed for this package: %v. Security verdict cannot be guaranteed clean.", clamErr),
+								FalsePositiveHint: "Verify that the local ClamAV daemon is running and responsive on loopback.",
+								Evidence: []Evidence{
+									{Source: "clamav", Snippet: fmt.Sprintf("ClamAV inspection error: %v", clamErr)},
+								},
+								Actions: []string{},
+							})
+						} else if clamRes != nil && clamRes.Classification != intel.ClassClean {
+							allFindings = append(allFindings, Finding{
+								ID:                fmt.Sprintf("%s-f-clamav-%s", scanID, pkgName),
+								RuleID:            "CLAMAV-SIGNATURE-001",
+								Package:           pkgName,
+								Category:          "malware",
+								Severity:          "critical",
+								Confidence:        "high",
+								Weight:            99,
+								Title:             fmt.Sprintf("ClamAV Threat Signature: %s", clamRes.ThreatName),
+								WhyFlagged:        fmt.Sprintf("Local ClamAV antivirus engine detected malicious payload signature: %s.", clamRes.ThreatName),
+								FalsePositiveHint: "Review signature name and cross-verify with known vendor hashes.",
+								Evidence: []Evidence{
+									{Source: "clamav", Snippet: fmt.Sprintf("Detection: %s", clamRes.ThreatName)},
+								},
+								Actions: []string{"uninstall"},
+							})
+						}
+					}
 				} else {
 					s.logger.Warn("deep scan: inspect apk failed", "package", pkgName, "err", inspErr)
 					isPartial = true
@@ -193,8 +236,8 @@ func (s *Scanner) Scan(
 		Mode:         opts.Mode,
 		StartedAt:    startTime,
 		FinishedAt:   finishTime,
-		RulesVersion: "1.0.0",
-		AppVersion:   "0.4.0",
+		RulesVersion: rules.RulesVersion,
+		AppVersion:   version.AppVersion,
 		Findings:     allFindings,
 		Partial:      isPartial,
 		TotalApps:    totalApps,
@@ -234,8 +277,8 @@ func (s *Scanner) Scan(
 			Mode:         opts.Mode,
 			StartedAt:    startTime,
 			FinishedAt:   finishTime,
-			RulesVersion: "1.0.0",
-			AppVersion:   "0.4.0",
+			RulesVersion: rules.RulesVersion,
+			AppVersion:   version.AppVersion,
 			Partial:      isPartial,
 			TotalApps:    totalApps,
 			Findings:     storeFindings,

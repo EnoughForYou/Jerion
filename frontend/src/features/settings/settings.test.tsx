@@ -157,4 +157,47 @@ describe('SettingsView', () => {
       expect(screen.getByText(/is not a local loopback address/i)).toBeInTheDocument();
     });
   });
+
+  it('renders default system info with 8 active rules when backend binding is absent', async () => {
+    render(
+      <MemoryRouter>
+        <SettingsView />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('v1.1.1')).toBeInTheDocument();
+      expect(screen.getByText('v2026.03.1 (8 rules)')).toBeInTheDocument();
+      expect(screen.getByText('v1.1.0 (Additive)')).toBeInTheDocument();
+    });
+  });
+
+  it('renders dynamic system info and rules count when AppGetSystemInfo is provided', async () => {
+    const getSysInfoMock = vi.fn().mockResolvedValue({
+      appVersion: '1.2.0',
+      rulesVersion: '2026.03.1',
+      rulesCount: 8,
+      contractVersion: '1.1.0',
+    });
+    (window as unknown as { go: { main: { App: { AppGetSystemInfo: typeof getSysInfoMock } } } }).go = {
+      main: {
+        App: {
+          AppGetSystemInfo: getSysInfoMock,
+        },
+      },
+    };
+
+    render(
+      <MemoryRouter>
+        <SettingsView />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('v1.2.0')).toBeInTheDocument();
+      expect(screen.getByText('v2026.03.1 (8 rules)')).toBeInTheDocument();
+      expect(screen.getByText('v1.1.0 (Additive)')).toBeInTheDocument();
+    });
+    expect(getSysInfoMock).toHaveBeenCalled();
+  });
 });

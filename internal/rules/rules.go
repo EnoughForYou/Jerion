@@ -168,3 +168,16 @@ func LoadEmbeddedRules() ([]RuleDefinition, error) {
 	}
 	return rules, nil
 }
+
+// RulesVersion defines the canonical version identifier for the bundled threat rules catalog.
+const RulesVersion = "2026.03.1"
+
+// Count returns the dynamic count of valid threat rules loaded from the embedded catalog.
+func Count() int {
+	loaded, err := LoadEmbeddedRules()
+	if err != nil {
+		return 0
+	}
+	return len(loaded)
+}
+

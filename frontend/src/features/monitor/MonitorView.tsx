@@ -233,12 +233,10 @@ export const MonitorView: React.FC = () => {
       )}
 
       {/* Signal Sources Telemetry */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {[
-          { key: 'window', label: 'Window Focus' },
-          { key: 'logcat', label: 'Logcat Traces' },
-          { key: 'overlay', label: 'AppOps Overlays' },
-          { key: 'toast', label: 'Toast Broadcasts' },
+          { key: 'window', label: 'Window Focus (dumpsys window)' },
+          { key: 'overlay', label: 'Window Overlays (TYPE_APPLICATION_OVERLAY)' },
         ].map((source) => {
           const isActive = isMonitoring && (
             snapshot?.status.sourcesActive.some((s) => s.toLowerCase().includes(source.key)) ?? true

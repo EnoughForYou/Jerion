@@ -38,6 +38,18 @@ export const SettingsView: React.FC = () => {
   const [newType, setNewType] = useState<AllowlistType>('package');
   const [newReason, setNewReason] = useState('');
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [systemInfo, setSystemInfo] = useState<{
+    appVersion: string;
+    rulesVersion: string;
+    rulesCount: number;
+    adbVersion?: string;
+    contractVersion: string;
+  }>({
+    appVersion: 'v1.1.1',
+    rulesVersion: '2026.03.1',
+    rulesCount: 8,
+    contractVersion: 'v1.1.0 (Additive)',
+  });
 
   const bridge = getBridge();
 
@@ -52,11 +64,44 @@ export const SettingsView: React.FC = () => {
         setAdbPathInput(loadedSettings.adbPath || '');
         setAllowlist(list || []);
 
-        const goApp = (window as unknown as { go?: { main?: { App?: { ClamAVGetConfig?: () => Promise<{ enabled: boolean; host: string }> } } } })?.go?.main?.App;
+        const goApp = (window as unknown as {
+          go?: {
+            main?: {
+              App?: {
+                ClamAVGetConfig?: () => Promise<{ enabled: boolean; host: string }>;
+                AppGetSystemInfo?: () => Promise<{
+                  appVersion: string;
+                  rulesVersion: string;
+                  rulesCount: number;
+                  adbVersion?: string;
+                  contractVersion: string;
+                }>;
+              };
+            };
+          };
+        })?.go?.main?.App;
+
         if (goApp?.ClamAVGetConfig) {
           const cfg = await goApp.ClamAVGetConfig();
           setClamavEnabled(cfg.enabled);
           setClamavHost(cfg.host || '127.0.0.1:3310');
+        }
+
+        if (goApp?.AppGetSystemInfo) {
+          try {
+            const info = await goApp.AppGetSystemInfo();
+            if (info) {
+              setSystemInfo({
+                appVersion: info.appVersion ? (info.appVersion.startsWith('v') ? info.appVersion : `v${info.appVersion}`) : 'v1.1.1',
+                rulesVersion: info.rulesVersion || '2026.03.1',
+                rulesCount: typeof info.rulesCount === 'number' ? info.rulesCount : 8,
+                adbVersion: info.adbVersion,
+                contractVersion: info.contractVersion ? `v${info.contractVersion} (Additive)` : 'v1.1.0 (Additive)',
+              });
+            }
+          } catch (sysErr) {
+            console.warn('Failed to load system info from backend:', sysErr);
+          }
         }
       } catch (err) {
         console.error('Failed to load settings:', err);
@@ -239,15 +284,15 @@ export const SettingsView: React.FC = () => {
               )}
               <div className="flex justify-between py-1 border-b border-separator-muted">
                 <dt className="text-text-secondary">App Version</dt>
-                <dd className="font-mono text-text-primary">v1.1.0</dd>
+                <dd className="font-mono text-text-primary">{systemInfo.appVersion}</dd>
               </div>
               <div className="flex justify-between py-1 border-b border-separator-muted">
                 <dt className="text-text-secondary">{t('settings.rules')}</dt>
-                <dd className="font-mono text-text-primary">v2026.03.1 (32 rules)</dd>
+                <dd className="font-mono text-text-primary">{`v${systemInfo.rulesVersion} (${systemInfo.rulesCount} rules)`}</dd>
               </div>
               <div className="flex justify-between py-1">
                 <dt className="text-text-secondary">Contract Schema</dt>
-                <dd className="font-mono text-text-primary">v1.0.0 (Frozen)</dd>
+                <dd className="font-mono text-text-primary">{systemInfo.contractVersion}</dd>
               </div>
             </dl>
           </CardContent>

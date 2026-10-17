@@ -620,6 +620,26 @@ export namespace contract {
 
 export namespace main {
 	
+	export class AppSystemInfo {
+	    appVersion: string;
+	    rulesVersion: string;
+	    rulesCount: number;
+	    adbVersion?: string;
+	    contractVersion: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AppSystemInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.appVersion = source["appVersion"];
+	        this.rulesVersion = source["rulesVersion"];
+	        this.rulesCount = source["rulesCount"];
+	        this.adbVersion = source["adbVersion"];
+	        this.contractVersion = source["contractVersion"];
+	    }
+	}
 	export class ClamAVConfig {
 	    enabled: boolean;
 	    host: string;

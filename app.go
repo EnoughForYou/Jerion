@@ -24,8 +24,10 @@ import (
 	"github.com/EnoughForYou/Jerion/internal/preflight"
 	"github.com/EnoughForYou/Jerion/internal/remediate"
 	"github.com/EnoughForYou/Jerion/internal/report"
+	"github.com/EnoughForYou/Jerion/internal/rules"
 	"github.com/EnoughForYou/Jerion/internal/secrets"
 	"github.com/EnoughForYou/Jerion/internal/store"
+	"github.com/EnoughForYou/Jerion/internal/version"
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -101,6 +103,7 @@ type App struct {
 	monitor       *monitor.Manager
 	auditSvc      *audit.Service
 	remediate     *remediate.Manager
+	intelAgg      *intel.Aggregator
 	workDir       string
 	activeSerial  string
 	latestAudit   []contract.AuditItem
@@ -157,6 +160,19 @@ func NewAppWithDeps(runner adb.Runner, st *store.Store, logger *logx.Logger, wor
 	inspector := apk.NewInspector()
 	intelAgg := intel.NewAggregator(st, secMgr)
 
+	// Configure local ClamAV client if enabled in persisted settings
+	if allSettings, err := st.GetAllSettings(); err == nil {
+		if allSettings["clamav_enabled"] == "true" {
+			clamHost := intel.DefaultClamAVAddress
+			if h := allSettings["clamav_host"]; h != "" {
+				if valid, valErr := intel.ValidateClamAVAddress(h); valErr == nil {
+					clamHost = valid
+				}
+			}
+			intelAgg.SetClamAVClient(intel.NewClamAVClient(clamHost))
+		}
+	}
+
 	sc, err := engine.NewScanner(invSvc, puller, inspector, intelAgg, st, workDir, logger)
 	if err != nil {
 		logger.Error("failed to create scanner", "err", err)
@@ -180,6 +196,7 @@ func NewAppWithDeps(runner adb.Runner, st *store.Store, logger *logx.Logger, wor
 		monitor:       monMgr,
 		auditSvc:      auditSvc,
 		remediate:     remMgr,
+		intelAgg:      intelAgg,
 		workDir:       workDir,
 		activeScans:   make(map[string]context.CancelFunc),
 		cachedResults: make(map[string]*contract.ScanResult),
@@ -2014,7 +2031,17 @@ func (a *App) ClamAVSaveConfig(enabled bool, host string) error {
 	if err := a.store.SetSetting("clamav_enabled", fmt.Sprintf("%t", enabled)); err != nil {
 		return err
 	}
-	return a.store.SetSetting("clamav_host", validHost)
+	if err := a.store.SetSetting("clamav_host", validHost); err != nil {
+		return err
+	}
+	if a.intelAgg != nil {
+		if enabled {
+			a.intelAgg.SetClamAVClient(intel.NewClamAVClient(validHost))
+		} else {
+			a.intelAgg.SetClamAVClient(nil)
+		}
+	}
+	return nil
 }
 
 // ClamAVTestConnection probes the ClamAV daemon at the specified host.
@@ -2045,4 +2072,33 @@ func (a *App) ClamAVTestConnection(host string) (ClamAVStatus, error) {
 		Connected: true,
 		Version:   ver,
 	}, nil
+}
+
+// AppSystemInfo represents application, rules catalog, and bridge runtime metadata.
+type AppSystemInfo struct {
+	AppVersion      string `json:"appVersion"`
+	RulesVersion    string `json:"rulesVersion"`
+	RulesCount      int    `json:"rulesCount"`
+	AdbVersion      string `json:"adbVersion,omitempty"`
+	ContractVersion string `json:"contractVersion"`
+}
+
+// AppGetSystemInfo retrieves dynamic application and rules engine metadata.
+func (a *App) AppGetSystemInfo() AppSystemInfo {
+	rulesCount := rules.Count()
+	adbVer := ""
+	if a.adbMgr != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		if ver, err := a.adbMgr.CheckVersion(ctx); err == nil {
+			adbVer = ver
+		}
+	}
+	return AppSystemInfo{
+		AppVersion:      version.AppVersion,
+		RulesVersion:    rules.RulesVersion,
+		RulesCount:      rulesCount,
+		AdbVersion:      adbVer,
+		ContractVersion: "1.1.0",
+	}
 }

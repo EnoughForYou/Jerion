@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-17
+
+### Added
+- **Stage HONESTY-1 (Product Truthfulness & Dynamic Verification)**:
+  - **Deep Scan ClamAV Antivirus Integration (`internal/engine/scanner.go`)**: Wired the local ClamAV daemon directly into Deep Scan APK forensics. If a pulled package contains malicious signatures, it generates finding `CLAMAV-SIGNATURE-001` with `critical` severity, `malware` category, and `uninstall` remediation action. If the ClamAV daemon is unreachable, errors, or times out, an explicit `CLAMAV-SCAN-ERR` evidence entry is recorded and the scan is marked `partial = true`, guaranteeing a clean security verdict is never falsely granted when local malware inspection fails.
+  - **Fail-Closed Parser & Packet Reassembly (`internal/intel/clamav.go`)**: Hardened `parseClamAVResponse` to fail closed with `ErrClamAVProtocol` on any truncated, unrecognized, or corrupted responses. Implemented `readUntilTerminator` buffering across TCP packet segments until NUL (`\x00`), `\n`, or EOF, preventing fragmented packet responses from leaking clean status.
+  - **Single Source of Truth for Versions & Rules Count**: Exported `AppVersion = "1.1.1"` in `internal/version/version.go` (injectable via `-ldflags`) and dynamic `Count() int` in `internal/rules/rules.go`. Bound `Scanner`, `PreflightCheck`, and Wails endpoint `AppGetSystemInfo()` directly to dynamic versions and actual embedded YAML rule count (8 rules), eliminating hardcoded `"32 rules"`, `"0.4.0"`, and `"1.0.0"`.
+  - **Telemetry Honesty in Popup Hunter (`MonitorView.tsx` & `en.json`)**: Removed non-existent "Logcat Traces" and "Toast Broadcasts" indicator chips, accurately displaying only genuine active signal sources (`Window Focus` and `Window Overlays`).
+  - **End-to-End Regression Test Suite**: Added unit tests for ClamAV malware detection in Deep Scan, partial marking on daemon errors, segmented TCP packet reassembly, fail-closed handling on corrupt signatures, and dynamic system info rendering in `SettingsView.tsx`.
+
 ## [1.1.1] - 2026-10-17
 
 ### Security
