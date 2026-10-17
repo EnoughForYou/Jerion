@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const CONTRACT_VERSION = '1.0.0';
+export const CONTRACT_VERSION = '1.1.0';
 
 // ==========================================
 // Base Enumerations
