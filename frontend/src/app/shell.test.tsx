@@ -7,6 +7,7 @@ import { StatusBar } from './StatusBar';
 import { DetailPanel } from './DetailPanel';
 import { AppLayout } from './AppLayout';
 import { useDeviceStore } from './deviceStore';
+import { useSystemInfoStore } from './systemInfoStore';
 import type { Device } from '../lib/bridge/schema';
 import '../i18n';
 
@@ -51,10 +52,18 @@ describe('App Shell Components', () => {
   });
 
   describe('StatusBar', () => {
-    it('renders idle status and rule package version', () => {
+    it('renders idle status and dynamic rule package version', () => {
+      useSystemInfoStore.setState({
+        systemInfo: {
+          appVersion: '1.2.1',
+          rulesVersion: '2026.03.1+8f9a1b2c',
+          rulesCount: 8,
+          contractVersion: '1.1.0',
+        },
+      });
       render(<StatusBar />);
       expect(screen.getByText('System Idle')).toBeInTheDocument();
-      expect(screen.getByText('Rules v2026.03.1')).toBeInTheDocument();
+      expect(screen.getByText('Rules v2026.03.1+8f9a1b2c')).toBeInTheDocument();
     });
 
     it('renders active job when set', () => {

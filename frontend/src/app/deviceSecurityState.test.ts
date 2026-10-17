@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getCanonicalSecurityState, RULE_VERSION } from './deviceSecurityState';
+import { getCanonicalSecurityState } from './deviceSecurityState';
 import type { Device, ScanResult } from '../lib/bridge/schema';
 
 describe('Canonical Device Security State Machine', () => {
@@ -121,7 +121,8 @@ describe('Canonical Device Security State Machine', () => {
   });
 
   it('9. returns "scanned-clean" ONLY when scan is completed, serial matches, and findingsCount === 0', () => {
-    const res = getCanonicalSecurityState(readyDevice, cleanScanResult, false);
+    const mockRuleVersion = '2026.03.1+abcdef12';
+    const res = getCanonicalSecurityState(readyDevice, cleanScanResult, false, mockRuleVersion);
     expect(res.state).toBe('scanned-clean');
     expect(res.allowsCleanVerdict).toBe(true);
     expect(res.canStartScan).toBe(true);
@@ -129,7 +130,7 @@ describe('Canonical Device Security State Machine', () => {
     expect(res.contextText).toContain('No findings in the last scan');
     expect(res.contextText).toContain('Quick scan');
     expect(res.contextText).toContain('42 apps');
-    expect(res.contextText).toContain(RULE_VERSION);
+    expect(res.contextText).toContain('rules v2026.03.1+abcdef12');
   });
 
   it('10. returns "scanned-findings" when scan is completed and findingsCount > 0', () => {
@@ -154,13 +155,14 @@ describe('Canonical Device Security State Machine', () => {
         verdict: 'review',
       },
     };
-    const res = getCanonicalSecurityState(readyDevice, findingsScan, false);
+    const mockRuleVersion = '2026.03.1+abcdef12';
+    const res = getCanonicalSecurityState(readyDevice, findingsScan, false, mockRuleVersion);
     expect(res.state).toBe('scanned-findings');
     expect(res.allowsCleanVerdict).toBe(false);
     expect(res.canStartScan).toBe(true);
     expect(res.findingsCount).toBe(1);
     expect(res.contextText).toContain('1 findings');
     expect(res.contextText).toContain('Quick scan');
-    expect(res.contextText).toContain(RULE_VERSION);
+    expect(res.contextText).toContain('rules v2026.03.1+abcdef12');
   });
 });

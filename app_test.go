@@ -1658,8 +1658,8 @@ func TestAppGetSystemInfo(t *testing.T) {
 	if info.AppVersion != version.AppVersion {
 		t.Errorf("expected AppVersion '%s', got '%s'", version.AppVersion, info.AppVersion)
 	}
-	if info.RulesVersion != rules.RulesVersion {
-		t.Errorf("expected RulesVersion '%s', got '%s'", rules.RulesVersion, info.RulesVersion)
+	if info.RulesVersion != rules.RulesVersion() {
+		t.Errorf("expected RulesVersion '%s', got '%s'", rules.RulesVersion(), info.RulesVersion)
 	}
 	if info.RulesCount != 8 {
 		t.Errorf("expected RulesCount 8, got %d", info.RulesCount)

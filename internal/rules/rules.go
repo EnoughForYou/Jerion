@@ -2,10 +2,14 @@ package rules
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"embed"
+	"encoding/hex"
 	"fmt"
 	"io/fs"
+	"sort"
 	"strings"
+	"sync"
 
 	"gopkg.in/yaml.v3"
 )
@@ -169,8 +173,44 @@ func LoadEmbeddedRules() ([]RuleDefinition, error) {
 	return rules, nil
 }
 
-// RulesVersion defines the canonical version identifier for the bundled threat rules catalog.
-const RulesVersion = "2026.03.1"
+var (
+	rulesVersionCache string
+	rulesVersionOnce  sync.Once
+)
+
+// RulesVersion defines the canonical version identifier for the bundled threat rules catalog,
+// derived dynamically from the catalog base version and the SHA-256 digest of embedded YAML rules.
+func RulesVersion() string {
+	rulesVersionOnce.Do(func() {
+		entries, err := fs.ReadDir(embeddedRulesFS, ".")
+		if err != nil {
+			rulesVersionCache = "2026.03.1"
+			return
+		}
+
+		var fileNames []string
+		for _, entry := range entries {
+			if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".yaml") {
+				fileNames = append(fileNames, entry.Name())
+			}
+		}
+		sort.Strings(fileNames)
+
+		h := sha256.New()
+		for _, name := range fileNames {
+			content, err := embeddedRulesFS.ReadFile(name)
+			if err != nil {
+				continue
+			}
+			h.Write([]byte(name))
+			h.Write(content)
+		}
+
+		digest := h.Sum(nil)
+		rulesVersionCache = fmt.Sprintf("2026.03.1+%s", hex.EncodeToString(digest[:4]))
+	})
+	return rulesVersionCache
+}
 
 // Count returns the dynamic count of valid threat rules loaded from the embedded catalog.
 func Count() int {

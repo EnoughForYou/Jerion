@@ -2,14 +2,20 @@ import React from 'react';
 import { Activity } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDeviceStore } from './deviceStore';
+import { useSystemInfoStore } from './systemInfoStore';
 
 import { bridgeKind } from '../lib/bridge';
 
 export const StatusBar: React.FC = () => {
   const { t } = useTranslation();
   const { activeJob, jobProgress } = useDeviceStore();
+  const { systemInfo, fetchSystemInfo } = useSystemInfoStore();
 
-  const ruleVersion = '2026.03.1';
+  React.useEffect(() => {
+    fetchSystemInfo();
+  }, [fetchSystemInfo]);
+
+  const ruleVersion = systemInfo?.rulesVersion || '';
 
   return (
     <footer className="h-7 border-t border-separator-subtle bg-surface/70 backdrop-blur-xs px-3 flex items-center justify-between text-[11px] text-text-secondary select-none shrink-0 z-10">
@@ -33,7 +39,9 @@ export const StatusBar: React.FC = () => {
 
       {/* Rules version & Dev Bridge mode */}
       <div className="flex items-center gap-3">
-        <span>{t('statusBar.ruleVersion', { version: ruleVersion })}</span>
+        {ruleVersion ? (
+          <span>{t('statusBar.ruleVersion', { version: ruleVersion })}</span>
+        ) : null}
         {import.meta.env.DEV && (
           <>
             <span className="text-separator">|</span>

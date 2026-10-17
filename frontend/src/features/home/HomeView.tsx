@@ -24,6 +24,7 @@ import { ErrorState } from '../../components/ui/ErrorState';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { getBridge } from '../../lib/bridge';
 import { useDeviceStore } from '../../app/deviceStore';
+import { useSystemInfoStore } from '../../app/systemInfoStore';
 import { getCanonicalSecurityState } from '../../app/deviceSecurityState';
 import { StaticFallback } from '../../three/StaticFallback';
 import { OnboardingModal } from './OnboardingModal';
@@ -35,11 +36,16 @@ export const HomeView: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { activeDevice, setActiveDevice, activeJob } = useDeviceStore();
+  const { systemInfo, fetchSystemInfo } = useSystemInfoStore();
 
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    fetchSystemInfo();
+  }, [fetchSystemInfo]);
 
   const bridge = getBridge();
 
@@ -115,7 +121,7 @@ export const HomeView: React.FC = () => {
 
   const device = activeDevice;
   const isScanning = Boolean(activeJob && activeJob.toLowerCase().includes('scan'));
-  const securityContext = getCanonicalSecurityState(device, scanResult, isScanning);
+  const securityContext = getCanonicalSecurityState(device, scanResult, isScanning, systemInfo?.rulesVersion);
 
   // Determine device connection state for conditional rendering
   const isDeviceReady = device?.connectionState === 'ready';

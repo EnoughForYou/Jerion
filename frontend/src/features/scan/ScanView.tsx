@@ -25,6 +25,7 @@ import {
 } from '../../components/ui/Dialog';
 import { getBridge } from '../../lib/bridge';
 import { useDeviceStore } from '../../app/deviceStore';
+import { useSystemInfoStore } from '../../app/systemInfoStore';
 import { getCanonicalSecurityState } from '../../app/deviceSecurityState';
 import { ScanTimeline } from './ScanTimeline';
 import { EvidenceDrawer } from './EvidenceDrawer';
@@ -33,6 +34,11 @@ import type { Finding, ScanMode, ScanProgress, ScanResult, Severity } from '../.
 export const ScanView: React.FC = () => {
   const { t } = useTranslation();
   const { activeDevice, setActiveDevice, setActiveJob } = useDeviceStore();
+  const { systemInfo, fetchSystemInfo } = useSystemInfoStore();
+
+  useEffect(() => {
+    fetchSystemInfo();
+  }, [fetchSystemInfo]);
 
   const [mode, setMode] = useState<ScanMode>('quick');
   const [includeSystem, setIncludeSystem] = useState(false);
@@ -157,7 +163,7 @@ export const ScanView: React.FC = () => {
     return findings.filter((f) => f.severity === selectedSeverity);
   }, [findings, selectedSeverity]);
 
-  const securityContext = getCanonicalSecurityState(activeDevice, scanResult, isScanning);
+  const securityContext = getCanonicalSecurityState(activeDevice, scanResult, isScanning, systemInfo?.rulesVersion);
 
   return (
     <div className="space-y-5">

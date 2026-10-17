@@ -2,6 +2,7 @@ package rules
 
 import (
 	"bytes"
+	"regexp"
 	"testing"
 
 	"gopkg.in/yaml.v3"
@@ -110,3 +111,12 @@ unknown_unsupported_field: true
 		t.Fatal("expected strict decoder to reject unknown field, but it succeeded")
 	}
 }
+
+func TestRulesVersion(t *testing.T) {
+	ver := RulesVersion()
+	re := regexp.MustCompile(`^2026\.03\.1\+[0-9a-f]{8}$`)
+	if !re.MatchString(ver) {
+		t.Fatalf("expected RulesVersion matching '2026.03.1+<8hex>', got %q", ver)
+	}
+}
+

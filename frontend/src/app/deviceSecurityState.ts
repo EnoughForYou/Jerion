@@ -18,14 +18,12 @@ export interface CanonicalSecurityContext {
   totalApps: number;
   scanMode?: 'quick' | 'deep';
   scanTime?: string;
-  ruleVersion: string;
+  ruleVersion?: string;
   contextText: string;
   allowsCleanVerdict: boolean;
   canStartScan: boolean;
   disabledReason?: string;
 }
-
-export const RULE_VERSION = 'v2026.03.1';
 
 function formatScanTime(isoString?: string): string {
   if (!isoString) return '';
@@ -46,8 +44,17 @@ function formatScanTime(isoString?: string): string {
 export function getCanonicalSecurityState(
   device: Device | null,
   scanResult: ScanResult | null,
-  isScanning: boolean = false
+  isScanning: boolean = false,
+  activeRuleVersion?: string
 ): CanonicalSecurityContext {
+  const ruleVer =
+    activeRuleVersion ||
+    (scanResult as unknown as { rulesVersion?: string })?.rulesVersion ||
+    '';
+  const rulePart = ruleVer
+    ? ` · rules ${ruleVer.startsWith('v') ? ruleVer : `v${ruleVer}`}`
+    : '';
+
   // 1. No device connected
   if (!device) {
     return {
@@ -56,7 +63,7 @@ export function getCanonicalSecurityState(
       scanResult: null,
       findingsCount: 0,
       totalApps: 0,
-      ruleVersion: RULE_VERSION,
+      ruleVersion: ruleVer || undefined,
       contextText: 'No device connected',
       allowsCleanVerdict: false,
       canStartScan: false,
@@ -72,7 +79,7 @@ export function getCanonicalSecurityState(
       scanResult: null,
       findingsCount: 0,
       totalApps: 0,
-      ruleVersion: RULE_VERSION,
+      ruleVersion: ruleVer || undefined,
       contextText: 'Authorization required · Allow USB debugging on device screen',
       allowsCleanVerdict: false,
       canStartScan: false,
@@ -88,7 +95,7 @@ export function getCanonicalSecurityState(
       scanResult: null,
       findingsCount: 0,
       totalApps: 0,
-      ruleVersion: RULE_VERSION,
+      ruleVersion: ruleVer || undefined,
       contextText: 'Device offline · Check USB connection',
       allowsCleanVerdict: false,
       canStartScan: false,
@@ -104,7 +111,7 @@ export function getCanonicalSecurityState(
       scanResult: null,
       findingsCount: 0,
       totalApps: 0,
-      ruleVersion: RULE_VERSION,
+      ruleVersion: ruleVer || undefined,
       contextText: 'Scanning in progress...',
       allowsCleanVerdict: false,
       canStartScan: false,
@@ -128,8 +135,8 @@ export function getCanonicalSecurityState(
       scanResult: null,
       findingsCount: 0,
       totalApps: 0,
-      ruleVersion: RULE_VERSION,
-      contextText: `Device ready · No scan performed yet · rules ${RULE_VERSION}`,
+      ruleVersion: ruleVer || undefined,
+      contextText: `Device ready · No scan performed yet${rulePart}`,
       allowsCleanVerdict: false,
       canStartScan: true,
     };
@@ -155,8 +162,8 @@ export function getCanonicalSecurityState(
       totalApps: scanResult.summary?.totalApps ?? 0,
       scanMode: scanResult.mode,
       scanTime: formatScanTime(scanResult.completedAt || scanResult.startedAt),
-      ruleVersion: RULE_VERSION,
-      contextText: `${statusLabel} · rules ${RULE_VERSION}`,
+      ruleVersion: ruleVer || undefined,
+      contextText: `${statusLabel}${rulePart}`,
       allowsCleanVerdict: false,
       canStartScan: true,
     };
@@ -180,8 +187,8 @@ export function getCanonicalSecurityState(
       totalApps,
       scanMode,
       scanTime: timeFormatted,
-      ruleVersion: RULE_VERSION,
-      contextText: `No findings in the last scan · ${modePart}${appsPart}${timePart} · rules ${RULE_VERSION}`,
+      ruleVersion: ruleVer || undefined,
+      contextText: `No findings in the last scan · ${modePart}${appsPart}${timePart}${rulePart}`,
       allowsCleanVerdict: true, // Only state allowed to render clean checkmark
       canStartScan: true,
     };
@@ -195,8 +202,8 @@ export function getCanonicalSecurityState(
     totalApps,
     scanMode,
     scanTime: timeFormatted,
-    ruleVersion: RULE_VERSION,
-    contextText: `${findingsCount} findings · ${modePart}${appsPart}${timePart} · rules ${RULE_VERSION}`,
+    ruleVersion: ruleVer || undefined,
+    contextText: `${findingsCount} findings · ${modePart}${appsPart}${timePart}${rulePart}`,
     allowsCleanVerdict: false,
     canStartScan: true,
   };
