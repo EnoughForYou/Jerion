@@ -312,7 +312,7 @@
     "candidatesDesc": "Packages correlated with popup triggers and fullscreen overlays",
     "candidateScore": "Risk Score: {{score}}/100",
     "triggerLog": "Foreground Trigger Stream",
-    "triggerLogDesc": "Recent foreground shifts, toast broadcasts, and window overlays",
+    "triggerLogDesc": "Recent foreground shifts and window overlays",
     "noEvents": "No events recorded. Start monitoring to capture foreground activity.",
     "noEventsMonitoring": "Monitoring active. Interact with device or click 'Popup Just Appeared!' when an ad triggers.",
     "deepScanCandidate": "Deep Scan",

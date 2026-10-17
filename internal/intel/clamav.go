@@ -26,7 +26,7 @@ var (
 )
 
 // ValidateClamAVAddress validates that the target address is a local loopback address (IPv4, IPv6, or localhost).
-// This prevents Server-Side Request Forgery (SSRF) and accidental APK payload exfiltration over external networks.
+// This ensures APK payloads are only streamed to a local daemon and prevents external network transmission.
 func ValidateClamAVAddress(address string) (string, error) {
 	addr := strings.TrimSpace(address)
 	if addr == "" {
@@ -70,7 +70,7 @@ type ClamAVResult struct {
 	Raw      string `json:"raw"`
 }
 
-// ClamAVClient interacts with a local or remote ClamAV daemon (clamd) over TCP.
+// ClamAVClient interacts with a local ClamAV daemon (clamd) over TCP loopback.
 type ClamAVClient struct {
 	address string
 	timeout time.Duration
@@ -130,6 +130,33 @@ func (c *ClamAVClient) Ping(ctx context.Context) error {
 	return nil
 }
 
+// readUntilTerminator reads from conn until a NUL byte '\x00', newline '\n', EOF, or error occurs.
+func readUntilTerminator(conn net.Conn) (string, error) {
+	var sb strings.Builder
+	buf := make([]byte, 512)
+	for {
+		n, err := conn.Read(buf)
+		if n > 0 {
+			chunk := buf[:n]
+			if idx := bytes.IndexAny(chunk, "\x00\r\n"); idx != -1 {
+				sb.Write(chunk[:idx])
+				return strings.TrimSpace(sb.String()), nil
+			}
+			sb.Write(chunk)
+		}
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			if sb.Len() > 0 {
+				return strings.TrimSpace(sb.String()), nil
+			}
+			return "", err
+		}
+	}
+	return strings.TrimSpace(sb.String()), nil
+}
+
 // Version retrieves the ClamAV engine and virus signature database version.
 func (c *ClamAVClient) Version(ctx context.Context) (string, error) {
 	conn, err := c.dial(ctx)
@@ -146,25 +173,10 @@ func (c *ClamAVClient) Version(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("write version command failed: %w", err)
 	}
 
-	var sb strings.Builder
-	buf := make([]byte, 512)
-	for {
-		n, err := conn.Read(buf)
-		if n > 0 {
-			sb.Write(bytes.TrimRight(buf[:n], "\x00\r\n"))
-		}
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			}
-			return sb.String(), nil
-		}
-		if sb.Len() > 0 {
-			break
-		}
+	ver, err := readUntilTerminator(conn)
+	if err != nil && !errors.Is(err, io.EOF) {
+		return "", fmt.Errorf("read version failed: %w", err)
 	}
-
-	ver := strings.TrimSpace(sb.String())
 	if ver == "" {
 		return "", fmt.Errorf("%w: empty version response", ErrClamAVProtocol)
 	}
@@ -193,18 +205,8 @@ func (c *ClamAVClient) ScanStream(ctx context.Context, r io.Reader) (*ClamAVResu
 	// prior to resetting or aborting the socket connection (e.g. StreamMaxLength exceeded).
 	drainPendingResponse := func() string {
 		_ = conn.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
-		var sb strings.Builder
-		buf := make([]byte, 1024)
-		for {
-			n, rErr := conn.Read(buf)
-			if n > 0 {
-				sb.Write(bytes.TrimRight(buf[:n], "\x00\r\n"))
-			}
-			if rErr != nil || sb.Len() > 0 {
-				break
-			}
-		}
-		return strings.TrimSpace(sb.String())
+		resp, _ := readUntilTerminator(conn)
+		return resp
 	}
 
 	// Stream chunks: [uint32 big-endian size][chunk bytes]
@@ -254,23 +256,11 @@ func (c *ClamAVClient) ScanStream(ctx context.Context, r io.Reader) (*ClamAVResu
 	// Reset read deadline for normal scan completion
 	_ = conn.SetReadDeadline(time.Now().Add(scanTimeout))
 
-	// Read response
-	var sb strings.Builder
-	resBuf := make([]byte, 1024)
-	for {
-		n, err := conn.Read(resBuf)
-		if n > 0 {
-			sb.Write(bytes.TrimRight(resBuf[:n], "\x00\r\n"))
-		}
-		if err != nil {
-			break
-		}
-		if sb.Len() > 0 {
-			break
-		}
+	// Read response until terminator NUL/newline/EOF
+	raw, err := readUntilTerminator(conn)
+	if err != nil && !errors.Is(err, io.EOF) {
+		return nil, fmt.Errorf("failed reading clamd response: %w", err)
 	}
-
-	raw := strings.TrimSpace(sb.String())
 	return parseClamAVResponse(raw)
 }
 
@@ -321,8 +311,6 @@ func parseClamAVResponse(raw string) (*ClamAVResult, error) {
 		return nil, fmt.Errorf("%w: %s", ErrClamAVProtocol, raw)
 	}
 
-	return &ClamAVResult{
-		Infected: false,
-		Raw:      raw,
-	}, nil
+	// Fail-closed: any unrecognized response is a protocol violation, NEVER treated as clean.
+	return nil, fmt.Errorf("%w: unrecognized clamd response %q", ErrClamAVProtocol, raw)
 }

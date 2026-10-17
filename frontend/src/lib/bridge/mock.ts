@@ -78,7 +78,7 @@ export const MOCK_PREFLIGHT_CHECKS: PreflightCheck[] = [
     id: 'rules_pack',
     title: 'Threat Detection Rules (P4)',
     status: 'ok',
-    detail: 'Embedded rules package loaded (32 active rules)',
+    detail: 'Embedded rules package loaded (8 active rules)',
   },
   {
     id: 'work_dir',

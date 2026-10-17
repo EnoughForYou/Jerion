@@ -9,6 +9,8 @@ export function AllowlistList():Promise<Array<contract.AllowlistEntry>>;
 
 export function AllowlistRemove(arg1:string):Promise<void>;
 
+export function AppGetSystemInfo():Promise<main.AppSystemInfo>;
+
 export function AuditGetLatest():Promise<Array<contract.AuditItem>>;
 
 export function AuditRun():Promise<Array<contract.AuditItem>>;

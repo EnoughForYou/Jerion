@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/EnoughForYou/Jerion/internal/adb"
+	"github.com/EnoughForYou/Jerion/internal/rules"
 	"github.com/EnoughForYou/Jerion/internal/secrets"
 	"github.com/EnoughForYou/Jerion/internal/store"
 )
@@ -231,9 +232,19 @@ func (e *Engine) checkP4RulesPackage(ctx context.Context) PreflightCheck {
 		IsBlocking:  true,
 	}
 
-	// For Stage T4 Sub-task 4.2: verify internal rules structure is present
+	loadedRules, err := rules.LoadEmbeddedRules()
+	if err != nil || len(loadedRules) == 0 {
+		check.Status = StatusFailed
+		remedy := "Embedded rules catalog contains 0 rules"
+		if err != nil {
+			remedy = fmt.Sprintf("Failed to load embedded rules catalog: %v", err)
+		}
+		check.Remedy = &remedy
+		return check
+	}
+
 	check.Status = StatusOk
-	check.Description = "Built-in detection rules package verified."
+	check.Description = fmt.Sprintf("Built-in detection rules package verified (%d active rules).", len(loadedRules))
 	return check
 }
 

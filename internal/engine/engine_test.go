@@ -2,12 +2,14 @@ package engine
 
 import (
 	"context"
+	"net"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/EnoughForYou/Jerion/internal/adb"
 	"github.com/EnoughForYou/Jerion/internal/apk"
+	"github.com/EnoughForYou/Jerion/internal/intel"
 	"github.com/EnoughForYou/Jerion/internal/inventory"
 	"github.com/EnoughForYou/Jerion/internal/rules"
 	"github.com/EnoughForYou/Jerion/internal/store"
@@ -309,3 +311,203 @@ func hasFinding(findings []Finding, ruleID string) bool {
 	}
 	return false
 }
+
+func startMockClamd(t *testing.T, handler func(net.Conn)) (string, func()) {
+	t.Helper()
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to start mock clamd listener: %v", err)
+	}
+
+	done := make(chan struct{})
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				select {
+				case <-done:
+					return
+				default:
+					return
+				}
+			}
+			go handler(conn)
+		}
+	}()
+
+	cleanup := func() {
+		close(done)
+		_ = listener.Close()
+	}
+
+	return listener.Addr().String(), cleanup
+}
+
+func TestDeepScan_ClamAV_MalwareDetected(t *testing.T) {
+	fake := adb.NewFakeRunner()
+	tmpDir := t.TempDir()
+
+	fake.SetResponse("pm list packages", "package:/data/app/~~t/base.apk=com.test.malware\n", "", nil)
+	fake.SetResponse("dumpsys package com.test.malware", `Package [com.test.malware]
+userId=10201
+versionName=1.0.0
+versionCode=100
+`, "", nil)
+	fake.SetResponse("pm path com.test.malware", "package:/data/app/~~t/base.apk\n", "", nil)
+
+	apkPath := filepath.Join(tmpDir, "pulled_apks", "com.test.malware", "base.apk")
+	_, _, err := apk.CreateSyntheticAPK(
+		apkPath, "com.test.malware", "1.0.0", 100,
+		[]string{"android.permission.INTERNET"},
+		nil,
+		"Malware Test",
+	)
+	if err != nil {
+		t.Fatalf("CreateSyntheticAPK failed: %v", err)
+	}
+
+	fake.SetHandler(
+		func(serial string, args []string) bool {
+			return len(args) >= 3 && args[0] == "pull"
+		},
+		func(serial string, args []string) ([]byte, []byte, error) {
+			dest := args[2]
+			_ = os.MkdirAll(filepath.Dir(dest), 0o750)
+			data, _ := os.ReadFile(apkPath)
+			_ = os.WriteFile(dest, data, 0o644)
+			return []byte("1 file pulled"), nil, nil
+		},
+	)
+
+	addr, cleanup := startMockClamd(t, func(conn net.Conn) {
+		defer conn.Close()
+		buf := make([]byte, 1024)
+		for {
+			n, err := conn.Read(buf)
+			if err != nil {
+				return
+			}
+			// When terminal chunk (4 zero bytes) is received, respond FOUND
+			if n >= 4 && buf[n-4] == 0 && buf[n-3] == 0 && buf[n-2] == 0 && buf[n-1] == 0 {
+				_, _ = conn.Write([]byte("stream: Win.Test.EICAR_HDB-1 FOUND\x00"))
+				return
+			}
+		}
+	})
+	defer cleanup()
+
+	s, _ := store.OpenMemory()
+	defer s.Close()
+
+	agg := intel.NewAggregator(s, nil)
+	clamClient := intel.NewClamAVClient(addr)
+	agg.SetClamAVClient(clamClient)
+
+	invSvc := inventory.NewService(fake, nil)
+	puller := inventory.NewPuller(fake, nil)
+
+	scanner, err := NewScanner(invSvc, puller, nil, agg, s, tmpDir, nil)
+	if err != nil {
+		t.Fatalf("NewScanner failed: %v", err)
+	}
+
+	res, err := scanner.Scan(context.Background(), "DEV-TEST-CLAM", ScanOptions{Mode: "deep"}, nil)
+	if err != nil {
+		t.Fatalf("Scan failed: %v", err)
+	}
+
+	if !hasFinding(res.Findings, "CLAMAV-SIGNATURE-001") {
+		t.Fatalf("expected CLAMAV-SIGNATURE-001 finding, got: %+v", res.Findings)
+	}
+
+	var clamFinding *Finding
+	for i := range res.Findings {
+		if res.Findings[i].RuleID == "CLAMAV-SIGNATURE-001" {
+			clamFinding = &res.Findings[i]
+			break
+		}
+	}
+	if clamFinding == nil {
+		t.Fatalf("missing clamav finding")
+	}
+	if clamFinding.Severity != "critical" {
+		t.Errorf("expected severity critical, got %s", clamFinding.Severity)
+	}
+	if clamFinding.Category != "malware" {
+		t.Errorf("expected category malware, got %s", clamFinding.Category)
+	}
+	if len(clamFinding.Actions) == 0 || clamFinding.Actions[0] != "uninstall" {
+		t.Errorf("expected uninstall action, got %v", clamFinding.Actions)
+	}
+}
+
+func TestDeepScan_ClamAV_Error_MarksPartial(t *testing.T) {
+	fake := adb.NewFakeRunner()
+	tmpDir := t.TempDir()
+
+	fake.SetResponse("pm list packages", "package:/data/app/~~t/base.apk=com.test.broken\n", "", nil)
+	fake.SetResponse("dumpsys package com.test.broken", `Package [com.test.broken]
+userId=10202
+versionName=1.0.0
+versionCode=100
+`, "", nil)
+	fake.SetResponse("pm path com.test.broken", "package:/data/app/~~t/base.apk\n", "", nil)
+
+	apkPath := filepath.Join(tmpDir, "pulled_apks", "com.test.broken", "base.apk")
+	_, _, err := apk.CreateSyntheticAPK(
+		apkPath, "com.test.broken", "1.0.0", 100,
+		[]string{"android.permission.INTERNET"},
+		nil,
+		"Broken Test",
+	)
+	if err != nil {
+		t.Fatalf("CreateSyntheticAPK failed: %v", err)
+	}
+
+	fake.SetHandler(
+		func(serial string, args []string) bool {
+			return len(args) >= 3 && args[0] == "pull"
+		},
+		func(serial string, args []string) ([]byte, []byte, error) {
+			dest := args[2]
+			_ = os.MkdirAll(filepath.Dir(dest), 0o750)
+			data, _ := os.ReadFile(apkPath)
+			_ = os.WriteFile(dest, data, 0o644)
+			return []byte("1 file pulled"), nil, nil
+		},
+	)
+
+	// Mock server closes immediately on connection (triggering error)
+	addr, cleanup := startMockClamd(t, func(conn net.Conn) {
+		_ = conn.Close()
+	})
+	defer cleanup()
+
+	s, _ := store.OpenMemory()
+	defer s.Close()
+
+	agg := intel.NewAggregator(s, nil)
+	clamClient := intel.NewClamAVClient(addr)
+	agg.SetClamAVClient(clamClient)
+
+	invSvc := inventory.NewService(fake, nil)
+	puller := inventory.NewPuller(fake, nil)
+
+	scanner, err := NewScanner(invSvc, puller, nil, agg, s, tmpDir, nil)
+	if err != nil {
+		t.Fatalf("NewScanner failed: %v", err)
+	}
+
+	res, err := scanner.Scan(context.Background(), "DEV-TEST-BROKEN", ScanOptions{Mode: "deep"}, nil)
+	if err != nil {
+		t.Fatalf("Scan failed: %v", err)
+	}
+
+	if !hasFinding(res.Findings, "CLAMAV-SCAN-ERR") {
+		t.Fatalf("expected CLAMAV-SCAN-ERR finding when ClamAV fails, got: %+v", res.Findings)
+	}
+	if !res.Partial {
+		t.Fatalf("expected scan result Partial to be true when ClamAV fails")
+	}
+}
+

@@ -7,13 +7,12 @@
   "frontend:dev:watcher": "npm run dev",
   "frontend:dev:serverUrl": "auto",
   "author": {
-    "name": "EnoughForYou",
-    "email": "noufalfahrib122@gmail.com"
+    "name": "EnoughForYou"
   },
   "info": {
     "companyName": "Jerion",
     "productName": "Jerion",
-    "productVersion": "1.0.0",
+    "productVersion": "1.1.1",
     "copyright": "Copyright © 2026 EnoughForYou. All rights reserved.",
     "comments": "Android threat analyzer, adware hunter, and forensic tool via ADB."
   }

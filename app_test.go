@@ -1648,4 +1648,24 @@ func TestScanQuickTerminalStates(t *testing.T) {
 	}
 }
 
+func TestAppGetSystemInfo(t *testing.T) {
+	app, _ := setupTestApp(t)
+	defer app.store.Close()
+
+	info := app.AppGetSystemInfo()
+	if info.AppVersion != "1.1.1" {
+		t.Errorf("expected AppVersion '1.1.1', got '%s'", info.AppVersion)
+	}
+	if info.RulesVersion != "2026.03.1" {
+		t.Errorf("expected RulesVersion '2026.03.1', got '%s'", info.RulesVersion)
+	}
+	if info.RulesCount != 8 {
+		t.Errorf("expected RulesCount 8, got %d", info.RulesCount)
+	}
+	if info.ContractVersion != "1.1.0" {
+		t.Errorf("expected ContractVersion '1.1.0', got '%s'", info.ContractVersion)
+	}
+}
+
+
 

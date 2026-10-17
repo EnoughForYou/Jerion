@@ -14,6 +14,10 @@ export function AllowlistRemove(arg1) {
   return window['go']['main']['App']['AllowlistRemove'](arg1);
 }
 
+export function AppGetSystemInfo() {
+  return window['go']['main']['App']['AppGetSystemInfo']();
+}
+
 export function AuditGetLatest() {
   return window['go']['main']['App']['AuditGetLatest']();
 }

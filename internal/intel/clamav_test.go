@@ -414,3 +414,92 @@ func TestClamAV_NonLoopbackDialBlocked(t *testing.T) {
 		t.Fatalf("expected ErrClamAVNonLoopback for ScanStream, got %v", err)
 	}
 }
+
+func TestClamAV_FailClosedOnTruncatedOrUnrecognizedResponse(t *testing.T) {
+	// 1. Truncated response without FOUND or OK
+	addr, cleanup := startMockClamd(t, func(conn net.Conn) {
+		defer conn.Close()
+		buf := make([]byte, 10)
+		_, _ = conn.Read(buf)
+		// Drain stream
+		for {
+			var length uint32
+			if err := binary.Read(conn, binary.BigEndian, &length); err != nil || length == 0 {
+				break
+			}
+			data := make([]byte, length)
+			_, _ = io.ReadFull(conn, data)
+		}
+		// Send truncated response and close
+		_, _ = conn.Write([]byte("stream: Eicar-Signature-Partial\x00"))
+	})
+	defer cleanup()
+
+	client := intel.NewClamAVClient(addr)
+	_, err := client.ScanStream(context.Background(), bytes.NewReader([]byte("sample")))
+	if err == nil {
+		t.Fatalf("expected error for truncated/unrecognized response, got clean result")
+	}
+	if !errors.Is(err, intel.ErrClamAVProtocol) {
+		t.Fatalf("expected ErrClamAVProtocol, got %v", err)
+	}
+
+	// 2. Garbage response
+	addr2, cleanup2 := startMockClamd(t, func(conn net.Conn) {
+		defer conn.Close()
+		buf := make([]byte, 10)
+		_, _ = conn.Read(buf)
+		for {
+			var length uint32
+			if err := binary.Read(conn, binary.BigEndian, &length); err != nil || length == 0 {
+				break
+			}
+			data := make([]byte, length)
+			_, _ = io.ReadFull(conn, data)
+		}
+		_, _ = conn.Write([]byte("UNKNOWN_DAEMON_OUTPUT_12345\n"))
+	})
+	defer cleanup2()
+
+	client2 := intel.NewClamAVClient(addr2)
+	_, err2 := client2.ScanStream(context.Background(), bytes.NewReader([]byte("sample")))
+	if err2 == nil {
+		t.Fatalf("expected error for garbage response, got clean result")
+	}
+	if !errors.Is(err2, intel.ErrClamAVProtocol) {
+		t.Fatalf("expected ErrClamAVProtocol, got %v", err2)
+	}
+}
+
+func TestClamAV_SegmentedResponseReassembly(t *testing.T) {
+	addr, cleanup := startMockClamd(t, func(conn net.Conn) {
+		defer conn.Close()
+		buf := make([]byte, 10)
+		_, _ = conn.Read(buf)
+		for {
+			var length uint32
+			if err := binary.Read(conn, binary.BigEndian, &length); err != nil || length == 0 {
+				break
+			}
+			data := make([]byte, length)
+			_, _ = io.ReadFull(conn, data)
+		}
+		// Send response across two separate writes without trailing newline on first write
+		_, _ = conn.Write([]byte("stream: Android.Trojan.Banker-4321"))
+		time.Sleep(20 * time.Millisecond)
+		_, _ = conn.Write([]byte(" FOUND\x00"))
+	})
+	defer cleanup()
+
+	client := intel.NewClamAVClient(addr)
+	res, err := client.ScanStream(context.Background(), bytes.NewReader([]byte("sample")))
+	if err != nil {
+		t.Fatalf("ScanStream failed on segmented response: %v", err)
+	}
+	if !res.Infected {
+		t.Fatalf("expected infected for reassembled response")
+	}
+	if res.Virus != "Android.Trojan.Banker-4321" {
+		t.Fatalf("expected virus Android.Trojan.Banker-4321, got %q", res.Virus)
+	}
+}
