@@ -52,6 +52,10 @@ func wrapADBError(err error) error {
 			return wireError("Timeout", adbErr.Message, "Command took too long to respond; verify device responsiveness")
 		case adb.ErrCodePermissionDenied:
 			return wireError("PermissionDenied", adbErr.Message, "Operation requires elevated Android permissions")
+		case adb.ErrCodeValidationFailed:
+			return wireError("ValidationFailed", adbErr.Message, "Verify input parameters")
+		case adb.ErrCodeCommandFailed:
+			return wireError("CommandFailed", adbErr.Message, "Check ADB command output or device settings")
 		default:
 			return wireError("InternalError", adbErr.Message, "Check ADB and device state")
 		}
@@ -104,6 +108,7 @@ type App struct {
 	auditSvc      *audit.Service
 	remediate     *remediate.Manager
 	intelAgg      *intel.Aggregator
+	usbDetector   adb.USBDetector
 	workDir       string
 	activeSerial  string
 	latestAudit   []contract.AuditItem
@@ -197,6 +202,7 @@ func NewAppWithDeps(runner adb.Runner, st *store.Store, logger *logx.Logger, wor
 		auditSvc:      auditSvc,
 		remediate:     remMgr,
 		intelAgg:      intelAgg,
+		usbDetector:   adb.DefaultUSBDetector(),
 		workDir:       workDir,
 		activeScans:   make(map[string]context.CancelFunc),
 		cachedResults: make(map[string]*contract.ScanResult),
@@ -204,6 +210,13 @@ func NewAppWithDeps(runner adb.Runner, st *store.Store, logger *logx.Logger, wor
 	}
 
 	return app
+}
+
+// SetUSBDetector overrides the default USB hardware detector (useful for testing).
+func (a *App) SetUSBDetector(detector adb.USBDetector) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.usbDetector = detector
 }
 
 // startup is called by Wails when the GUI window opens.
@@ -433,6 +446,140 @@ func (a *App) DeviceSelect(serial string) error {
 	a.mu.Unlock()
 	a.tracker.SetActiveSerial(serial)
 	return nil
+}
+
+// DeviceDiagnoseConnection performs comprehensive connection and USB hardware diagnostics.
+func (a *App) DeviceDiagnoseConnection() (*adb.ConnectionDiagnosticResult, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	a.mu.RLock()
+	detector := a.usbDetector
+	a.mu.RUnlock()
+	if detector == nil {
+		detector = adb.DefaultUSBDetector()
+	}
+
+	diag, err := a.adbMgr.DiagnoseConnection(ctx, detector)
+	if err != nil {
+		return nil, wrapADBError(err)
+	}
+	return diag, nil
+}
+
+// AppDiagnoseConnection is an alias for DeviceDiagnoseConnection.
+func (a *App) AppDiagnoseConnection() (*adb.ConnectionDiagnosticResult, error) {
+	return a.DeviceDiagnoseConnection()
+}
+
+// DeviceWirelessPair executes `adb pair <host>:<pairingPort> <pairingCode>` for Android 11+ (API 30+).
+func (a *App) DeviceWirelessPair(host string, pairingPort int, pairingCode string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	if err := a.adbMgr.PairWireless(ctx, host, pairingPort, pairingCode); err != nil {
+		return wrapADBError(err)
+	}
+	return nil
+}
+
+// AppWirelessPair is an alias for DeviceWirelessPair.
+func (a *App) AppWirelessPair(host string, pairingPort int, pairingCode string) error {
+	return a.DeviceWirelessPair(host, pairingPort, pairingCode)
+}
+
+// DeviceWirelessConnect executes `adb connect <host>:<connectionPort>` to establish an active ADB session.
+func (a *App) DeviceWirelessConnect(host string, connectionPort int) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	endpoint, err := a.adbMgr.ConnectWireless(ctx, host, connectionPort)
+	if err != nil {
+		return "", wrapADBError(err)
+	}
+
+	// Trigger immediate device polling
+	go func() {
+		pCtx, pCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer pCancel()
+		_, _ = a.tracker.PollOnce(pCtx)
+	}()
+
+	return endpoint, nil
+}
+
+// AppWirelessConnect is an alias for DeviceWirelessConnect.
+func (a *App) AppWirelessConnect(host string, connectionPort int) (string, error) {
+	return a.DeviceWirelessConnect(host, connectionPort)
+}
+
+// DeviceWirelessDisconnect executes `adb disconnect <host>:<connectionPort>`.
+func (a *App) DeviceWirelessDisconnect(host string, connectionPort int) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	if err := a.adbMgr.DisconnectWireless(ctx, host, connectionPort); err != nil {
+		return wrapADBError(err)
+	}
+
+	go func() {
+		pCtx, pCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer pCancel()
+		_, _ = a.tracker.PollOnce(pCtx)
+	}()
+
+	return nil
+}
+
+// DeviceSoftReconnect attempts to reset the ADB connection socket without restarting the daemon.
+func (a *App) DeviceSoftReconnect(serial string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	if err := a.adbMgr.SoftReconnect(ctx, serial); err != nil {
+		return wrapADBError(err)
+	}
+
+	go func() {
+		pCtx, pCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer pCancel()
+		_, _ = a.tracker.PollOnce(pCtx)
+	}()
+
+	return nil
+}
+
+// AppADBSoftReconnect is an alias for DeviceSoftReconnect.
+func (a *App) AppADBSoftReconnect(serial string) error {
+	return a.DeviceSoftReconnect(serial)
+}
+
+// DeviceRestartServer cleanly kills and restarts the local ADB server daemon.
+// Requires explicit user confirmation in the UI before execution.
+func (a *App) DeviceRestartServer() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	if err := a.adbMgr.KillServer(ctx); err != nil {
+		a.logger.Warn("kill-server returned error during restart", "err", err)
+	}
+
+	if err := a.adbMgr.StartServer(ctx); err != nil {
+		return wrapADBError(err)
+	}
+
+	go func() {
+		pCtx, pCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer pCancel()
+		_, _ = a.tracker.PollOnce(pCtx)
+	}()
+
+	return nil
+}
+
+// AppADBRestartServer is an alias for DeviceRestartServer.
+func (a *App) AppADBRestartServer() error {
+	return a.DeviceRestartServer()
 }
 
 func (a *App) convertDevice(d adb.DeviceInfo) *contract.Device {

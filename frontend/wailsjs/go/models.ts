@@ -1,3 +1,101 @@
+export namespace adb {
+	
+	export class DeviceInfo {
+	    serial: string;
+	    state: string;
+	    product?: string;
+	    model?: string;
+	    device?: string;
+	    transportId?: string;
+	    rawState: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DeviceInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.serial = source["serial"];
+	        this.state = source["state"];
+	        this.product = source["product"];
+	        this.model = source["model"];
+	        this.device = source["device"];
+	        this.transportId = source["transportId"];
+	        this.rawState = source["rawState"];
+	    }
+	}
+	export class USBDevice {
+	    deviceId: string;
+	    name: string;
+	    manufacturer: string;
+	    pnpClass: string;
+	    status: string;
+	    configManagerErrorCode: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new USBDevice(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.deviceId = source["deviceId"];
+	        this.name = source["name"];
+	        this.manufacturer = source["manufacturer"];
+	        this.pnpClass = source["pnpClass"];
+	        this.status = source["status"];
+	        this.configManagerErrorCode = source["configManagerErrorCode"];
+	    }
+	}
+	export class ConnectionDiagnosticResult {
+	    adbServerRunning: boolean;
+	    adbVersion: string;
+	    usbHardwarePresent: boolean;
+	    usbDevices: USBDevice[];
+	    adbDevices: DeviceInfo[];
+	    likelyCause: string;
+	    headline: string;
+	    possibleCauses: string[];
+	    recommendedSteps: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ConnectionDiagnosticResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.adbServerRunning = source["adbServerRunning"];
+	        this.adbVersion = source["adbVersion"];
+	        this.usbHardwarePresent = source["usbHardwarePresent"];
+	        this.usbDevices = this.convertValues(source["usbDevices"], USBDevice);
+	        this.adbDevices = this.convertValues(source["adbDevices"], DeviceInfo);
+	        this.likelyCause = source["likelyCause"];
+	        this.headline = source["headline"];
+	        this.possibleCauses = source["possibleCauses"];
+	        this.recommendedSteps = source["recommendedSteps"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+
+}
+
 export namespace contract {
 	
 	export class RemediationAction {
