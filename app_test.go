@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 	"github.com/EnoughForYou/Jerion/internal/adb"
 	"github.com/EnoughForYou/Jerion/internal/contract"
 	"github.com/EnoughForYou/Jerion/internal/engine"
+	"github.com/EnoughForYou/Jerion/internal/intel"
 	"github.com/EnoughForYou/Jerion/internal/logx"
 	"github.com/EnoughForYou/Jerion/internal/preflight"
 	"github.com/EnoughForYou/Jerion/internal/remediate"
@@ -466,7 +468,7 @@ func TestClamAVAppIntegration(t *testing.T) {
 	app, _ := setupTestApp(t)
 	defer app.store.Close()
 
-	// 1. Initial config
+	// 1. Initial default config
 	cfg, err := app.ClamAVGetConfig()
 	if err != nil {
 		t.Fatalf("ClamAVGetConfig failed: %v", err)
@@ -478,20 +480,50 @@ func TestClamAVAppIntegration(t *testing.T) {
 		t.Fatalf("expected default host 127.0.0.1:3310, got %s", cfg.Host)
 	}
 
-	// 2. Save config
-	if err := app.ClamAVSaveConfig(true, "10.0.0.5:3310"); err != nil {
-		t.Fatalf("ClamAVSaveConfig failed: %v", err)
+	// 2. Reject non-loopback address
+	err = app.ClamAVSaveConfig(true, "10.0.0.5:3310")
+	if err == nil {
+		t.Fatalf("expected ClamAVSaveConfig to reject non-loopback address 10.0.0.5:3310")
+	}
+	if !errors.Is(err, intel.ErrClamAVNonLoopback) {
+		t.Fatalf("expected ErrClamAVNonLoopback, got %v", err)
+	}
+
+	// 3. Reject invalid port
+	err = app.ClamAVSaveConfig(true, "127.0.0.1:99999")
+	if err == nil {
+		t.Fatalf("expected ClamAVSaveConfig to reject port 99999")
+	}
+	if !errors.Is(err, intel.ErrClamAVInvalidAddress) {
+		t.Fatalf("expected ErrClamAVInvalidAddress, got %v", err)
+	}
+
+	// 4. Save valid loopback address
+	if err := app.ClamAVSaveConfig(true, "127.0.0.2:3310"); err != nil {
+		t.Fatalf("ClamAVSaveConfig failed for valid loopback: %v", err)
 	}
 
 	cfgUpdated, err := app.ClamAVGetConfig()
 	if err != nil {
 		t.Fatalf("ClamAVGetConfig failed: %v", err)
 	}
-	if !cfgUpdated.Enabled || cfgUpdated.Host != "10.0.0.5:3310" {
-		t.Fatalf("expected enabled=true host=10.0.0.5:3310, got %+v", cfgUpdated)
+	if !cfgUpdated.Enabled || cfgUpdated.Host != "127.0.0.2:3310" {
+		t.Fatalf("expected enabled=true host=127.0.0.2:3310, got %+v", cfgUpdated)
 	}
 
-	// 3. Test connection to unreachable endpoint
+	// 5. Test connection with non-loopback host returns error status without panicking
+	statusNonLoopback, err := app.ClamAVTestConnection("192.168.1.1:3310")
+	if err != nil {
+		t.Fatalf("unexpected error from TestConnection: %v", err)
+	}
+	if statusNonLoopback.Connected {
+		t.Fatalf("expected Connected false for non-loopback host")
+	}
+	if !strings.Contains(statusNonLoopback.Error, "loopback") {
+		t.Fatalf("expected error mentioning loopback, got %q", statusNonLoopback.Error)
+	}
+
+	// 6. Test connection to unreachable loopback endpoint
 	status, err := app.ClamAVTestConnection("127.0.0.1:54321")
 	if err != nil {
 		t.Fatalf("unexpected error from TestConnection: %v", err)

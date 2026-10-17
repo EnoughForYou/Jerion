@@ -1,29 +1,30 @@
 # PROGRESS
 
 ## Status sekarang
-- Fase aktif: UX-1b — Visual Polish, Accessible Actions & System Theme (v1.1.0)
-- Branch: phase/ux-1b
-- Terakhir selesai: Product Honesty & State Machine (tag v1.0.2)
+- Fase aktif: SEC-1 — ClamAV Loopback Validation & StreamMaxLength Resilience (v1.1.1)
+- Branch: phase/sec-1
+- Terakhir selesai: Visual Polish, Accessible Actions & System Theme (tag v1.1.0)
 
-## Fase UX-1b (Visual Polish & System Theme) — checklist
-- [x] Sub-tugas UX1B.1: Sistem tema terpadu OS (`frontend/src/app/theme.ts`): penambahan tipe `ThemeMode = 'system' | 'dark' | 'light'`, pendeteksian otomatis OS theme via `window.matchMedia('(prefers-color-scheme: light)')`, listener pergantian tema OS secara reaktif, dan persistensi di `localStorage` (`jerion_theme_mode`).
-- [x] Sub-tugas UX1B.2: Pengaturan tema 3-opsi pada `SettingsView.tsx`: tombol System (ikon `Laptop`), Dark (`Moon`), dan Light (`Sun`) dengan status aktif varian `primary`. Pembaruan App Version diagnostik menjadi `v1.1.0`.
-- [x] Sub-tugas UX1B.3: Token separator semantik (`tokens.css` & `tailwind.config.js`): penambahan `--separator-subtle` dan `--separator-muted` pada mode gelap dan terang per PRD §5.3, serta mapping `separator: { DEFAULT, subtle, muted }` pada konfigurasi Tailwind untuk mengeliminasi garis tepi terang/kasar.
-- [x] Sub-tugas UX1B.4: Refactoring seluruh border kartu & outline UI: penggantian seluruh kelas `border-separator/\d+` menjadi token semantik `border-separator-subtle` (kartu, drawer, modal dialog, panel samping) dan `border-separator-muted` (divider baris tabel, divider header, chip teks) di 20+ komponen frontend.
-- [x] Sub-tugas UX1B.5: Tombol aksi aksesibel (`frontend/src/components/ui/Button.tsx`): penggantian `disabled:pointer-events-none` dengan `aria-disabled="true"`, `cursor-not-allowed`, pencegahan klik di handler, serta retensi hover pointer events agar tooltip / atribut `title` yang menjelaskan alasan tombol tidak aktif tetap dapat dibaca oleh pengguna dan screen reader.
-- [x] Sub-tugas UX1B.6: Standardisasi sentence case & copy tenang: teks "Ready to run QUICK scan" diubah menjadi sentence case "Ready to run quick scan" pada `ScanView.tsx`.
-- [x] Sub-tugas UX1B.7: Popup Hunter signal chips: standarisasi chip telemetri monitor pada `MonitorView.tsx` menjadi badge indikator statis non-klik yang tenang.
-- [x] Sub-tugas UX1B.8: Pengujian regresi visual & tema: penambahan unit tests di `theme.test.ts` (8 pengujian mencakup mode system, matchMedia, alias legacy, dan toggling) dan `settings.test.tsx` (155 pengujian lulus 100%).
+## Fase SEC-1 (ClamAV Hardening & Stream Limit Handling) — checklist
+- [x] Sub-tugas SEC.1: Validasi loopback ClamAV backend (`internal/intel/clamav.go`): penambahan fungsi `ValidateClamAVAddress(address string) (string, error)` yang memvalidasi bahwa alamat target strictly merupakan local loopback (`127.0.0.1`, `[::1]`, atau `localhost`) dengan port valid (1-65535), mencegah SSRF (Server-Side Request Forgery) dan eksfiltrasi payload biner APK melalui jaringan eksternal/LAN.
+- [x] Sub-tugas SEC.2: Definisi typed error keamanan & protokol (`internal/intel/clamav.go`): penambahan `ErrClamAVNonLoopback`, `ErrClamAVInvalidAddress`, dan `ErrClamAVSizeLimitExceeded`.
+- [x] Sub-tugas SEC.3: Pemulihan broken pipe dan penanganan batas `StreamMaxLength` ClamAV (`internal/intel/clamav.go`): `ScanStream` menangkap write error pada pengiriman chunk data dan EOF terminal chunk, menguras pending daemon error buffer (yang dikirim clamd sebelum me-reset socket), serta memetakan pesan respon `limit exceeded` ke typed error `ErrClamAVSizeLimitExceeded`.
+- [x] Sub-tugas SEC.4: Validasi fail-closed pada Wails controller (`app.go`): `ClamAVSaveConfig` memvalidasi alamat loopback sebelum menyimpan ke SQLite store; `ClamAVTestConnection` mengembalikan error status deskriptif ketika endpoint non-loopback atau tidak valid diuji; `ClamAVGetConfig` memvalidasi alamat yang dimuat secara defensif dengan fallback ke `127.0.0.1:3310`.
+- [x] Sub-tugas SEC.5: Kejujuran UI pengaturan ClamAV & penanganan error simpan (`frontend/src/features/settings/SettingsView.tsx` & `en.json`): penangkapan exception simpan konfigurasi untuk menampilkan banner error langsung di UI; eliminasi fallback sukses semu `(Simulated)` ketika service backend tidak tersedia; perbaikan deskripsi ClamAV di `en.json` menjadi koneksi loopback lokal.
+- [x] Sub-tugas SEC.6: Rangkaian pengujian komprehensif:
+  - `internal/intel/clamav_test.go`: `TestValidateClamAVAddress` (17 kasus uji mencakup IPv4 loopback, IPv6 loopback, localhost, port batas, penolakan IP LAN/publik, dan malformed format), `TestClamAV_SizeLimitExceeded_BrokenPipe`, `TestClamAV_SizeLimitExceeded_NormalResponse`, dan `TestClamAV_NonLoopbackDialBlocked`.
+  - `app_test.go`: `TestClamAVAppIntegration` memverifikasi penolakan alamat non-loopback `10.0.0.5:3310` (`ErrClamAVNonLoopback`), penolakan port invalid `127.0.0.1:99999` (`ErrClamAVInvalidAddress`), penerimaan alamat loopback valid `127.0.0.2:3310`, dan uji koneksi aman tanpa panik.
+  - `frontend/src/features/settings/settings.test.tsx`: Pengujian pengujian koneksi sukses dengan mock backend, tampilan pesan error saat non-loopback ditolak, dan tampilan error saat penyimpanan gagal.
 
-## Pengukuran & Kualitas (UX-1b)
-- **Frontend Vitest Suite**: 155 pengujian lolos di 23 file tes (`npm run test`).
-- **ESLint & TypeScript**: 0 error, 0 warning pada `npm run lint` & `npm run typecheck`.
-- **Mock Elimination (`npm run check:no-mock`)**: 0 marker mock di seluruh bundle produksi.
+## Pengukuran & Kualitas (SEC-1)
 - **Backend Go Test Suite**: 100% test lulus di seluruh 16 paket backend Go (`go test -count=1 . ./internal/...`).
 - **Backend Go Vet**: Lulus bersih tanpa peringatan (`go vet . ./internal/...`).
-- **Production Bundle Vite**: Selesai dalam 5.96 detik, ukuran CSS terkompresi 6.24 kB gzip.
+- **Frontend Vitest Suite**: 157 pengujian lolos di 23 file tes (`npm run test`).
+- **ESLint & TypeScript**: 0 error, 0 warning pada `npm run lint` & `npm run typecheck`.
+- **Mock Elimination (`npm run check:no-mock`)**: 0 marker mock di seluruh bundle produksi.
+- **Production Compilation (`wails build`)**: Standalone binary Windows x64 `build/bin/Jerion.exe` terkompilasi bersih dalam 22.19 detik.
 
-## Fase UX-1a (Product Honesty & State Machine) — riwayat selesai (v1.0.2)
+## Fase UX-1b (Visual Polish & System Theme) — riwayat selesai (v1.1.0)
 - Mesin 8 status keamanan kanonis (`no-device`, `unauthorized`, `offline`, `never-scanned`, `scanning`, `scanned-clean`, `scanned-findings`, `partial-failed`) dengan pengikatan serial perangkat ketat.
 - Eliminasi rasa aman palsu: centang hijau eksklusif hanya untuk `scanned-clean`.
 - Single source of truth bridge via `bridgeKind`, badge MOCK dikunci strictly pada `import.meta.env.DEV`.

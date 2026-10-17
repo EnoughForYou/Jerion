@@ -9,6 +9,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -17,9 +18,50 @@ import (
 const DefaultClamAVAddress = "127.0.0.1:3310"
 
 var (
-	ErrClamAVUnavailable = errors.New("clamav daemon is unreachable")
-	ErrClamAVProtocol    = errors.New("clamav protocol error")
+	ErrClamAVUnavailable       = errors.New("clamav daemon is unreachable")
+	ErrClamAVProtocol          = errors.New("clamav protocol error")
+	ErrClamAVNonLoopback       = errors.New("clamav host must be a local loopback address (e.g. 127.0.0.1, [::1], localhost)")
+	ErrClamAVInvalidAddress    = errors.New("invalid clamav address format: must be host:port")
+	ErrClamAVSizeLimitExceeded = errors.New("file exceeds ClamAV daemon StreamMaxLength limit")
 )
+
+// ValidateClamAVAddress validates that the target address is a local loopback address (IPv4, IPv6, or localhost).
+// This prevents Server-Side Request Forgery (SSRF) and accidental APK payload exfiltration over external networks.
+func ValidateClamAVAddress(address string) (string, error) {
+	addr := strings.TrimSpace(address)
+	if addr == "" {
+		return DefaultClamAVAddress, nil
+	}
+
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return "", fmt.Errorf("%w: %v", ErrClamAVInvalidAddress, err)
+	}
+
+	if host == "" {
+		return "", fmt.Errorf("%w: host cannot be empty", ErrClamAVInvalidAddress)
+	}
+
+	portNum, err := strconv.Atoi(port)
+	if err != nil || portNum < 1 || portNum > 65535 {
+		return "", fmt.Errorf("%w: port %q must be between 1 and 65535", ErrClamAVInvalidAddress, port)
+	}
+
+	if strings.EqualFold(host, "localhost") {
+		return net.JoinHostPort(host, strconv.Itoa(portNum)), nil
+	}
+
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return "", fmt.Errorf("%w: hostname %q is not permitted; only loopback (localhost, 127.0.0.1, [::1]) is allowed", ErrClamAVNonLoopback, host)
+	}
+
+	if !ip.IsLoopback() {
+		return "", fmt.Errorf("%w: IP %q is not a local loopback address", ErrClamAVNonLoopback, host)
+	}
+
+	return net.JoinHostPort(host, strconv.Itoa(portNum)), nil
+}
 
 // ClamAVResult represents the outcome of a ClamAV scan.
 type ClamAVResult struct {
@@ -47,8 +89,12 @@ func NewClamAVClient(address string) *ClamAVClient {
 }
 
 func (c *ClamAVClient) dial(ctx context.Context) (net.Conn, error) {
+	validAddr, err := ValidateClamAVAddress(c.address)
+	if err != nil {
+		return nil, err
+	}
 	d := net.Dialer{Timeout: c.timeout}
-	conn, err := d.DialContext(ctx, "tcp", c.address)
+	conn, err := d.DialContext(ctx, "tcp", validAddr)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrClamAVUnavailable, err)
 	}
@@ -143,6 +189,24 @@ func (c *ClamAVClient) ScanStream(ctx context.Context, r io.Reader) (*ClamAVResu
 		return nil, fmt.Errorf("failed to initiate instream: %w", err)
 	}
 
+	// drainPendingResponse attempts to read an error response that clamd may have sent
+	// prior to resetting or aborting the socket connection (e.g. StreamMaxLength exceeded).
+	drainPendingResponse := func() string {
+		_ = conn.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
+		var sb strings.Builder
+		buf := make([]byte, 1024)
+		for {
+			n, rErr := conn.Read(buf)
+			if n > 0 {
+				sb.Write(bytes.TrimRight(buf[:n], "\x00\r\n"))
+			}
+			if rErr != nil || sb.Len() > 0 {
+				break
+			}
+		}
+		return strings.TrimSpace(sb.String())
+	}
+
 	// Stream chunks: [uint32 big-endian size][chunk bytes]
 	buf := make([]byte, 32*1024) // 32KB chunks
 	lenBuf := make([]byte, 4)
@@ -158,9 +222,15 @@ func (c *ClamAVClient) ScanStream(ctx context.Context, r io.Reader) (*ClamAVResu
 		if n > 0 {
 			binary.BigEndian.PutUint32(lenBuf, uint32(n))
 			if _, err := conn.Write(lenBuf); err != nil {
+				if pending := drainPendingResponse(); pending != "" {
+					return parseClamAVResponse(pending)
+				}
 				return nil, fmt.Errorf("failed to write chunk length: %w", err)
 			}
 			if _, err := conn.Write(buf[:n]); err != nil {
+				if pending := drainPendingResponse(); pending != "" {
+					return parseClamAVResponse(pending)
+				}
 				return nil, fmt.Errorf("failed to write chunk data: %w", err)
 			}
 		}
@@ -175,8 +245,14 @@ func (c *ClamAVClient) ScanStream(ctx context.Context, r io.Reader) (*ClamAVResu
 	// Send terminal chunk: [0, 0, 0, 0]
 	binary.BigEndian.PutUint32(lenBuf, 0)
 	if _, err := conn.Write(lenBuf); err != nil {
+		if pending := drainPendingResponse(); pending != "" {
+			return parseClamAVResponse(pending)
+		}
 		return nil, fmt.Errorf("failed to write EOF chunk: %w", err)
 	}
+
+	// Reset read deadline for normal scan completion
+	_ = conn.SetReadDeadline(time.Now().Add(scanTimeout))
 
 	// Read response
 	var sb strings.Builder
@@ -212,6 +288,11 @@ func (c *ClamAVClient) ScanFile(ctx context.Context, filePath string) (*ClamAVRe
 func parseClamAVResponse(raw string) (*ClamAVResult, error) {
 	if raw == "" {
 		return nil, fmt.Errorf("%w: empty response from daemon", ErrClamAVProtocol)
+	}
+
+	lower := strings.ToLower(raw)
+	if strings.Contains(lower, "limit exceeded") {
+		return nil, fmt.Errorf("%w: %s", ErrClamAVSizeLimitExceeded, raw)
 	}
 
 	// Clean result: "stream: OK"
