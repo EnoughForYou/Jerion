@@ -18,6 +18,7 @@ import type {
   AllowlistEntry,
   AppInfo,
   AuditItem,
+  ConnectionDiagnosticResult,
   Device,
   Finding,
   InventoryFilter,
@@ -510,6 +511,69 @@ export class MockBridge implements Bridge {
         throw new BridgeError('DeviceOffline', `Device with serial ${serial} is not connected`);
       }
     },
+    diagnoseConnection: async (): Promise<ConnectionDiagnosticResult> => {
+      if (this.activeDevice) {
+        return {
+          adbServerRunning: true,
+          adbVersion: '1.0.41',
+          usbHardwarePresent: true,
+          usbDevices: [
+            {
+              deviceId: 'USB\\VID_2717&PID_FF40\\0789456',
+              name: 'Infinix Note 11S',
+              manufacturer: 'Infinix',
+              pnpClass: 'WPD',
+              status: 'OK',
+              configManagerErrorCode: 0,
+            },
+          ],
+          adbDevices: [
+            {
+              serial: this.activeDevice.serial,
+              state: 'ready',
+              product: 'XOS',
+              model: this.activeDevice.model,
+              device: 'Infinix-X698',
+            },
+          ],
+          likelyCause: 'ready',
+          headline: `Device ${this.activeDevice.serial} is connected and authorized.`,
+          possibleCauses: [],
+          recommendedSteps: ['Device is ready for forensic threat analysis.'],
+        };
+      }
+      return {
+        adbServerRunning: true,
+        adbVersion: '1.0.41',
+        usbHardwarePresent: false,
+        usbDevices: [],
+        adbDevices: [],
+        likelyCause: 'no_usb_hardware',
+        headline: 'No Android USB device detected by the operating system.',
+        possibleCauses: [
+          'The USB cable only supports charging (power-only cable without data wires).',
+          'The cable is connected to a loose or unpowered USB port/hub.',
+          'The Android phone is powered off or locked in deep sleep.',
+        ],
+        recommendedSteps: [
+          'Use a certified USB data cable.',
+          'Connect directly to a motherboard USB port.',
+          'Alternatively, use Wireless Debugging if running Android 11+ (API 30+).',
+        ],
+      };
+    },
+    wirelessPair: async (_host: string, _port: number, code: string): Promise<void> => {
+      if (!/^\d{6}$/.test(code)) {
+        throw new BridgeError('ValidationFailed', 'Pairing code must be exactly 6 digits');
+      }
+    },
+    wirelessConnect: async (host: string, port: number): Promise<string> => {
+      const endpoint = `${host}:${port}`;
+      return endpoint;
+    },
+    wirelessDisconnect: async (_host: string, _port: number): Promise<void> => {},
+    softReconnect: async (_serial?: string): Promise<void> => {},
+    restartServer: async (): Promise<void> => {},
   };
 
   // Inventory Service

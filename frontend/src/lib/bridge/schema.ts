@@ -361,3 +361,46 @@ export const AllowlistEntrySchema = z
   })
   .strict();
 export type AllowlistEntry = z.infer<typeof AllowlistEntrySchema>;
+
+export const DiagnosticLikelyCauseSchema = z.enum([
+  'ready',
+  'unauthorized',
+  'offline',
+  'usb_detected_no_adb',
+  'no_usb_hardware',
+  'adb_server_failed',
+]);
+export type DiagnosticLikelyCause = z.infer<typeof DiagnosticLikelyCauseSchema>;
+
+export const USBDeviceSchema = z.object({
+  deviceId: z.string(),
+  name: z.string(),
+  manufacturer: z.string(),
+  pnpClass: z.string(),
+  status: z.string(),
+  configManagerErrorCode: z.number(),
+});
+export type USBDevice = z.infer<typeof USBDeviceSchema>;
+
+export const ConnectionDiagnosticResultSchema = z.object({
+  adbServerRunning: z.boolean(),
+  adbVersion: z.string(),
+  usbHardwarePresent: z.boolean(),
+  usbDevices: z.array(USBDeviceSchema),
+  adbDevices: z.array(
+    z.object({
+      serial: z.string(),
+      state: z.string(),
+      product: z.string().optional(),
+      model: z.string().optional(),
+      device: z.string().optional(),
+      transportId: z.string().optional(),
+      rawState: z.string().optional(),
+    })
+  ),
+  likelyCause: DiagnosticLikelyCauseSchema,
+  headline: z.string(),
+  possibleCauses: z.array(z.string()),
+  recommendedSteps: z.array(z.string()),
+});
+export type ConnectionDiagnosticResult = z.infer<typeof ConnectionDiagnosticResultSchema>;

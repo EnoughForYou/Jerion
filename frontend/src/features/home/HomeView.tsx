@@ -8,6 +8,8 @@ import {
   HelpCircle,
   AlertTriangle,
   RotateCcw,
+  Wifi,
+  Wrench,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -28,6 +30,8 @@ import { useSystemInfoStore } from '../../app/systemInfoStore';
 import { getCanonicalSecurityState } from '../../app/deviceSecurityState';
 import { StaticFallback } from '../../three/StaticFallback';
 import { OnboardingModal } from './OnboardingModal';
+import { ConnectionTroubleshootModal } from './ConnectionTroubleshootModal';
+import { WirelessConnectModal } from './WirelessConnectModal';
 import type { ScanResult } from '../../lib/bridge/schema';
 
 const DeviceScene = React.lazy(() => import('../../three/DeviceScene'));
@@ -42,6 +46,8 @@ export const HomeView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showTroubleshoot, setShowTroubleshoot] = useState(false);
+  const [showWireless, setShowWireless] = useState(false);
 
   useEffect(() => {
     fetchSystemInfo();
@@ -148,7 +154,7 @@ export const HomeView: React.FC = () => {
 
         <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
           {!device ? (
-            <>
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 variant="primary"
                 size="md"
@@ -160,15 +166,20 @@ export const HomeView: React.FC = () => {
               <Button
                 variant="secondary"
                 size="md"
-                aria-disabled={true}
-                className="opacity-50 cursor-not-allowed"
-                title={securityContext.disabledReason}
-                onClick={(e) => e.preventDefault()}
+                onClick={() => setShowWireless(true)}
               >
-                <Search className="w-4 h-4" />
-                <span>{t('home.scanCta')}</span>
+                <Wifi className="w-4 h-4" />
+                <span>{t('device.wireless.button', 'Connect via Wi-Fi')}</span>
               </Button>
-            </>
+              <Button
+                variant="outline"
+                size="md"
+                onClick={() => setShowTroubleshoot(true)}
+              >
+                <Wrench className="w-4 h-4" />
+                <span>{t('device.troubleshoot.button', 'Troubleshoot')}</span>
+              </Button>
+            </div>
           ) : (
             <div className="flex flex-col items-end gap-1">
               <Button
@@ -210,6 +221,14 @@ export const HomeView: React.FC = () => {
                 <span>{t('device.checkAgain', 'Check Device Again')}</span>
               </Button>
               <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowTroubleshoot(true)}
+              >
+                <Wrench className="w-3.5 h-3.5" />
+                <span>{t('device.troubleshoot.button', 'Troubleshoot')}</span>
+              </Button>
+              <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowOnboarding(true)}
@@ -246,6 +265,14 @@ export const HomeView: React.FC = () => {
               >
                 <RotateCcw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
                 <span>{t('device.checkAgain', 'Check Device Again')}</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowTroubleshoot(true)}
+              >
+                <Wrench className="w-3.5 h-3.5" />
+                <span>{t('device.troubleshoot.button', 'Troubleshoot')}</span>
               </Button>
               <Button
                 variant="ghost"
@@ -532,6 +559,21 @@ export const HomeView: React.FC = () => {
       <OnboardingModal
         open={showOnboarding}
         onOpenChange={setShowOnboarding}
+        onOpenWireless={() => setShowWireless(true)}
+      />
+
+      {/* Connection Troubleshooting Modal */}
+      <ConnectionTroubleshootModal
+        open={showTroubleshoot}
+        onOpenChange={setShowTroubleshoot}
+        onOpenWireless={() => setShowWireless(true)}
+      />
+
+      {/* Wireless Debugging Modal */}
+      <WirelessConnectModal
+        open={showWireless}
+        onOpenChange={setShowWireless}
+        onConnected={() => loadData()}
       />
     </div>
   );
