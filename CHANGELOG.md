@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-10-17
+
+### Fixed
+- **Stage HONESTY-1.1 (Version & Contract Single Source of Truth, Content-Hash Rule Version, ClamAV Deduplication)**:
+  - **Version Consistency**: Synchronized `version.AppVersion`, `wails.json`, and `frontend/package.json` to canonical release version `1.2.1` with automated consistency testing (`TestVersionConsistency`).
+  - **Single Source of Truth for Contract**: Single-sourced `ContractVersion = "1.1.0"` in `internal/version/version.go`, consumed dynamically by Wails controller and bridge without manual `(Additive)` UI suffix concatenation.
+  - **Rule Version Content-Hash**: Derived rule version dynamically via SHA-256 content hashing of embedded rules (`2026.03.1+<hash>`), eliminating hardcoded version constants from frontend components.
+  - **ClamAV Scan-Level Error Deduplication**: Streamlined ClamAV daemon error handling in Deep Scan to emit a single scan-level `CLAMAV-SCAN-ERR` finding on daemon failure instead of repeating per package, cleanly marking the scan partial and stopping subsequent attempts.
+
 ## [1.2.0] - 2026-10-17
 
 ### Added
