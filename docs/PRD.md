@@ -8,7 +8,7 @@
 | **Stack** | Wails v2 · Go · React · TypeScript · Tailwind CSS · Aceternity UI · Three.js |
 | **Bahasa UI** | English (satu bahasa di v1; string tetap lewat lapisan i18n) |
 | **Perangkat uji utama** | Infinix Note 11S — XOS 10.6 (Android 12, API 31) |
-| **Repo** | Privat |
+| **Repo** | Publik (GitHub: `EnoughForYou/Jerion`) |
 | **Referensi UX** | Apple (kejelasan, hierarki, ketenangan visual) + 3uTools (navigasi kiri, header perangkat, kartu info padat) |
 | **Dokumen pendamping** | `AGENTS.md` (konteks wajib untuk AI agent), `docs/PROGRESS.md`, `docs/adr/` |
 
@@ -707,7 +707,7 @@ Setiap akhir tahap wajib menjalankan gerbang selesai-fase (§8.0).
 | 2 | Shell desktop: **Wails v2** | ADR-0001 |
 | 3 | ADB **tidak dibundel**; preflight tiap peluncuran, unduh hanya dengan persetujuan atau pilih path sendiri | ADR-0002, lihat §3.0 |
 | 4 | Bahasa UI: **English only** di v1 | ADR-0003 |
-| 5 | Repo **privat** | Ubah visibilitas hanya atas izin owner |
+| 5 | Repo **publik** | Telah diubah menjadi publik atas instruksi owner |
 | 6 | Perangkat uji utama: **Infinix Note 11S, XOS 10.6 (Android 12)** | Selain ini = "belum diverifikasi" |
 
 ### Pertanyaan tersisa (tidak memblokir Fase 0)

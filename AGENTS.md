@@ -9,7 +9,7 @@
 - Temuan harus **berbasis bukti** (severity × confidence), bukan skor persen.
 - Sumber kebenaran: `docs/PRD.md`. Status kerja: `docs/PROGRESS.md`.
 - Bahasa: UI, kode, identifier, dan pesan commit = **English**. Dokumen proyek (PRD/PROGRESS/ADR) boleh Indonesia.
-- Perangkat uji utama: **Infinix Note 11S, XOS 10.6 (Android 12, API 31)**. Repo **privat**.
+- Perangkat uji utama: **Infinix Note 11S, XOS 10.6 (Android 12, API 31)**. Repo **publik** (GitHub: `EnoughForYou/Jerion`).
 
 ## 2. Awal setiap sesi (wajib, urut)
 1. Baca `AGENTS.md` (ini).
@@ -73,7 +73,7 @@ Aturan lapisan: `app.go` tipis (hanya memanggil `internal/*`). **Logika bisnis t
   Scope: `adb inventory audit apk engine rules intel monitor remediate report store ui three i18n build docs brand`.
 - Selesai fase → jalankan **gerbang selesai-fase** persis seperti PRD §8.0 (status bersih → vet/test → lint/typecheck/test → `wails build` → acceptance → PROGRESS+CHANGELOG → commit `chore(phase-N)` → merge `--no-ff` ke `main` → tag `v0.N.0` → push).
 - Jangan `git push --force`, `reset --hard`, atau hapus branch/tag tanpa izin owner.
-- Repo **privat**: jangan push ke remote publik atau mengubah visibilitas tanpa izin owner.
+- Repo **publik**: jaga kerahasiaan kredensial dan privasi perangkat; jangan mengubah visibilitas tanpa izin owner.
 - **Jangan pernah commit**: APK/sampel malware, API key/token/`.env`, folder hasil tarik APK, fixture belum tersanitasi (serial, IMEI, MAC, akun, email, nomor telepon, SSID), `node_modules`, `build/bin`, laporan pengguna.
 - Sebelum commit: `git diff --staged` dibaca sendiri; tidak ada file tak sengaja.
 
