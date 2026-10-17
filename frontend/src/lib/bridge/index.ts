@@ -1,7 +1,7 @@
 import type { Bridge } from './bridge';
 import { WailsBridge } from './wails';
 
-export const CONTRACT_VERSION = '1.0.0';
+export const CONTRACT_VERSION = '1.1.0';
 export { BridgeError } from './errors';
 export type { Bridge } from './bridge';
 

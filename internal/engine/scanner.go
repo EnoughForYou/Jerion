@@ -93,7 +93,7 @@ func (s *Scanner) Scan(
 			Mode:         opts.Mode,
 			StartedAt:    startTime,
 			FinishedAt:   time.Now().UTC(),
-			RulesVersion: rules.RulesVersion,
+			RulesVersion: rules.RulesVersion(),
 			AppVersion:   version.AppVersion,
 			Findings:     []Finding{},
 			TotalApps:    0,
@@ -102,6 +102,7 @@ func (s *Scanner) Scan(
 
 	var allFindings []Finding
 	isPartial := false
+	clamavDaemonFailed := false
 
 	// 2. Evaluate packages
 	for idx, basicApp := range apps {
@@ -166,29 +167,33 @@ func (s *Scanner) Scan(
 						}
 					}
 
-					// Inspect pulled APK binary with local ClamAV engine if enabled
+					// Inspect pulled APK binary with local ClamAV engine if enabled and daemon hasn't failed
 					if s.intel != nil && s.intel.GetClamAVClient() != nil {
-						clamRes, clamErr := s.intel.ScanFileWithClamAV(ctx, basePath)
-						if clamErr != nil {
-							s.logger.Warn("deep scan: clamav scan failed", "package", pkgName, "err", clamErr)
+						if clamavDaemonFailed {
 							isPartial = true
-							allFindings = append(allFindings, Finding{
-								ID:                fmt.Sprintf("%s-f-clamav-err-%s", scanID, pkgName),
-								RuleID:            "CLAMAV-SCAN-ERR",
-								Package:           pkgName,
-								Category:          "info",
-								Severity:          "info",
-								Confidence:        "high",
-								Weight:            1,
-								Title:             "Antivirus Scan Incomplete (ClamAV)",
-								WhyFlagged:        fmt.Sprintf("ClamAV offline inspection failed for this package: %v. Security verdict cannot be guaranteed clean.", clamErr),
-								FalsePositiveHint: "Verify that the local ClamAV daemon is running and responsive on loopback.",
-								Evidence: []Evidence{
-									{Source: "clamav", Snippet: fmt.Sprintf("ClamAV inspection error: %v", clamErr)},
-								},
-								Actions: []string{},
-							})
-						} else if clamRes != nil && clamRes.Classification != intel.ClassClean {
+						} else {
+							clamRes, clamErr := s.intel.ScanFileWithClamAV(ctx, basePath)
+							if clamErr != nil {
+								s.logger.Warn("deep scan: clamav scan failed", "package", pkgName, "err", clamErr)
+								isPartial = true
+								clamavDaemonFailed = true
+								allFindings = append(allFindings, Finding{
+									ID:                fmt.Sprintf("%s-clamav-daemon-unavailable", scanID),
+									RuleID:            "CLAMAV-SCAN-ERR",
+									Package:           "", // scan-level finding
+									Category:          "integrity",
+									Severity:          "info",
+									Confidence:        "high",
+									Weight:            1,
+									Title:             "Antivirus Scan Incomplete (ClamAV)",
+									WhyFlagged:        fmt.Sprintf("ClamAV offline inspection failed: %v. Antivirus checks skipped; security verdict cannot be guaranteed clean.", clamErr),
+									FalsePositiveHint: "Verify that the local ClamAV daemon is running and responsive on loopback.",
+									Evidence: []Evidence{
+										{Source: "clamav", Snippet: fmt.Sprintf("ClamAV inspection error: %v", clamErr)},
+									},
+									Actions: []string{},
+								})
+							} else if clamRes != nil && clamRes.Classification != intel.ClassClean {
 							allFindings = append(allFindings, Finding{
 								ID:                fmt.Sprintf("%s-f-clamav-%s", scanID, pkgName),
 								RuleID:            "CLAMAV-SIGNATURE-001",
@@ -207,6 +212,7 @@ func (s *Scanner) Scan(
 							})
 						}
 					}
+				}
 				} else {
 					s.logger.Warn("deep scan: inspect apk failed", "package", pkgName, "err", inspErr)
 					isPartial = true
@@ -236,7 +242,7 @@ func (s *Scanner) Scan(
 		Mode:         opts.Mode,
 		StartedAt:    startTime,
 		FinishedAt:   finishTime,
-		RulesVersion: rules.RulesVersion,
+		RulesVersion: rules.RulesVersion(),
 		AppVersion:   version.AppVersion,
 		Findings:     allFindings,
 		Partial:      isPartial,
@@ -277,7 +283,7 @@ func (s *Scanner) Scan(
 			Mode:         opts.Mode,
 			StartedAt:    startTime,
 			FinishedAt:   finishTime,
-			RulesVersion: rules.RulesVersion,
+			RulesVersion: rules.RulesVersion(),
 			AppVersion:   version.AppVersion,
 			Partial:      isPartial,
 			TotalApps:    totalApps,

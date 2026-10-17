@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| **Contract Version** | `1.0.0` (FROZEN) |
-| **Status** | **FROZEN** (Strictly Frozen at conclusion of Stage T3; ready for Stage T4 Backend Go) |
-| **Freeze Target** | Achieved (`1.0.0` on 2026-10-13) |
-| **Last Updated** | 2026-10-13 |
+| **Contract Version** | `1.1.0` (Additive post-freeze) |
+| **Status** | **ACTIVE (1.1.0)** (Frozen base `1.0.0` with additive, non-breaking telemetry extensions) |
+| **Single Source of Truth** | `internal/version/version.go` (`const ContractVersion = "1.1.0"`) |
+| **Last Updated** | 2026-10-17 |
 
 ---
 
@@ -153,3 +153,8 @@ In Phase T4, the backend Go test suite will verify fidelity against the shared f
 ### 5.4 Production Dead-Code Elimination
 - The mock bridge and all runtime Zod schemas are excluded from production builds.
 - The npm script `npm run check:no-mock` scans all bundles in `frontend/dist/` for forbidden markers (`MOCK-0001`, `com.example.mock.`, `MockBridge`, `ZodObject`, `ZodError`) and is enforced in GitHub Actions CI.
+
+### 5.5 Additive Post-Freeze Evolution (`1.1.0`)
+- Following the freeze at `1.0.0`, additive telemetry endpoints such as `AppGetSystemInfo` (reporting dynamic app version, rules version, rule counts, and contract version) were introduced without mutating existing frozen schemas.
+- Contract version is single-sourced in Go backend `internal/version/version.go` (`ContractVersion = "1.1.0"`), shared across Wails controller and frontend bridges without manual string concatenation.
+

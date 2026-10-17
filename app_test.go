@@ -18,7 +18,9 @@ import (
 	"github.com/EnoughForYou/Jerion/internal/logx"
 	"github.com/EnoughForYou/Jerion/internal/preflight"
 	"github.com/EnoughForYou/Jerion/internal/remediate"
+	"github.com/EnoughForYou/Jerion/internal/rules"
 	"github.com/EnoughForYou/Jerion/internal/store"
+	"github.com/EnoughForYou/Jerion/internal/version"
 )
 
 func setupTestApp(t *testing.T) (*App, *adb.FakeRunner) {
@@ -1653,17 +1655,17 @@ func TestAppGetSystemInfo(t *testing.T) {
 	defer app.store.Close()
 
 	info := app.AppGetSystemInfo()
-	if info.AppVersion != "1.1.1" {
-		t.Errorf("expected AppVersion '1.1.1', got '%s'", info.AppVersion)
+	if info.AppVersion != version.AppVersion {
+		t.Errorf("expected AppVersion '%s', got '%s'", version.AppVersion, info.AppVersion)
 	}
-	if info.RulesVersion != "2026.03.1" {
-		t.Errorf("expected RulesVersion '2026.03.1', got '%s'", info.RulesVersion)
+	if info.RulesVersion != rules.RulesVersion() {
+		t.Errorf("expected RulesVersion '%s', got '%s'", rules.RulesVersion(), info.RulesVersion)
 	}
 	if info.RulesCount != 8 {
 		t.Errorf("expected RulesCount 8, got %d", info.RulesCount)
 	}
-	if info.ContractVersion != "1.1.0" {
-		t.Errorf("expected ContractVersion '1.1.0', got '%s'", info.ContractVersion)
+	if info.ContractVersion != version.ContractVersion {
+		t.Errorf("expected ContractVersion '%s', got '%s'", version.ContractVersion, info.ContractVersion)
 	}
 }
 

@@ -166,15 +166,15 @@ describe('SettingsView', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('v1.1.1')).toBeInTheDocument();
+      expect(screen.getByText('v1.2.1')).toBeInTheDocument();
       expect(screen.getByText('v2026.03.1 (8 rules)')).toBeInTheDocument();
-      expect(screen.getByText('v1.1.0 (Additive)')).toBeInTheDocument();
+      expect(screen.getByText('v1.1.0')).toBeInTheDocument();
     });
   });
 
   it('renders dynamic system info and rules count when AppGetSystemInfo is provided', async () => {
     const getSysInfoMock = vi.fn().mockResolvedValue({
-      appVersion: '1.2.0',
+      appVersion: '1.2.1',
       rulesVersion: '2026.03.1',
       rulesCount: 8,
       contractVersion: '1.1.0',
@@ -194,9 +194,9 @@ describe('SettingsView', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('v1.2.0')).toBeInTheDocument();
+      expect(screen.getByText('v1.2.1')).toBeInTheDocument();
       expect(screen.getByText('v2026.03.1 (8 rules)')).toBeInTheDocument();
-      expect(screen.getByText('v1.1.0 (Additive)')).toBeInTheDocument();
+      expect(screen.getByText('v1.1.0')).toBeInTheDocument();
     });
     expect(getSysInfoMock).toHaveBeenCalled();
   });

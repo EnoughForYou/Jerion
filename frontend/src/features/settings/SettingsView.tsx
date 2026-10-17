@@ -45,10 +45,10 @@ export const SettingsView: React.FC = () => {
     adbVersion?: string;
     contractVersion: string;
   }>({
-    appVersion: 'v1.1.1',
+    appVersion: 'v1.2.1',
     rulesVersion: '2026.03.1',
     rulesCount: 8,
-    contractVersion: 'v1.1.0 (Additive)',
+    contractVersion: 'v1.1.0',
   });
 
   const bridge = getBridge();
@@ -92,11 +92,11 @@ export const SettingsView: React.FC = () => {
             const info = await goApp.AppGetSystemInfo();
             if (info) {
               setSystemInfo({
-                appVersion: info.appVersion ? (info.appVersion.startsWith('v') ? info.appVersion : `v${info.appVersion}`) : 'v1.1.1',
+                appVersion: info.appVersion ? (info.appVersion.startsWith('v') ? info.appVersion : `v${info.appVersion}`) : 'v1.2.1',
                 rulesVersion: info.rulesVersion || '2026.03.1',
                 rulesCount: typeof info.rulesCount === 'number' ? info.rulesCount : 8,
                 adbVersion: info.adbVersion,
-                contractVersion: info.contractVersion ? `v${info.contractVersion} (Additive)` : 'v1.1.0 (Additive)',
+                contractVersion: info.contractVersion ? (info.contractVersion.startsWith('v') ? info.contractVersion : `v${info.contractVersion}`) : 'v1.1.0',
               });
             }
           } catch (sysErr) {
@@ -364,8 +364,11 @@ export const SettingsView: React.FC = () => {
               <span className="font-medium text-text-primary block">
                 {t('settings.clamavEnabled')}
               </span>
-              <span className="text-[11px] text-text-secondary">
+              <span className="text-[11px] text-text-secondary block">
                 Stream APK payloads to local clamd daemon (TCP) for offline signature-based threat detection.
+              </span>
+              <span className="text-[11px] text-accent font-medium block mt-0.5">
+                {t('settings.clamavScopeNote', 'Used during Deep Scan only (base APK inspection)')}
               </span>
             </div>
             <input

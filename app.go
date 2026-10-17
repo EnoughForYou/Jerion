@@ -2096,9 +2096,9 @@ func (a *App) AppGetSystemInfo() AppSystemInfo {
 	}
 	return AppSystemInfo{
 		AppVersion:      version.AppVersion,
-		RulesVersion:    rules.RulesVersion,
+		RulesVersion:    rules.RulesVersion(),
 		RulesCount:      rulesCount,
 		AdbVersion:      adbVer,
-		ContractVersion: "1.1.0",
+		ContractVersion: version.ContractVersion,
 	}
 }

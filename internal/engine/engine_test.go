@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/EnoughForYou/Jerion/internal/adb"
@@ -445,23 +446,40 @@ func TestDeepScan_ClamAV_Error_MarksPartial(t *testing.T) {
 	fake := adb.NewFakeRunner()
 	tmpDir := t.TempDir()
 
-	fake.SetResponse("pm list packages", "package:/data/app/~~t/base.apk=com.test.broken\n", "", nil)
-	fake.SetResponse("dumpsys package com.test.broken", `Package [com.test.broken]
+	fake.SetResponse("pm list packages", "package:/data/app/~~t/base.apk=com.test.broken1\npackage:/data/app/~~t/base.apk=com.test.broken2\n", "", nil)
+	fake.SetResponse("dumpsys package com.test.broken1", `Package [com.test.broken1]
 userId=10202
 versionName=1.0.0
 versionCode=100
 `, "", nil)
-	fake.SetResponse("pm path com.test.broken", "package:/data/app/~~t/base.apk\n", "", nil)
+	fake.SetResponse("dumpsys package com.test.broken2", `Package [com.test.broken2]
+userId=10203
+versionName=1.0.0
+versionCode=101
+`, "", nil)
+	fake.SetResponse("pm path com.test.broken1", "package:/data/app/~~t/base.apk\n", "", nil)
+	fake.SetResponse("pm path com.test.broken2", "package:/data/app/~~t/base.apk\n", "", nil)
 
-	apkPath := filepath.Join(tmpDir, "pulled_apks", "com.test.broken", "base.apk")
+	apkPath1 := filepath.Join(tmpDir, "pulled_apks", "com.test.broken1", "base.apk")
 	_, _, err := apk.CreateSyntheticAPK(
-		apkPath, "com.test.broken", "1.0.0", 100,
+		apkPath1, "com.test.broken1", "1.0.0", 100,
 		[]string{"android.permission.INTERNET"},
 		nil,
-		"Broken Test",
+		"Broken Test 1",
 	)
 	if err != nil {
-		t.Fatalf("CreateSyntheticAPK failed: %v", err)
+		t.Fatalf("CreateSyntheticAPK 1 failed: %v", err)
+	}
+
+	apkPath2 := filepath.Join(tmpDir, "pulled_apks", "com.test.broken2", "base.apk")
+	_, _, err = apk.CreateSyntheticAPK(
+		apkPath2, "com.test.broken2", "1.0.0", 101,
+		[]string{"android.permission.INTERNET"},
+		nil,
+		"Broken Test 2",
+	)
+	if err != nil {
+		t.Fatalf("CreateSyntheticAPK 2 failed: %v", err)
 	}
 
 	fake.SetHandler(
@@ -471,7 +489,11 @@ versionCode=100
 		func(serial string, args []string) ([]byte, []byte, error) {
 			dest := args[2]
 			_ = os.MkdirAll(filepath.Dir(dest), 0o750)
-			data, _ := os.ReadFile(apkPath)
+			srcPath := apkPath1
+			if strings.Contains(dest, "com.test.broken2") {
+				srcPath = apkPath2
+			}
+			data, _ := os.ReadFile(srcPath)
 			_ = os.WriteFile(dest, data, 0o644)
 			return []byte("1 file pulled"), nil, nil
 		},
@@ -503,8 +525,17 @@ versionCode=100
 		t.Fatalf("Scan failed: %v", err)
 	}
 
-	if !hasFinding(res.Findings, "CLAMAV-SCAN-ERR") {
-		t.Fatalf("expected CLAMAV-SCAN-ERR finding when ClamAV fails, got: %+v", res.Findings)
+	clamErrCount := 0
+	for _, f := range res.Findings {
+		if f.RuleID == "CLAMAV-SCAN-ERR" {
+			clamErrCount++
+			if f.Package != "" {
+				t.Errorf("expected scan-level finding with empty package, got %q", f.Package)
+			}
+		}
+	}
+	if clamErrCount != 1 {
+		t.Fatalf("expected exactly 1 deduplicated CLAMAV-SCAN-ERR finding, got %d", clamErrCount)
 	}
 	if !res.Partial {
 		t.Fatalf("expected scan result Partial to be true when ClamAV fails")

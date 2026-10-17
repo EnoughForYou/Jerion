@@ -1,29 +1,25 @@
 # PROGRESS
 
 ## Status sekarang
-- Fase aktif: HONESTY-1 — Product Truthfulness, Fail-Closed ClamAV & Dynamic Telemetry (v1.2.0)
-- Branch: phase/honesty-1
-- Terakhir selesai: SEC-1 — ClamAV Loopback Validation & StreamMaxLength Resilience (tag v1.1.1)
+- Fase aktif: HONESTY-1.1 — Version & Contract Single Source of Truth, Content-Hash Rule Version, ClamAV Deduplication (v1.2.1)
+- Branch: phase/safety-1
+- Terakhir selesai: HONESTY-1 — Product Truthfulness, Fail-Closed ClamAV & Dynamic Telemetry (tag v1.2.0)
 
-## Fase HONESTY-1 (Product Truthfulness & Dynamic Verification) — checklist
-- [x] Sub-tugas HON.1: Integrasi ClamAV pada Deep Scan (`internal/engine/scanner.go`): ClamAV berjalan pada inspeksi APK deep scan yang ditarik via ADB. Jika virus/malware terdeteksi (`FOUND`), hasil ditandai dengan rule `CLAMAV-SIGNATURE-001`, severity `critical`, kategori `malware`, dan aksi remediasi `uninstall`. Jika daemon ClamAV gagal, error, atau socket terputus, bukti `CLAMAV-SCAN-ERR` dicatat dan scan ditandai `partial = true` (verdict bersih tidak pernah diberikan bila inspeksi antivirus lokal gagal).
-- [x] Sub-tugas HON.2: Eliminasi fail-open pada parser ClamAV & packet reassembly (`internal/intel/clamav.go`): `readUntilTerminator` membaca socket TCP secara berulang hingga menemukan terminator byte NUL (`\x00`), `\n`, atau EOF; `parseClamAVResponse` memvalidasi seluruh respon dan mengembalikan `ErrClamAVProtocol` untuk segala respon yang terpotong atau tidak dikenal (fail-closed, 0 kebocoran respon bersih).
-- [x] Sub-tugas HON.3: Single source of truth untuk versi & jumlah aturan dinamis:
-  - `internal/version/version.go`: Mendefinisikan `AppVersion = "1.1.1"` tunggal yang dapat diinjeksi via build `-ldflags`.
-  - `internal/rules/rules.go`: Mengekspor `RulesVersion = "2026.03.1"` dan fungsi `Count() int` yang menghitung katalog rule YAML embedded secara dinamis.
-  - `internal/engine/scanner.go`: Menghilangkan hardcode `"0.4.0"` dan `"1.0.0"`, memakai `version.AppVersion` dan `rules.RulesVersion`.
-  - `internal/preflight/preflight.go`: Memvalidasi integritas katalog aturan embedded secara nyata menggunakan `rules.LoadEmbeddedRules()`.
-  - `app.go`: Mengekspor method Wails `AppGetSystemInfo() AppSystemInfo` dengan versi app, versi aturan, jumlah aturan dinamis, versi schema kontrak, dan versi ADB.
-  - Frontend (`SettingsView.tsx`, `wails.json`, `package.json`, `mock.ts`): Menghilangkan teks statis "32 rules" dan menyelaraskan ke 8 aturan nyata via `AppGetSystemInfo` dan mock bridge.
-- [x] Sub-tugas HON.4: Kejujuran telemetri sinyal Popup Hunter (`MonitorView.tsx`, `en.json`, `monitor.test.tsx`): Menghapus chip "Logcat Traces" dan "Toast Broadcasts" yang tidak ada kolektornya, hanya menampilkan sinyal aktif nyata `Window Focus (dumpsys window)` dan `Window Overlays (TYPE_APPLICATION_OVERLAY)`.
-- [x] Sub-tugas HON.5: Pengujian regresi otomatis:
-  - `internal/intel/clamav_test.go`: `TestClamAV_FailClosedOnTruncatedOrUnrecognizedResponse`, `TestClamAV_SegmentedResponseReassembly`.
-  - `internal/engine/engine_test.go`: `TestDeepScan_ClamAV_MalwareDetected`, `TestDeepScan_ClamAV_Error_MarksPartial`.
-  - `app_test.go`: `TestAppGetSystemInfo`.
-  - `frontend/src/features/settings/settings.test.tsx`: Pengujian default dan dynamic system info.
-  - `frontend/src/features/monitor/monitor.test.tsx`: Verifikasi sumber sinyal nyata dan ketiadaan sinyal palsu.
+## Fase HONESTY-1.1 (Version & Contract Single Source, Content-Hash Rules, ClamAV Dedup) — checklist
+- [x] Sub-tugas H-1.1.A: Sinkronisasi versi tunggal `1.2.1` pada `internal/version/version.go`, `wails.json`, `frontend/package.json`, `frontend/package-lock.json`, dan `CHANGELOG.md` dengan pengujian konsistensi otomatis `TestVersionConsistency` di `internal/version/version_test.go`.
+- [x] Sub-tugas H-1.1.B: Single source of truth versi kontrak `1.1.0` via konstanta `version.ContractVersion` di Go backend, eliminasi sufiks manual `(Additive)` pada UI (`SettingsView.tsx`), pembaruan schema Zod/TS di `schema.ts`, `index.ts`, dan dokumentasi `docs/contract.md`.
+- [x] Sub-tugas H-1.1.C: Penurunan versi aturan forensik secara dinamis dari SHA-256 digest katalog YAML embedded (`2026.03.1+<8hex>`), eliminasi konstanta hardcoded `RULE_VERSION` pada frontend (`deviceSecurityState.ts`, `StatusBar.tsx`, dll.), penyediaan `useSystemInfoStore` Zustand untuk penyebaran metadata dinamis.
+- [x] Sub-tugas H-1.1.D: Deduplikasi error daemon ClamAV pada Deep Scan menjadi tepat satu temuan tingkat scan (`CLAMAV-SCAN-ERR`), pencegahan perulangan panggilan ke daemon yang mati, penandaan scan parsial jujur, dan penambahan catatan cakupan eksplisit ("Used during Deep Scan only (base APK inspection)") pada i18n & UI.
 
-## Pengukuran & Kualitas (HONESTY-1)
+## Pengukuran & Kualitas (HONESTY-1.1)
+- **Backend Go Test Suite**: 100% test lulus di seluruh 17 paket backend Go (`go test -count=1 . ./internal/...`).
+- **Backend Go Vet**: Lulus bersih tanpa peringatan (`go vet . ./internal/...`).
+- **Frontend Vitest Suite**: 159 pengujian lolos di 23 file tes (`npm run test`).
+- **ESLint & TypeScript**: 0 error, 0 warning pada `npm run lint` & `npm run typecheck`.
+- **Mock Elimination (`npm run check:no-mock`)**: 0 marker mock di seluruh 3 bundle produksi.
+- **Production Compilation (`wails build`)**: Standalone binary Windows x64 `build/bin/Jerion.exe` terkompilasi bersih dalam 22.04 detik.
+
+## Fase HONESTY-1 (Product Truthfulness & Dynamic Verification) — riwayat selesai (v1.2.0)
 - **Backend Go Test Suite**: 100% test lulus di seluruh 16 paket backend Go (`go test -count=1 . ./internal/...`).
 - **Backend Go Vet**: Lulus bersih tanpa peringatan (`go vet . ./internal/...`).
 - **Frontend Vitest Suite**: 159 pengujian lolos di 23 file tes (`npm run test`).

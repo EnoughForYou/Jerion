@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { CONTRACT_VERSION, bridge, getBridge } from './index';
 
 describe('Bridge Selector & Version', () => {
-  it('exposes frozen CONTRACT_VERSION 1.0.0', () => {
-    expect(CONTRACT_VERSION).toBe('1.0.0');
+  it('exposes CONTRACT_VERSION 1.1.0', () => {
+    expect(CONTRACT_VERSION).toBe('1.1.0');
   });
 
   it('exports singleton bridge instance and getter', () => {
