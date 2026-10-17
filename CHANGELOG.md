@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-10-17
+
+### Security
+- **Stage SEC-1 (ClamAV Loopback Validation & StreamMaxLength Resilience)**:
+  - **Loopback Enforcement & SSRF Prevention (`internal/intel/clamav.go`)**: Implemented strict destination host validation via `ValidateClamAVAddress(address string) (string, error)`, restricting ClamAV TCP daemon connections exclusively to local loopback endpoints (`127.0.0.1`, `[::1]`, and `localhost`) with valid port bounds (1-65535). Rejects all LAN/external IP ranges and arbitrary DNS hostnames with typed error `ErrClamAVNonLoopback` or `ErrClamAVInvalidAddress`, preventing Server-Side Request Forgery and unintended external APK payload leakage over untrusted networks.
+  - **Broken Pipe Recovery & `StreamMaxLength` Protocol Handling**: Enhanced `ScanStream` to catch broken pipe / connection reset write errors when streaming chunk data or EOF terminal chunks, actively draining pending daemon error buffers before socket termination. Mapped ClamAV `limit exceeded` messages directly to typed error `ErrClamAVSizeLimitExceeded`.
+  - **Wails Controller Fail-Closed Validation (`app.go`)**: Updated `ClamAVSaveConfig` to fail closed against non-loopback addresses before persisting to SQLite; configured `ClamAVTestConnection` to return structured descriptive errors without panicking when non-loopback addresses are provided; hardened `ClamAVGetConfig` to defensively fall back to `127.0.0.1:3310` if legacy store entries contain non-loopback hosts.
+  - **Honest Settings Feedback & Error Display (`SettingsView.tsx` & `en.json`)**: Added user-facing error banners when saving invalid or non-loopback ClamAV addresses; removed deceptive simulated success fallbacks (`ClamAV 1.4.1 (Simulated)`) when Wails backend is unavailable; updated i18n description to explicitly clarify local loopback operation.
+  - **Automated Regression Suite (`clamav_test.go`, `app_test.go`, `settings.test.tsx`)**: Added 17 table-driven test cases for address validation, mock clamd broken-pipe and limit-exceeded simulations, non-loopback dial blocking, and settings error rendering (157 Vitest tests and 100% Go test suite passing).
+
 ## [1.1.0] - 2026-10-16
 
 ### Added

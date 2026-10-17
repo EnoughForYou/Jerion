@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -6,6 +6,11 @@ import { SettingsView } from './SettingsView';
 import '../../i18n';
 
 describe('SettingsView', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    delete (window as unknown as { go?: unknown }).go;
+  });
+
   it('renders theme selector and allowlist table', async () => {
     render(
       <MemoryRouter>
@@ -67,7 +72,19 @@ describe('SettingsView', () => {
     });
   });
 
-  it('renders and tests ClamAV connection', async () => {
+  it('renders and tests ClamAV connection successfully', async () => {
+    const testConnMock = vi.fn().mockResolvedValue({
+      connected: true,
+      version: 'ClamAV 1.4.1',
+    });
+    (window as unknown as { go: { main: { App: { ClamAVTestConnection: typeof testConnMock } } } }).go = {
+      main: {
+        App: {
+          ClamAVTestConnection: testConnMock,
+        },
+      },
+    };
+
     render(
       <MemoryRouter>
         <SettingsView />
@@ -79,7 +96,65 @@ describe('SettingsView', () => {
     fireEvent.click(testBtn);
 
     await waitFor(() => {
-      expect(screen.getByText(/connected/i)).toBeInTheDocument();
+      expect(screen.getByText(/connected: clamav 1.4.1/i)).toBeInTheDocument();
+    });
+    expect(testConnMock).toHaveBeenCalledWith('127.0.0.1:3310');
+  });
+
+  it('displays error when ClamAV connection test fails (e.g. non-loopback)', async () => {
+    const testConnMock = vi.fn().mockResolvedValue({
+      connected: false,
+      error: 'clamav host must be a local loopback address',
+    });
+    (window as unknown as { go: { main: { App: { ClamAVTestConnection: typeof testConnMock } } } }).go = {
+      main: {
+        App: {
+          ClamAVTestConnection: testConnMock,
+        },
+      },
+    };
+
+    render(
+      <MemoryRouter>
+        <SettingsView />
+      </MemoryRouter>
+    );
+
+    const hostInput = screen.getByPlaceholderText(/127\.0\.0\.1:3310/i);
+    fireEvent.change(hostInput, { target: { value: '192.168.1.50:3310' } });
+
+    const testBtn = screen.getByRole('button', { name: /test connection/i });
+    fireEvent.click(testBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/connection failed: clamav host must be a local loopback address/i)).toBeInTheDocument();
+    });
+  });
+
+  it('displays error when saving invalid ClamAV host', async () => {
+    const saveMock = vi.fn().mockRejectedValue(new Error('IP "10.0.0.1" is not a local loopback address'));
+    (window as unknown as { go: { main: { App: { ClamAVSaveConfig: typeof saveMock } } } }).go = {
+      main: {
+        App: {
+          ClamAVSaveConfig: saveMock,
+        },
+      },
+    };
+
+    render(
+      <MemoryRouter>
+        <SettingsView />
+      </MemoryRouter>
+    );
+
+    const hostInput = screen.getByPlaceholderText(/127\.0\.0\.1:3310/i);
+    fireEvent.change(hostInput, { target: { value: '10.0.0.1:3310' } });
+
+    const saveBtn = screen.getByRole('button', { name: /save clamav settings/i });
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/is not a local loopback address/i)).toBeInTheDocument();
     });
   });
 });

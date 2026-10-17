@@ -73,7 +73,7 @@ export const SettingsView: React.FC = () => {
         const res = await goApp.ClamAVTestConnection(clamavHost.trim() || '127.0.0.1:3310');
         setClamavStatus({ testing: false, connected: res.connected, version: res.version, error: res.error });
       } else {
-        setClamavStatus({ testing: false, connected: true, version: 'ClamAV 1.4.1 (Simulated)' });
+        setClamavStatus({ testing: false, connected: false, error: 'ClamAV service unavailable' });
       }
     } catch (err: unknown) {
       setClamavStatus({ testing: false, connected: false, error: err instanceof Error ? err.message : 'Unknown error' });
@@ -86,10 +86,15 @@ export const SettingsView: React.FC = () => {
       if (goApp?.ClamAVSaveConfig) {
         await goApp.ClamAVSaveConfig(clamavEnabled, clamavHost.trim() || '127.0.0.1:3310');
       }
+      if (clamavStatus && !clamavStatus.connected) {
+        setClamavStatus(null);
+      }
       setFeedback(t('settings.clamavSaved'));
       setTimeout(() => setFeedback(null), 4000);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to save ClamAV config:', err);
+      const msg = err instanceof Error ? err.message : String(err);
+      setClamavStatus({ testing: false, connected: false, error: msg });
     }
   };
 

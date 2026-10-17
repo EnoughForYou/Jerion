@@ -421,7 +421,7 @@
     "remove": "Remove",
     "noAllowlist": "No packages or rules currently exempted.",
     "clamavTitle": "ClamAV Local Antivirus Engine",
-    "clamavDesc": "Connect to a local or networked ClamAV daemon (clamd) for offline APK malware and adware payload scanning via TCP",
+    "clamavDesc": "Connect to a local ClamAV daemon (clamd) on loopback for offline APK malware and adware payload scanning via TCP",
     "clamavEnabled": "Enable Local ClamAV Scanning",
     "clamavHost": "ClamAV Daemon Address (host:port)",
     "clamavHostPlaceholder": "127.0.0.1:3310",

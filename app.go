@@ -1991,7 +1991,9 @@ func (a *App) ClamAVGetConfig() (ClamAVConfig, error) {
 	}
 	host := intel.DefaultClamAVAddress
 	if h, ok := all["clamav_host"]; ok && h != "" {
-		host = h
+		if valid, err := intel.ValidateClamAVAddress(h); err == nil {
+			host = valid
+		}
 	}
 	return ClamAVConfig{
 		Enabled: enabled,
@@ -2005,15 +2007,30 @@ func (a *App) ClamAVSaveConfig(enabled bool, host string) error {
 	if trimmedHost == "" {
 		trimmedHost = intel.DefaultClamAVAddress
 	}
+	validHost, err := intel.ValidateClamAVAddress(trimmedHost)
+	if err != nil {
+		return err
+	}
 	if err := a.store.SetSetting("clamav_enabled", fmt.Sprintf("%t", enabled)); err != nil {
 		return err
 	}
-	return a.store.SetSetting("clamav_host", trimmedHost)
+	return a.store.SetSetting("clamav_host", validHost)
 }
 
 // ClamAVTestConnection probes the ClamAV daemon at the specified host.
 func (a *App) ClamAVTestConnection(host string) (ClamAVStatus, error) {
-	client := intel.NewClamAVClient(host)
+	trimmedHost := strings.TrimSpace(host)
+	if trimmedHost == "" {
+		trimmedHost = intel.DefaultClamAVAddress
+	}
+	validHost, err := intel.ValidateClamAVAddress(trimmedHost)
+	if err != nil {
+		return ClamAVStatus{
+			Connected: false,
+			Error:     err.Error(),
+		}, nil
+	}
+	client := intel.NewClamAVClient(validHost)
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
