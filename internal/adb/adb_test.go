@@ -238,3 +238,107 @@ func TestManager_SyncRunnerPath(t *testing.T) {
 		t.Fatalf("expected fake.ADBPath() to be %q, got %q", customPath, fake.ADBPath())
 	}
 }
+
+func TestManager_WirelessDebugging(t *testing.T) {
+	ctx := context.Background()
+	fake := NewFakeRunner()
+	mgr := NewManager(fake, "", nil)
+
+	// 1. Pair Wireless validation
+	if err := mgr.PairWireless(ctx, "invalid host space", 37123, "123456"); err == nil {
+		t.Errorf("expected error on invalid host")
+	}
+	if err := mgr.PairWireless(ctx, "192.168.1.50", 0, "123456"); err == nil {
+		t.Errorf("expected error on port 0")
+	}
+	if err := mgr.PairWireless(ctx, "192.168.1.50", 70000, "123456"); err == nil {
+		t.Errorf("expected error on port > 65535")
+	}
+	if err := mgr.PairWireless(ctx, "192.168.1.50", 37123, "12345"); err == nil {
+		t.Errorf("expected error on 5-digit code")
+	}
+	if err := mgr.PairWireless(ctx, "192.168.1.50", 37123, "12345a"); err == nil {
+		t.Errorf("expected error on non-numeric code")
+	}
+
+	// 2. Pair Wireless Success
+	fake.SetResponse("pair 192.168.1.50:37123 654321", "Successfully paired to 192.168.1.50:37123 [guid: ...]\n", "", nil)
+	if err := mgr.PairWireless(ctx, "192.168.1.50", 37123, "654321"); err != nil {
+		t.Fatalf("PairWireless failed: %v", err)
+	}
+
+	// 3. Pair Wireless Rejection
+	fake.SetResponse("pair 192.168.1.50:37124 111111", "Failed: Wrong password or connection was reset\n", "", nil)
+	if err := mgr.PairWireless(ctx, "192.168.1.50", 37124, "111111"); err == nil {
+		t.Fatalf("expected error on rejected pairing")
+	}
+
+	// 4. Connect Wireless Validation
+	if _, err := mgr.ConnectWireless(ctx, "bad host!", 5555); err == nil {
+		t.Errorf("expected error on invalid host")
+	}
+	if _, err := mgr.ConnectWireless(ctx, "192.168.1.50", 80000); err == nil {
+		t.Errorf("expected error on invalid port")
+	}
+
+	// 5. Connect Wireless Success
+	fake.SetResponse("connect 192.168.1.50:5555", "connected to 192.168.1.50:5555\n", "", nil)
+	endpoint, err := mgr.ConnectWireless(ctx, "192.168.1.50", 5555)
+	if err != nil || endpoint != "192.168.1.50:5555" {
+		t.Fatalf("ConnectWireless failed: endpoint=%s, err=%v", endpoint, err)
+	}
+
+	// 6. Connect Wireless Rejection
+	fake.SetResponse("connect 192.168.1.50:5556", "cannot connect to 192.168.1.50:5556: No connection could be made\n", "", nil)
+	if _, err := mgr.ConnectWireless(ctx, "192.168.1.50", 5556); err == nil {
+		t.Fatalf("expected error on rejected connection")
+	}
+
+	// 7. Disconnect Wireless
+	fake.SetResponse("disconnect 192.168.1.50:5555", "disconnected 192.168.1.50:5555\n", "", nil)
+	if err := mgr.DisconnectWireless(ctx, "192.168.1.50", 5555); err != nil {
+		t.Fatalf("DisconnectWireless failed: %v", err)
+	}
+}
+
+func TestManager_SoftReconnect(t *testing.T) {
+	ctx := context.Background()
+	fake := NewFakeRunner()
+	mgr := NewManager(fake, "", nil)
+
+	// Invalid serial
+	if err := mgr.SoftReconnect(ctx, "invalid serial with spaces!!"); err == nil {
+		t.Errorf("expected error on invalid serial")
+	}
+
+	// Reconnect global
+	fake.SetResponse("reconnect", "reconnecting\n", "", nil)
+	if err := mgr.SoftReconnect(ctx, ""); err != nil {
+		t.Fatalf("SoftReconnect failed: %v", err)
+	}
+
+	// Reconnect specific serial
+	fake.SetResponse("reconnect", "reconnecting 07982241C0006769\n", "", nil)
+	if err := mgr.SoftReconnect(ctx, "07982241C0006769"); err != nil {
+		t.Fatalf("SoftReconnect with serial failed: %v", err)
+	}
+}
+
+func TestSanitizeArgsForLog(t *testing.T) {
+	// Pair command with pairing code
+	args := []string{"pair", "192.168.1.50:37123", "654321"}
+	sanitized := sanitizeArgsForLog(args)
+	if sanitized[2] != "[REDACTED]" {
+		t.Errorf("expected pairing code to be [REDACTED], got %s", sanitized[2])
+	}
+	if args[2] != "654321" {
+		t.Errorf("original args should not be mutated in-place")
+	}
+
+	// Normal command
+	normal := []string{"devices", "-l"}
+	sanNormal := sanitizeArgsForLog(normal)
+	if len(sanNormal) != 2 || sanNormal[0] != "devices" || sanNormal[1] != "-l" {
+		t.Errorf("unexpected normal command sanitization: %v", sanNormal)
+	}
+}
