@@ -4,6 +4,7 @@ import type {
   AllowlistEntry,
   AppInfo,
   AuditItem,
+  ConnectionDiagnosticResult,
   Device,
   InventoryFilter,
   MonitorSnapshot,
@@ -29,6 +30,12 @@ export interface DeviceService {
   getConnected(): Promise<Device | null>;
   list(): Promise<Device[]>;
   select(serial: string): Promise<void>;
+  diagnoseConnection(): Promise<ConnectionDiagnosticResult>;
+  wirelessPair(host: string, pairingPort: number, pairingCode: string): Promise<void>;
+  wirelessConnect(host: string, connectionPort: number): Promise<string>;
+  wirelessDisconnect(host: string, connectionPort: number): Promise<void>;
+  softReconnect(serial?: string): Promise<void>;
+  restartServer(): Promise<void>;
 }
 
 export interface InventoryService {

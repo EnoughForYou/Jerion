@@ -14,8 +14,28 @@ export function AllowlistRemove(arg1) {
   return window['go']['main']['App']['AllowlistRemove'](arg1);
 }
 
+export function AppADBRestartServer() {
+  return window['go']['main']['App']['AppADBRestartServer']();
+}
+
+export function AppADBSoftReconnect(arg1) {
+  return window['go']['main']['App']['AppADBSoftReconnect'](arg1);
+}
+
+export function AppDiagnoseConnection() {
+  return window['go']['main']['App']['AppDiagnoseConnection']();
+}
+
 export function AppGetSystemInfo() {
   return window['go']['main']['App']['AppGetSystemInfo']();
+}
+
+export function AppWirelessConnect(arg1, arg2) {
+  return window['go']['main']['App']['AppWirelessConnect'](arg1, arg2);
+}
+
+export function AppWirelessPair(arg1, arg2, arg3) {
+  return window['go']['main']['App']['AppWirelessPair'](arg1, arg2, arg3);
 }
 
 export function AuditGetLatest() {
@@ -38,6 +58,10 @@ export function ClamAVTestConnection(arg1) {
   return window['go']['main']['App']['ClamAVTestConnection'](arg1);
 }
 
+export function DeviceDiagnoseConnection() {
+  return window['go']['main']['App']['DeviceDiagnoseConnection']();
+}
+
 export function DeviceGetConnected() {
   return window['go']['main']['App']['DeviceGetConnected']();
 }
@@ -46,8 +70,28 @@ export function DeviceList() {
   return window['go']['main']['App']['DeviceList']();
 }
 
+export function DeviceRestartServer() {
+  return window['go']['main']['App']['DeviceRestartServer']();
+}
+
 export function DeviceSelect(arg1) {
   return window['go']['main']['App']['DeviceSelect'](arg1);
+}
+
+export function DeviceSoftReconnect(arg1) {
+  return window['go']['main']['App']['DeviceSoftReconnect'](arg1);
+}
+
+export function DeviceWirelessConnect(arg1, arg2) {
+  return window['go']['main']['App']['DeviceWirelessConnect'](arg1, arg2);
+}
+
+export function DeviceWirelessDisconnect(arg1, arg2) {
+  return window['go']['main']['App']['DeviceWirelessDisconnect'](arg1, arg2);
+}
+
+export function DeviceWirelessPair(arg1, arg2, arg3) {
+  return window['go']['main']['App']['DeviceWirelessPair'](arg1, arg2, arg3);
 }
 
 export function InventoryExtractApk(arg1, arg2) {
@@ -148,6 +192,10 @@ export function ScanStart(arg1) {
 
 export function ScanStatus(arg1) {
   return window['go']['main']['App']['ScanStatus'](arg1);
+}
+
+export function SetUSBDetector(arg1) {
+  return window['go']['main']['App']['SetUSBDetector'](arg1);
 }
 
 export function SettingsGet() {

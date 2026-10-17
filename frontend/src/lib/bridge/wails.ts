@@ -18,6 +18,7 @@ import type {
   AllowlistEntry,
   AppInfo,
   AuditItem,
+  ConnectionDiagnosticResult,
   Device,
   InventoryFilter,
   MonitorSnapshot,
@@ -70,6 +71,15 @@ export class WailsBridge implements Bridge {
     getConnected: () => callWails<Device | null>('DeviceGetConnected'),
     list: () => callWails<Device[]>('DeviceList'),
     select: (serial: string) => callWails<void>('DeviceSelect', serial),
+    diagnoseConnection: () => callWails<ConnectionDiagnosticResult>('DeviceDiagnoseConnection'),
+    wirelessPair: (host: string, pairingPort: number, pairingCode: string) =>
+      callWails<void>('DeviceWirelessPair', host, pairingPort, pairingCode),
+    wirelessConnect: (host: string, connectionPort: number) =>
+      callWails<string>('DeviceWirelessConnect', host, connectionPort),
+    wirelessDisconnect: (host: string, connectionPort: number) =>
+      callWails<void>('DeviceWirelessDisconnect', host, connectionPort),
+    softReconnect: (serial?: string) => callWails<void>('DeviceSoftReconnect', serial ?? ''),
+    restartServer: () => callWails<void>('DeviceRestartServer'),
   };
 
   readonly inventory: InventoryService = {

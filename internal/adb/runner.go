@@ -18,6 +18,7 @@ import (
 var (
 	rePackageName    = regexp.MustCompile(`^[a-zA-Z0-9_.]+$`)
 	rePermissionName = regexp.MustCompile(`^[a-zA-Z0-9_.]+$`)
+	reSerial         = regexp.MustCompile(`^[a-zA-Z0-9._:-]+$`)
 )
 
 // ValidatePackageName ensures package identifier contains only allowed characters.
@@ -34,6 +35,32 @@ func ValidatePermissionName(perm string) error {
 		return NewADBError(ErrCodeValidationFailed, fmt.Sprintf("invalid permission name format: %q", perm), nil)
 	}
 	return nil
+}
+
+// ValidateSerial ensures device serial or host:port contains only allowed characters.
+func ValidateSerial(serial string) error {
+	if serial == "" {
+		return nil
+	}
+	if !reSerial.MatchString(serial) {
+		return NewADBError(ErrCodeValidationFailed, fmt.Sprintf("invalid serial format: %q", serial), nil)
+	}
+	return nil
+}
+
+// sanitizeArgsForLog creates a copy of command arguments with sensitive values like pairing code redacted.
+func sanitizeArgsForLog(args []string) []string {
+	if len(args) == 0 {
+		return args
+	}
+	clean := make([]string, len(args))
+	copy(clean, args)
+	for i := 0; i < len(clean); i++ {
+		if clean[i] == "pair" && i+2 < len(clean) {
+			clean[i+2] = "[REDACTED]"
+		}
+	}
+	return clean
 }
 
 // Runner abstracts executing ADB commands on real devices or simulated environments.
@@ -133,8 +160,9 @@ func (r *RealRunner) Run(ctx context.Context, serial string, args ...string) ([]
 		exitCode = cmd.ProcessState.ExitCode()
 	}
 
-	// Audit via structured logger
-	r.logger.DebugADB(serial, r.adbPath, fullArgs, duration, exitCode, err)
+	// Audit via structured logger with sensitive arguments redacted
+	logArgs := sanitizeArgsForLog(fullArgs)
+	r.logger.DebugADB(serial, r.adbPath, logArgs, duration, exitCode, err)
 
 	if err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) || errors.Is(ctx.Err(), context.Canceled) {

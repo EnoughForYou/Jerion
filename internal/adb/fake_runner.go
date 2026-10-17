@@ -137,10 +137,45 @@ func (f *FakeRunner) Run(ctx context.Context, serial string, args ...string) ([]
 		}
 	}
 
-	// 3. Fallback
-	if f.defaultSet {
-		return f.defaultResp.stdout, f.defaultResp.stderr, f.defaultResp.err
-	}
-
 	return []byte(""), []byte(""), nil
+}
+
+// FakeUSBDetector provides controllable USB hardware device detection for tests.
+type FakeUSBDetector struct {
+	mu      sync.Mutex
+	devices []USBDevice
+	err     error
+}
+
+// NewFakeUSBDetector creates a test detector.
+func NewFakeUSBDetector(devices ...USBDevice) *FakeUSBDetector {
+	return &FakeUSBDetector{
+		devices: devices,
+	}
+}
+
+// SetDevices updates the simulated connected USB hardware.
+func (f *FakeUSBDetector) SetDevices(devices []USBDevice) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.devices = devices
+}
+
+// SetError updates the simulated OS error.
+func (f *FakeUSBDetector) SetError(err error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.err = err
+}
+
+// DetectUSBDevices returns the simulated devices.
+func (f *FakeUSBDetector) DetectUSBDevices(ctx context.Context) ([]USBDevice, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.err != nil {
+		return nil, f.err
+	}
+	res := make([]USBDevice, len(f.devices))
+	copy(res, f.devices)
+	return res, nil
 }

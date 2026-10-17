@@ -7,6 +7,8 @@ export type BridgeErrorCode =
   | 'PermissionDenied'
   | 'NotSupportedOnThisOS'
   | 'ActionBlocked'
+  | 'ValidationFailed'
+  | 'CommandFailed'
   | 'InternalError';
 
 export interface BridgeErrorPayload {

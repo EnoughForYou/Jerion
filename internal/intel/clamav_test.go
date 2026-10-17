@@ -337,9 +337,17 @@ func TestClamAV_SizeLimitExceeded_BrokenPipe(t *testing.T) {
 			_, _ = io.ReadFull(conn, data)
 		}
 
-		// Simulate clamd hitting StreamMaxLength: send error and abruptly close connection
+		// Simulate clamd hitting StreamMaxLength: send error and close write end
 		_, _ = conn.Write([]byte("INSTREAM size limit exceeded. ERROR\x00"))
-		// Socket is closed immediately on defer
+		if tcpConn, ok := conn.(*net.TCPConn); ok {
+			_ = tcpConn.CloseWrite()
+		}
+		drainBuf := make([]byte, 4096)
+		for {
+			if _, err := conn.Read(drainBuf); err != nil {
+				break
+			}
+		}
 	})
 	defer cleanup()
 

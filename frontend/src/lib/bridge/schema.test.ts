@@ -5,6 +5,8 @@ import {
   DeviceSchema,
   PreflightCheckSchema,
   CONTRACT_VERSION,
+  ConnectionDiagnosticResultSchema,
+  USBDeviceSchema,
 } from './schema';
 
 describe('Contract Schemas & Version', () => {
@@ -111,4 +113,46 @@ describe('BridgeError & Wire Protocol', () => {
     const existing = new BridgeError('Timeout', 'ADB command timed out');
     expect(BridgeError.fromWire(existing)).toBe(existing);
   });
+
+  it('handles ValidationFailed and CommandFailed error codes', () => {
+    const valErr = new BridgeError('ValidationFailed', 'invalid pairing code');
+    expect(valErr.code).toBe('ValidationFailed');
+    const cmdErr = new BridgeError('CommandFailed', 'command rejected');
+    expect(cmdErr.code).toBe('CommandFailed');
+  });
 });
+
+describe('Connection Diagnostics & Hardware Schemas', () => {
+  it('validates USBDevice and ConnectionDiagnosticResult schemas', () => {
+    const usbDev = {
+      deviceId: 'USB\\VID_2717&PID_FF40\\0789456',
+      name: 'Infinix Note 11S',
+      manufacturer: 'Infinix',
+      pnpClass: 'WPD',
+      status: 'OK',
+      configManagerErrorCode: 0,
+    };
+    expect(USBDeviceSchema.parse(usbDev)).toEqual(usbDev);
+
+    const diagResult = {
+      adbServerRunning: true,
+      adbVersion: '1.0.41',
+      usbHardwarePresent: true,
+      usbDevices: [usbDev],
+      adbDevices: [
+        {
+          serial: 'MOCK-0001',
+          state: 'ready',
+          product: 'XOS',
+          model: 'Infinix Note 11S',
+        },
+      ],
+      likelyCause: 'ready' as const,
+      headline: 'Device is connected and authorized.',
+      possibleCauses: [],
+      recommendedSteps: ['Device ready.'],
+    };
+    expect(ConnectionDiagnosticResultSchema.parse(diagResult)).toEqual(diagResult);
+  });
+});
+

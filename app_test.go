@@ -1669,5 +1669,111 @@ func TestAppGetSystemInfo(t *testing.T) {
 	}
 }
 
+func TestApp_DeviceDiagnoseConnection(t *testing.T) {
+	app, fake := setupTestApp(t)
+	defer app.store.Close()
+
+	fake.SetResponse("version", "Android Debug Bridge version 1.0.41\n", "", nil)
+	fake.SetResponse("devices -l", "List of devices attached\nDEV123\tdevice product:XOS model:Infinix_Note_11S\n", "", nil)
+
+	fakeUSB := adb.NewFakeUSBDetector(adb.USBDevice{
+		DeviceID: `USB\VID_2717&PID_FF40\0789456`,
+		Name:     "Infinix Note 11S",
+	})
+	app.SetUSBDetector(fakeUSB)
+
+	diag, err := app.DeviceDiagnoseConnection()
+	if err != nil {
+		t.Fatalf("DeviceDiagnoseConnection failed: %v", err)
+	}
+	if diag == nil || diag.LikelyCause != adb.CauseReady {
+		t.Fatalf("expected CauseReady, got %+v", diag)
+	}
+
+	// Test alias
+	diagAlias, err := app.AppDiagnoseConnection()
+	if err != nil || diagAlias == nil || diagAlias.LikelyCause != adb.CauseReady {
+		t.Fatalf("AppDiagnoseConnection alias failed: diag=%+v, err=%v", diagAlias, err)
+	}
+}
+
+func TestApp_DeviceWirelessPair(t *testing.T) {
+	app, fake := setupTestApp(t)
+	defer app.store.Close()
+
+	fake.SetResponse("pair 192.168.1.150:37123 654321", "Successfully paired to 192.168.1.150:37123 [guid: ...]\n", "", nil)
+	if err := app.DeviceWirelessPair("192.168.1.150", 37123, "654321"); err != nil {
+		t.Fatalf("DeviceWirelessPair failed: %v", err)
+	}
+
+	// Test alias
+	fake.SetResponse("pair 192.168.1.150:37124 654321", "Successfully paired to 192.168.1.150:37124 [guid: ...]\n", "", nil)
+	if err := app.AppWirelessPair("192.168.1.150", 37124, "654321"); err != nil {
+		t.Fatalf("AppWirelessPair alias failed: %v", err)
+	}
+
+	// Failure case
+	fake.SetResponse("pair 192.168.1.150:37125 000000", "Failed: Wrong password or connection was reset\n", "", nil)
+	if err := app.DeviceWirelessPair("192.168.1.150", 37125, "000000"); err == nil {
+		t.Fatalf("expected error on failed pairing")
+	}
+}
+
+func TestApp_DeviceWirelessConnect_And_Disconnect(t *testing.T) {
+	app, fake := setupTestApp(t)
+	defer app.store.Close()
+
+	fake.SetResponse("connect 192.168.1.150:5555", "connected to 192.168.1.150:5555\n", "", nil)
+	endpoint, err := app.DeviceWirelessConnect("192.168.1.150", 5555)
+	if err != nil || endpoint != "192.168.1.150:5555" {
+		t.Fatalf("DeviceWirelessConnect failed: endpoint=%s, err=%v", endpoint, err)
+	}
+
+	// Test alias
+	fake.SetResponse("connect 192.168.1.150:5556", "connected to 192.168.1.150:5556\n", "", nil)
+	endpointAlias, err := app.AppWirelessConnect("192.168.1.150", 5556)
+	if err != nil || endpointAlias != "192.168.1.150:5556" {
+		t.Fatalf("AppWirelessConnect alias failed: endpoint=%s, err=%v", endpointAlias, err)
+	}
+
+	// Disconnect
+	fake.SetResponse("disconnect 192.168.1.150:5555", "disconnected 192.168.1.150:5555\n", "", nil)
+	if err := app.DeviceWirelessDisconnect("192.168.1.150", 5555); err != nil {
+		t.Fatalf("DeviceWirelessDisconnect failed: %v", err)
+	}
+}
+
+func TestApp_DeviceSoftReconnect(t *testing.T) {
+	app, fake := setupTestApp(t)
+	defer app.store.Close()
+
+	fake.SetResponse("reconnect", "reconnecting\n", "", nil)
+	if err := app.DeviceSoftReconnect(""); err != nil {
+		t.Fatalf("DeviceSoftReconnect failed: %v", err)
+	}
+
+	// Test alias with serial
+	if err := app.AppADBSoftReconnect("DEV123"); err != nil {
+		t.Fatalf("AppADBSoftReconnect failed: %v", err)
+	}
+}
+
+func TestApp_DeviceRestartServer(t *testing.T) {
+	app, fake := setupTestApp(t)
+	defer app.store.Close()
+
+	fake.SetResponse("kill-server", "", "", nil)
+	fake.SetResponse("start-server", "* daemon started successfully *\n", "", nil)
+
+	if err := app.DeviceRestartServer(); err != nil {
+		t.Fatalf("DeviceRestartServer failed: %v", err)
+	}
+
+	// Test alias
+	if err := app.AppADBRestartServer(); err != nil {
+		t.Fatalf("AppADBRestartServer failed: %v", err)
+	}
+}
+
 
 

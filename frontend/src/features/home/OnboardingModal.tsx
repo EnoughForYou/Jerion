@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Usb, KeyRound, ChevronRight, ChevronLeft, Info } from 'lucide-react';
+import { Usb, KeyRound, ChevronRight, ChevronLeft, Info, Wifi } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -14,6 +14,7 @@ import { Button } from '../../components/ui/Button';
 export interface OnboardingModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onOpenWireless?: () => void;
 }
 
 interface OnboardingStep {
@@ -41,6 +42,7 @@ const STEPS: OnboardingStep[] = [
 export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   open,
   onOpenChange,
+  onOpenWireless,
 }) => {
   const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState(0);
@@ -123,17 +125,34 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
           </div>
         </div>
 
-        <DialogFooter>
-          {!isFirst && (
-            <Button variant="ghost" size="sm" onClick={handleBack}>
-              <ChevronLeft className="w-3.5 h-3.5" />
-              {t('onboarding.back')}
+        <DialogFooter className="flex items-center justify-between">
+          <div>
+            {onOpenWireless && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  onOpenChange(false);
+                  onOpenWireless();
+                }}
+              >
+                <Wifi className="w-3.5 h-3.5" />
+                <span>{t('device.wireless.button', 'Connect via Wi-Fi')}</span>
+              </Button>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {!isFirst && (
+              <Button variant="ghost" size="sm" onClick={handleBack}>
+                <ChevronLeft className="w-3.5 h-3.5" />
+                {t('onboarding.back')}
+              </Button>
+            )}
+            <Button variant="primary" size="sm" onClick={handleNext}>
+              {isLast ? t('onboarding.done') : t('onboarding.next')}
+              {!isLast && <ChevronRight className="w-3.5 h-3.5" />}
             </Button>
-          )}
-          <Button variant="primary" size="sm" onClick={handleNext}>
-            {isLast ? t('onboarding.done') : t('onboarding.next')}
-            {!isLast && <ChevronRight className="w-3.5 h-3.5" />}
-          </Button>
+          </div>
         </DialogFooter>
 
         <p className="text-center text-[11px] text-text-secondary/70 -mt-2">
