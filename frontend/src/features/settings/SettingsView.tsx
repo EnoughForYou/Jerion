@@ -364,8 +364,11 @@ export const SettingsView: React.FC = () => {
               <span className="font-medium text-text-primary block">
                 {t('settings.clamavEnabled')}
               </span>
-              <span className="text-[11px] text-text-secondary">
+              <span className="text-[11px] text-text-secondary block">
                 Stream APK payloads to local clamd daemon (TCP) for offline signature-based threat detection.
+              </span>
+              <span className="text-[11px] text-accent font-medium block mt-0.5">
+                {t('settings.clamavScopeNote', 'Used during Deep Scan only (base APK inspection)')}
               </span>
             </div>
             <input
